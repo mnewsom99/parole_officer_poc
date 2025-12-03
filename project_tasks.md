@@ -1,0 +1,66 @@
+# Tasks
+
+- [x] Implement Urinalysis History Modal <!-- id: 0 -->
+- [x] Implement Notes Modal <!-- id: 1 -->
+- [x] Implement Risk Assessment Modal <!-- id: 2 -->
+- [x] Implement Next Appointment Modal <!-- id: 3 -->
+- [x] Create Integration Roadmap <!-- id: 4 -->
+- [x] Implement Search/Quick Jump by ID <!-- id: 5 -->
+- [x] Implement Sign Out Feature <!-- id: 6 -->
+- [x] Replace Status Column with Address and Phone Links <!-- id: 7 -->
+- [x] Add Tasks Module to Sidebar <!-- id: 8 -->
+- [x] Replace Parole Conditions with Parole Plan <!-- id: 9 -->
+    - [x] Initialize default tasks (Started Supervision, Orientation, Assessments, Completed Parole)
+    - [x] Implement Task List categorized by status (Completed, Pending, Not Due)
+    - [x] Add functionality to edit dates
+    - [x] Add functionality to add new tasks manually
+- [x] Refine Parole Plan UI <!-- id: 10 -->
+    - [x] Add scrollable container (max height ~4 tasks)
+    - [x] Reorder sections: Pending -> Not Due -> Completed
+    - [x] Ensure section headers always show
+- [x] Implement Full-Width Notes Section <!-- id: 11 -->
+    - [x] Convert notesHistory to state
+    - [x] Add "Add Note" functionality (input + button)
+    - [x] Create full-width UI container below existing grid
+    - [x] Display notes sorted by recent first
+- [x] Implement Notes Pagination <!-- id: 12 -->
+    - [x] Add pagination state (currentPage)
+    - [x] Implement slicing logic for 10 items per page
+    - [x] Add pagination controls (Prev/Next/Page info)
+- [x] Create Database Schema and Data Dictionary <!-- id: 13 -->
+    - [x] Define entities and relationships (ER Diagram)
+    - [x] Document data dictionary for all tables
+- [x] Refine Database Schema <!-- id: 14 -->
+    - [x] Add SupervisionEpisodes table (start/end dates, outcomes)
+    - [x] Add Locations table and link to Officers
+    - [x] Add Supervisor relationship to Officers
+    - [x] Add audit fields (created_by, completed_by) to Tasks and Assessments
+    - [x] Add Residences table (Home Plans) <!-- id: 15 -->
+    - [x] Add CustodyEvents table (Movement/Custody History) <!-- id: 16 -->
+- [x] Define Data Migration Requirements <!-- id: 17 -->
+    - [x] List essential legacy data fields for initial dump
+    - [x] Document export strategy (Supervision History file)
+- [x] Update ERD with Import/Export Flows <!-- id: 18 -->
+- [x] Split ERD into readable sub-sections <!-- id: 19 -->
+- [x] Prepare Local Git Repository <!-- id: 20 -->
+    - [x] Initialize git
+    - [x] Commit all files
+    - [x] Add remote origin
+    - [x] Push to GitHub (User Completed)
+
+## Future Work (Next Session)
+- [ ] Database Implementation <!-- id: 21 -->
+    - [ ] Set up SQL Server environment
+    - [ ] Create DDL scripts from Schema
+- [ ] Data Generation <!-- id: 22 -->
+    - [ ] Generate mock data for all tables (Offenders, Officers, Episodes, etc.)
+    - [ ] Populate database for demo purposes
+- [ ] Supervisor Dashboard (Office View) <!-- id: 23 -->
+    - [ ] Implement Supervisor Task List
+    - [ ] Implement Supervisor Calendar
+    - [ ] Implement Assessment Oversight
+- [ ] Admin Functions <!-- id: 24 -->
+    - [ ] User Management (Add/Remove Users)
+    - [ ] Group Automation (Create automatic tasks for groups)
+- [ ] Feedback System <!-- id: 25 -->
+    - [ ] Implement User Suggestions / Error Reporting Box
