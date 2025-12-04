@@ -1,9 +1,10 @@
 import React from 'react';
-import { Users, Calendar, FileText, Settings, Shield, CheckSquare } from 'lucide-react';
+import { Users, Calendar, FileText, Settings, Shield, CheckSquare, Briefcase } from 'lucide-react';
 
 const Sidebar = ({ activeView, setActiveView }) => {
     const navItems = [
-        { id: 'caseload', label: 'Caseload', icon: Users },
+        { id: 'caseload', label: 'My Caseload', icon: Users },
+        { id: 'office', label: 'Office Module', icon: Briefcase },
         { id: 'tasks', label: 'Tasks', icon: CheckSquare },
         { id: 'calendar', label: 'Calendar', icon: Calendar },
         { id: 'reports', label: 'Reports', icon: FileText },

@@ -49,18 +49,21 @@
     - [x] Push to GitHub (User Completed)
 
 ## Future Work (Next Session)
-- [ ] Database Implementation <!-- id: 21 -->
-    - [ ] Set up SQL Server environment
-    - [ ] Create DDL scripts from Schema
-- [ ] Data Generation <!-- id: 22 -->
-    - [ ] Generate mock data for all tables (Offenders, Officers, Episodes, etc.)
-    - [ ] Populate database for demo purposes
-- [ ] Supervisor Dashboard (Office View) <!-- id: 23 -->
-    - [ ] Implement Supervisor Task List
-    - [ ] Implement Supervisor Calendar
-    - [ ] Implement Assessment Oversight
+- [x] Database Implementation <!-- id: 21 -->
+    - [x] Set up SQL Server environment (Replaced with PostgreSQL)
+    - [x] Create DDL scripts from Schema
+- [x] Data Generation <!-- id: 22 -->
+    - [x] Generate mock data for all tables (Offenders, Officers, Episodes, etc.)
+    - [x] Populate database for demo purposes
+- [x] Supervisor Dashboard (Office View) <!-- id: 23 -->
+    - [x] Implement Supervisor Task List
+    - [x] Implement Supervisor Calendar
+    - [x] Implement Assessment Oversight
 - [ ] Admin Functions <!-- id: 24 -->
     - [ ] User Management (Add/Remove Users)
     - [ ] Group Automation (Create automatic tasks for groups)
 - [ ] Feedback System <!-- id: 25 -->
     - [ ] Implement User Suggestions / Error Reporting Box
+- [ ] Security Compliance <!-- id: 26 -->
+    - [ ] Review general security requirements
+    - [ ] Review AZ-specific security requirements

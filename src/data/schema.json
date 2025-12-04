@@ -1,0 +1,267 @@
+{
+    "roles": {
+        "description": "Table for roles",
+        "fields": [
+            {
+                "name": "role_id",
+                "type": "INTEGER",
+                "key": "PK"
+            },
+            {
+                "name": "role_name",
+                "type": "VARCHAR(50)",
+                "key": "Unique"
+            },
+            {
+                "name": "description",
+                "type": "VARCHAR(255)",
+                "key": ""
+            }
+        ]
+    },
+    "users": {
+        "description": "Table for users",
+        "fields": [
+            {
+                "name": "user_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "username",
+                "type": "VARCHAR(50)",
+                "key": "Unique"
+            },
+            {
+                "name": "email",
+                "type": "VARCHAR(100)",
+                "key": "Unique"
+            },
+            {
+                "name": "password_hash",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "role_id",
+                "type": "INTEGER",
+                "key": "FK"
+            },
+            {
+                "name": "created_at",
+                "type": "DATETIME",
+                "key": ""
+            },
+            {
+                "name": "last_login",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "locations": {
+        "description": "Table for locations",
+        "fields": [
+            {
+                "name": "location_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "address",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            }
+        ]
+    },
+    "officers": {
+        "description": "Table for officers",
+        "fields": [
+            {
+                "name": "officer_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "user_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "location_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "supervisor_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "badge_number",
+                "type": "VARCHAR(20)",
+                "key": "Unique"
+            },
+            {
+                "name": "first_name",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "last_name",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "phone_number",
+                "type": "VARCHAR(20)",
+                "key": ""
+            }
+        ]
+    },
+    "offenders": {
+        "description": "Table for offenders",
+        "fields": [
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "badge_id",
+                "type": "VARCHAR(20)",
+                "key": "Unique"
+            },
+            {
+                "name": "first_name",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "last_name",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "dob",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "image_url",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "created_at",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "supervision_episodes": {
+        "description": "Table for supervision_episodes",
+        "fields": [
+            {
+                "name": "episode_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "assigned_officer_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "start_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "end_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "status",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "risk_level_at_start",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "closing_reason",
+                "type": "VARCHAR(100)",
+                "key": ""
+            }
+        ]
+    },
+    "tasks": {
+        "description": "Table for tasks",
+        "fields": [
+            {
+                "name": "task_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "episode_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "created_by",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "title",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "description",
+                "type": "TEXT",
+                "key": ""
+            },
+            {
+                "name": "due_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "status",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "created_at",
+                "type": "DATETIME",
+                "key": ""
+            },
+            {
+                "name": "updated_at",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    }
+}

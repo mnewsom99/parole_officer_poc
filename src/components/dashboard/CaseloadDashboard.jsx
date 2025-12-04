@@ -1,16 +1,50 @@
 import React, { useState } from 'react';
 import { MoreHorizontal, AlertTriangle, CheckCircle, Clock, ChevronRight, Search } from 'lucide-react';
+import AddOffenderModal from './AddOffenderModal';
 
 const CaseloadDashboard = ({ onSelectOffender }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [isAddOffenderModalOpen, setIsAddOffenderModalOpen] = useState(false);
 
-    const offenders = [
-        { id: '1', name: 'Doe, John', badgeId: '88392', risk: 'High', status: 'Active', nextCheck: 'Today, 2:00 PM', compliance: 65, image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '123 Main St, Springfield', phone: '555-0101' },
-        { id: '2', name: 'Smith, Sarah', badgeId: '99210', risk: 'Medium', status: 'Active', nextCheck: 'Tomorrow, 9:00 AM', compliance: 88, image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '456 Oak Ave, Springfield', phone: '555-0102' },
-        { id: '3', name: 'Johnson, Michael', badgeId: '77219', risk: 'Low', status: 'Active', nextCheck: 'Dec 12, 10:30 AM', compliance: 95, image: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '789 Pine Ln, Springfield', phone: '555-0103' },
-        { id: '4', name: 'Williams, David', badgeId: '66210', risk: 'High', status: 'Absconded', nextCheck: 'Overdue', compliance: 12, image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: 'Unknown', phone: 'Disconnected' },
-        { id: '5', name: 'Brown, Jessica', badgeId: '55102', risk: 'Medium', status: 'Active', nextCheck: 'Dec 14, 3:00 PM', compliance: 78, image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '321 Elm St, Springfield', phone: '555-0104' },
-    ];
+    const getMockDate = (offsetDays, hour = 12) => {
+        const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
+        d.setHours(hour, 0, 0, 0);
+        return d.toISOString();
+    };
+
+    const [offenders, setOffenders] = useState([
+        { id: '1', name: 'Doe, John', badgeId: '88392', risk: 'High', status: 'Active', nextCheck: getMockDate(0, 14), compliance: 65, image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '123 Main St, Springfield', phone: '555-0101' },
+        { id: '2', name: 'Smith, Sarah', badgeId: '99210', risk: 'Medium', status: 'Active', nextCheck: getMockDate(1, 9), compliance: 88, image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '456 Oak Ave, Springfield', phone: '555-0102' },
+        { id: '3', name: 'Johnson, Michael', badgeId: '77219', risk: 'Low', status: 'Active', nextCheck: getMockDate(5, 10), compliance: 95, image: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '789 Pine Ln, Springfield', phone: '555-0103' },
+        { id: '4', name: 'Williams, David', badgeId: '66210', risk: 'High', status: 'Absconded', nextCheck: getMockDate(-2, 9), compliance: 12, image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: 'Unknown', phone: 'Disconnected' },
+        { id: '5', name: 'Brown, Jessica', badgeId: '55102', risk: 'Medium', status: 'Active', nextCheck: getMockDate(3, 15), compliance: 78, image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '321 Elm St, Springfield', phone: '555-0104' },
+    ]);
+
+    const formatNextCheck = (dateString) => {
+        if (!dateString || dateString === 'Pending') return 'Pending';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+
+        const pad = (num) => num.toString().padStart(2, '0');
+        return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
+    const getDateStatusColor = (dateString) => {
+        if (!dateString || dateString === 'Pending') return 'text-slate-500';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'text-slate-600';
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        if (date < now) return 'text-red-600 font-bold';
+        if (checkDate.getTime() === today.getTime()) return 'text-yellow-600 font-bold';
+        return 'text-slate-600';
+    };
+
+    const [sortConfig, setSortConfig] = useState({ key: 'nextCheck', direction: 'ascending' });
 
     const getRiskBadge = (risk) => {
         switch (risk) {
@@ -21,10 +55,32 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
         }
     };
 
-    const filteredOffenders = offenders.filter(offender =>
-        offender.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        offender.badgeId.includes(searchQuery)
-    );
+    const handleSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const filteredOffenders = React.useMemo(() => {
+        let sortableItems = [...offenders];
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems.filter(offender =>
+            offender.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            offender.badgeId.includes(searchQuery)
+        );
+    }, [offenders, sortConfig, searchQuery]);
 
     const handleSearchKeyDown = (e) => {
         if (e.key === 'Enter') {
@@ -33,6 +89,24 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                 onSelectOffender(exactMatch);
             }
         }
+    };
+
+    const handleAddOffender = (newOffender) => {
+        const offenderToAdd = {
+            id: (offenders.length + 1).toString(),
+            ...newOffender,
+            status: 'Active',
+            nextCheck: 'Pending',
+            compliance: 100,
+            image: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' // Placeholder image
+        };
+        setOffenders(prev => [offenderToAdd, ...prev]);
+        setIsAddOffenderModalOpen(false);
+    };
+
+    const SortIcon = ({ column }) => {
+        if (sortConfig.key !== column) return <span className="ml-1 text-slate-300">↕</span>;
+        return sortConfig.direction === 'ascending' ? <span className="ml-1 text-blue-600">↑</span> : <span className="ml-1 text-blue-600">↓</span>;
     };
 
     return (
@@ -56,13 +130,10 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                             onKeyDown={handleSearchKeyDown}
                         />
                     </div>
-                    <select className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
-                        <option>All Risks</option>
-                        <option>High Risk</option>
-                        <option>Medium Risk</option>
-                        <option>Low Risk</option>
-                    </select>
-                    <button className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-4 rounded-lg shadow-lg shadow-navy-900/20 transition-all">
+                    <button
+                        onClick={() => setIsAddOffenderModalOpen(true)}
+                        className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-4 rounded-lg shadow-lg shadow-navy-900/20 transition-all"
+                    >
                         + Add Offender
                     </button>
                 </div>
@@ -72,12 +143,42 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Offender</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Risk Level</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Address</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Compliance</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Next Check-in</th>
+                            <th
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => handleSort('name')}
+                            >
+                                Offender <SortIcon column="name" />
+                            </th>
+                            <th
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => handleSort('risk')}
+                            >
+                                Risk Level <SortIcon column="risk" />
+                            </th>
+                            <th
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => handleSort('address')}
+                            >
+                                Address <SortIcon column="address" />
+                            </th>
+                            <th
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => handleSort('phone')}
+                            >
+                                Phone <SortIcon column="phone" />
+                            </th>
+                            <th
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => handleSort('compliance')}
+                            >
+                                Compliance <SortIcon column="compliance" />
+                            </th>
+                            <th
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => handleSort('nextCheck')}
+                            >
+                                Next Check-in <SortIcon column="nextCheck" />
+                            </th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
@@ -130,9 +231,11 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                                     <span className="text-xs text-slate-500 mt-1 block">{offender.compliance}%</span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                        <Clock className="w-4 h-4" />
-                                        <span className="text-sm">{offender.nextCheck}</span>
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="w-4 h-4 text-slate-400" />
+                                        <span className={`text-sm ${getDateStatusColor(offender.nextCheck)}`}>
+                                            {formatNextCheck(offender.nextCheck)}
+                                        </span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -145,6 +248,12 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                     </tbody>
                 </table>
             </div>
+
+            <AddOffenderModal
+                isOpen={isAddOffenderModalOpen}
+                onClose={() => setIsAddOffenderModalOpen(false)}
+                onSave={handleAddOffender}
+            />
         </div>
     );
 };

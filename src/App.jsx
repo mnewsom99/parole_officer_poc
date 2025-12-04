@@ -3,6 +3,11 @@ import LoginScreen from './components/auth/LoginScreen';
 import AppShell from './components/layout/AppShell';
 import CaseloadDashboard from './components/dashboard/CaseloadDashboard';
 import OffenderProfile from './components/profile/OffenderProfile';
+import TasksModule from './components/modules/TasksModule';
+import CalendarModule from './components/modules/CalendarModule';
+import ReportsModule from './components/modules/ReportsModule';
+import SettingsModule from './components/modules/SettingsModule';
+import OfficeModule from './components/modules/OfficeModule';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -39,14 +44,16 @@ function App() {
         return <CaseloadDashboard onSelectOffender={handleSelectOffender} />;
       case 'profile':
         return <OffenderProfile offender={selectedOffender} onBack={handleBackToDashboard} />;
+      case 'office':
+        return <OfficeModule />;
       case 'tasks':
-        return <div className="p-10 text-center text-slate-500">Tasks Module Placeholder</div>;
+        return <TasksModule />;
       case 'calendar':
-        return <div className="p-10 text-center text-slate-500">Calendar Module Placeholder</div>;
+        return <CalendarModule />;
       case 'reports':
-        return <div className="p-10 text-center text-slate-500">Reports Module Placeholder</div>;
+        return <ReportsModule />;
       case 'settings':
-        return <div className="p-10 text-center text-slate-500">Settings Module Placeholder</div>;
+        return <SettingsModule />;
       default:
         return <CaseloadDashboard onSelectOffender={handleSelectOffender} />;
     }
