@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Circle, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Circle, Trash2, UserPlus } from 'lucide-react';
 import Modal from '../common/Modal';
 
 const OffenderProfile = ({ offender, onBack }) => {
@@ -17,6 +18,48 @@ const OffenderProfile = ({ offender, onBack }) => {
     ]);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTask, setNewTask] = useState({ title: '', date: '', status: 'Pending' });
+
+    // Data States
+    const [uaHistory, setUaHistory] = useState([]);
+    const [notes, setNotes] = useState([]);
+    const [riskFactors, setRiskFactors] = useState([]);
+    const [appointments, setAppointments] = useState([]);
+
+    useEffect(() => {
+        if (offender?.id) {
+            fetchData();
+        }
+    }, [offender]);
+
+    const fetchData = async () => {
+        try {
+            const [uaRes, notesRes, riskRes, apptRes] = await Promise.all([
+                axios.get(`http://localhost:8000/offenders/${offender.id}/urinalysis`),
+                axios.get(`http://localhost:8000/offenders/${offender.id}/notes`),
+                axios.get(`http://localhost:8000/offenders/${offender.id}/risk`),
+                axios.get(`http://localhost:8000/offenders/${offender.id}/appointments`)
+            ]);
+
+            setUaHistory(uaRes.data);
+            setNotes(notesRes.data);
+
+            // Process Risk Data
+            if (riskRes.data.length > 0) {
+                const latestRisk = riskRes.data[0];
+                const factors = Object.entries(latestRisk.details || {}).map(([category, score]) => ({
+                    category,
+                    score,
+                    details: `${score} risk factor identified.`
+                }));
+                setRiskFactors(factors);
+            }
+
+            setAppointments(apptRes.data);
+
+        } catch (error) {
+            console.error("Error fetching offender data:", error);
+        }
+    };
 
     const handleUpdateTask = (id, field, value) => {
         setParolePlan(parolePlan.map(task =>
@@ -39,55 +82,25 @@ const OffenderProfile = ({ offender, onBack }) => {
         setParolePlan(parolePlan.filter(task => task.id !== id));
     };
 
-    const uaHistory = [
-        { id: 1, date: 'Nov 28, 2023', type: 'Random', result: 'Negative', lab: 'LabCorp', collectedBy: 'Officer Smith' },
-        { id: 2, date: 'Nov 15, 2023', type: 'Scheduled', result: 'Negative', lab: 'LabCorp', collectedBy: 'Officer Smith' },
-        { id: 3, date: 'Nov 01, 2023', type: 'Random', result: 'Positive (THC)', lab: 'LabCorp', collectedBy: 'Officer Jones', notes: 'Offender admitted to use.' },
-        { id: 4, date: 'Oct 15, 2023', type: 'Scheduled', result: 'Negative', lab: 'LabCorp', collectedBy: 'Officer Smith' },
-    ];
-
-    const [notes, setNotes] = useState([
-        { id: 1, date: 'Nov 28, 2023', author: 'Officer Smith', content: 'Routine check-in. Subject reports new employment at construction site.' },
-        { id: 2, date: 'Nov 15, 2023', author: 'Officer Smith', content: 'Verified address change. New residence approved.' },
-        { id: 3, date: 'Nov 01, 2023', author: 'Officer Jones', content: 'Phone call received regarding missed appointment. Rescheduled for Nov 2.' },
-        { id: 4, date: 'Oct 20, 2023', author: 'Officer Smith', content: 'Initial intake interview completed. Risk assessment scheduled.' },
-        { id: 5, date: 'Oct 15, 2023', author: 'System', content: 'Case file transferred from County Court.' },
-        { id: 6, date: 'Sep 30, 2023', author: 'Officer Smith', content: 'Home visit conducted. No issues found.' },
-        { id: 7, date: 'Sep 15, 2023', author: 'Officer Smith', content: 'Phone check-in. Subject is compliant.' },
-        { id: 8, date: 'Sep 01, 2023', author: 'Officer Jones', content: 'Urinalysis requested. Result pending.' },
-        { id: 9, date: 'Aug 15, 2023', author: 'Officer Smith', content: 'Employment verification call made.' },
-        { id: 10, date: 'Aug 01, 2023', author: 'System', content: 'Monthly report generated.' },
-        { id: 11, date: 'Jul 15, 2023', author: 'Officer Smith', content: 'Initial meeting scheduled.' },
-    ]);
     const [newNoteContent, setNewNoteContent] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
-    const handleAddNote = () => {
+    const handleAddNote = async () => {
         if (!newNoteContent.trim()) return;
 
-        const newNote = {
-            id: Date.now(),
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            author: 'Officer Smith', // Hardcoded for POC
-            content: newNoteContent
-        };
+        try {
+            const response = await axios.post(`http://localhost:8000/offenders/${offender.id}/notes`, {
+                content: newNoteContent
+            });
 
-        setNotes([newNote, ...notes]);
-        setNewNoteContent('');
-        setCurrentPage(1);
+            setNotes([response.data, ...notes]);
+            setNewNoteContent('');
+            setCurrentPage(1);
+        } catch (error) {
+            console.error("Error adding note:", error);
+        }
     };
-
-    const riskFactors = [
-        { category: 'Criminal History', score: 'High', details: 'Multiple prior felony convictions.' },
-        { category: 'Education/Employment', score: 'Low', details: 'Currently employed full-time.' },
-        { category: 'Family/Marital', score: 'Medium', details: 'Unstable housing situation reported.' },
-        { category: 'Leisure/Recreation', score: 'Medium', details: 'Limited pro-social activities.' },
-        { category: 'Companions', score: 'High', details: 'Known association with gang members.' },
-        { category: 'Alcohol/Drug Problem', score: 'Medium', details: 'History of substance abuse, currently in treatment.' },
-    ];
-
-    if (!offender) return null;
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: FileText },
@@ -345,7 +358,7 @@ const OffenderProfile = ({ offender, onBack }) => {
                 return (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="font-bold text-slate-800 mb-6">Contact Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div className="flex items-start gap-4">
                                 <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
                                     <Phone className="w-5 h-5 text-slate-600" />
@@ -371,8 +384,8 @@ const OffenderProfile = ({ offender, onBack }) => {
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Current Residence</p>
-                                    <p className="text-base font-medium text-slate-800">1234 Elm Street, Apt 4B</p>
-                                    <p className="text-sm text-slate-600">Springfield, IL 62704</p>
+                                    <p className="text-base font-medium text-slate-800">{offender.address}</p>
+                                    <p className="text-sm text-slate-600">{offender.city}, {offender.state} {offender.zip}</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-4">
@@ -385,12 +398,76 @@ const OffenderProfile = ({ offender, onBack }) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Housing Details Section */}
+                        <div className="border-t border-slate-100 pt-6 mb-6">
+                            <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-blue-600" />
+                                Housing Details
+                            </h4>
+                            {offender.housingType === 'Facility' ? (
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="font-bold text-blue-800">{offender.facility.name}</span>
+                                        <span className="px-2 py-0.5 bg-blue-200 text-blue-800 text-xs rounded-full font-bold">Approved Facility</span>
+                                    </div>
+                                    <p className="text-sm text-blue-900 mb-1">{offender.facility.address}</p>
+                                    <p className="text-sm text-blue-800 mb-2">Phone: {offender.facility.phone}</p>
+                                    <div className="text-xs text-blue-700">
+                                        <span className="font-semibold">Services:</span> {offender.facility.services}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="font-bold text-slate-700">Private Residence</span>
+                                        <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-bold">Approved</span>
+                                    </div>
+                                    <p className="text-sm text-slate-600">Standard private residence. No facility services provided.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Residence Contacts Section */}
+                        {offender.housingType === 'Private' && offender.residenceContacts && offender.residenceContacts.length > 0 && (
+                            <div className="border-t border-slate-100 pt-6">
+                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <UserPlus className="w-4 h-4 text-blue-600" />
+                                    Residence Contacts
+                                </h4>
+                                <div className="space-y-3">
+                                    {offender.residenceContacts.map((contact, index) => (
+                                        <div key={index} className="flex items-start gap-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shrink-0 border border-slate-200 font-bold text-slate-500 text-xs">
+                                                {contact.name.charAt(0)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-800">{contact.name}</p>
+                                                        <p className="text-xs text-slate-500">{contact.relation}</p>
+                                                    </div>
+                                                    <a href={`tel:${contact.phone}`} className="text-xs text-blue-600 hover:underline">
+                                                        {contact.phone}
+                                                    </a>
+                                                </div>
+                                                {contact.comments && (
+                                                    <p className="text-xs text-slate-600 mt-1 italic">"{contact.comments}"</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             default:
                 return null;
         }
     };
+
+    const nextAppointment = appointments.find(a => new Date(a.date_time) > new Date());
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -432,7 +509,7 @@ const OffenderProfile = ({ offender, onBack }) => {
                                     onClick={() => setShowAppointmentModal(true)}
                                     className="hover:text-blue-600 hover:underline transition-colors"
                                 >
-                                    Next Check-in: {offender.nextCheck}
+                                    Next Check-in: {nextAppointment ? new Date(nextAppointment.date_time).toLocaleDateString() : 'None Scheduled'}
                                 </button>
                             </div>
                         </div>
@@ -514,9 +591,9 @@ const OffenderProfile = ({ offender, onBack }) => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {uaHistory.map((test) => (
-                                    <tr key={test.id} className="hover:bg-slate-50">
+                                    <tr key={test.test_id} className="hover:bg-slate-50">
                                         <td className="px-4 py-3 text-slate-600">{test.date}</td>
-                                        <td className="px-4 py-3 text-slate-600">{test.type}</td>
+                                        <td className="px-4 py-3 text-slate-600">{test.test_type}</td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${test.result.includes('Positive')
                                                 ? 'bg-red-100 text-red-800'
@@ -528,8 +605,10 @@ const OffenderProfile = ({ offender, onBack }) => {
                                                 <div className="text-xs text-slate-400 mt-1">{test.notes}</div>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-600">{test.lab}</td>
-                                        <td className="px-4 py-3 text-slate-600">{test.collectedBy}</td>
+                                        <td className="px-4 py-3 text-slate-600">{test.lab_name}</td>
+                                        <td className="px-4 py-3 text-slate-600">
+                                            {test.collected_by ? `${test.collected_by.last_name}, ${test.collected_by.first_name}` : 'Unknown'}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -547,11 +626,17 @@ const OffenderProfile = ({ offender, onBack }) => {
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Add New Note</label>
                         <textarea
+                            value={newNoteContent}
+                            onChange={(e) => setNewNoteContent(e.target.value)}
                             className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[100px]"
                             placeholder="Type note content here..."
                         ></textarea>
                         <div className="flex justify-end mt-2">
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-all">
+                            <button
+                                onClick={handleAddNote}
+                                disabled={!newNoteContent.trim()}
+                                className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-all"
+                            >
                                 Save Note
                             </button>
                         </div>
@@ -561,10 +646,12 @@ const OffenderProfile = ({ offender, onBack }) => {
                         <h4 className="text-sm font-bold text-slate-800 mb-4">Recent Notes</h4>
                         <div className="space-y-4">
                             {notes.map((note) => (
-                                <div key={note.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <div key={note.note_id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="font-semibold text-slate-700 text-sm">{note.author}</span>
-                                        <span className="text-xs text-slate-500">{note.date}</span>
+                                        <span className="font-semibold text-slate-700 text-sm">
+                                            {note.author ? `${note.author.last_name}, ${note.author.first_name}` : 'Unknown'}
+                                        </span>
+                                        <span className="text-xs text-slate-500">{new Date(note.date).toLocaleDateString()}</span>
                                     </div>
                                     <p className="text-sm text-slate-600 leading-relaxed">{note.content}</p>
                                 </div>

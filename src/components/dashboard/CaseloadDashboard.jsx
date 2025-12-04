@@ -1,25 +1,76 @@
-import React, { useState } from 'react';
-import { MoreHorizontal, AlertTriangle, CheckCircle, Clock, ChevronRight, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MoreHorizontal, AlertTriangle, CheckCircle, Clock, ChevronRight, Search, UserPlus } from 'lucide-react';
+import axios from 'axios';
 import AddOffenderModal from './AddOffenderModal';
 
 const CaseloadDashboard = ({ onSelectOffender }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddOffenderModalOpen, setIsAddOffenderModalOpen] = useState(false);
+    const [selectedOfficer, setSelectedOfficer] = useState('');
+    const [selectedOffice, setSelectedOffice] = useState('');
+    const [sortConfig, setSortConfig] = useState({ key: 'nextCheck', direction: 'ascending' });
+    const [officers, setOfficers] = useState([]);
+    const [offices, setOffices] = useState([]);
+    const [offenders, setOffenders] = useState([]);
 
-    const getMockDate = (offsetDays, hour = 12) => {
-        const d = new Date();
-        d.setDate(d.getDate() + offsetDays);
-        d.setHours(hour, 0, 0, 0);
-        return d.toISOString();
+    // Fetch Offices
+    useEffect(() => {
+        const fetchOffices = async () => {
+            try {
+                const response = await axios.get('http://localhost:8000/locations');
+                setOffices(response.data);
+            } catch (error) {
+                console.error("Error fetching offices:", error);
+            }
+        };
+        fetchOffices();
+    }, []);
+
+    // Fetch Officers (filtered by office if selected)
+    useEffect(() => {
+        const fetchOfficers = async () => {
+            try {
+                let url = 'http://localhost:8000/officers';
+                if (selectedOffice) {
+                    url += `?location_id=${selectedOffice}`;
+                }
+                const response = await axios.get(url);
+                const mappedOfficers = response.data.map(o => ({
+                    id: o.officer_id,
+                    name: `${o.first_name} ${o.last_name}`
+                }));
+                setOfficers(mappedOfficers);
+                if (mappedOfficers.length > 0) {
+                    setSelectedOfficer(mappedOfficers[0].id);
+                } else {
+                    setSelectedOfficer('');
+                    setOffenders([]);
+                }
+            } catch (error) {
+                console.error("Error fetching officers:", error);
+            }
+        };
+        fetchOfficers();
+    }, [selectedOffice]);
+
+    // Fetch Offenders
+    useEffect(() => {
+        if (!selectedOfficer) return;
+
+        const fetchOffenders = async () => {
+            try {
+                const response = await axios.get(`http://localhost:8000/offenders?officer_id=${selectedOfficer}`);
+                setOffenders(response.data);
+            } catch (error) {
+                console.error("Error fetching offenders:", error);
+            }
+        };
+        fetchOffenders();
+    }, [selectedOfficer]);
+
+    const handleOfficerChange = (e) => {
+        setSelectedOfficer(e.target.value);
     };
-
-    const [offenders, setOffenders] = useState([
-        { id: '1', name: 'Doe, John', badgeId: '88392', risk: 'High', status: 'Active', nextCheck: getMockDate(0, 14), compliance: 65, image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '123 Main St, Springfield', phone: '555-0101' },
-        { id: '2', name: 'Smith, Sarah', badgeId: '99210', risk: 'Medium', status: 'Active', nextCheck: getMockDate(1, 9), compliance: 88, image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '456 Oak Ave, Springfield', phone: '555-0102' },
-        { id: '3', name: 'Johnson, Michael', badgeId: '77219', risk: 'Low', status: 'Active', nextCheck: getMockDate(5, 10), compliance: 95, image: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '789 Pine Ln, Springfield', phone: '555-0103' },
-        { id: '4', name: 'Williams, David', badgeId: '66210', risk: 'High', status: 'Absconded', nextCheck: getMockDate(-2, 9), compliance: 12, image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: 'Unknown', phone: 'Disconnected' },
-        { id: '5', name: 'Brown, Jessica', badgeId: '55102', risk: 'Medium', status: 'Active', nextCheck: getMockDate(3, 15), compliance: 78, image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', address: '321 Elm St, Springfield', phone: '555-0104' },
-    ]);
 
     const formatNextCheck = (dateString) => {
         if (!dateString || dateString === 'Pending') return 'Pending';
@@ -43,8 +94,6 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
         if (checkDate.getTime() === today.getTime()) return 'text-yellow-600 font-bold';
         return 'text-slate-600';
     };
-
-    const [sortConfig, setSortConfig] = useState({ key: 'nextCheck', direction: 'ascending' });
 
     const getRiskBadge = (risk) => {
         switch (risk) {
@@ -91,17 +140,48 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
         }
     };
 
-    const handleAddOffender = (newOffender) => {
-        const offenderToAdd = {
-            id: (offenders.length + 1).toString(),
-            ...newOffender,
-            status: 'Active',
-            nextCheck: 'Pending',
-            compliance: 100,
-            image: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' // Placeholder image
-        };
-        setOffenders(prev => [offenderToAdd, ...prev]);
-        setIsAddOffenderModalOpen(false);
+    const handleAddOffender = async (newOffender) => {
+        try {
+            // Split name into first and last
+            const nameParts = newOffender.name.split(',').map(part => part.trim());
+            const lastName = nameParts[0];
+            const firstName = nameParts.length > 1 ? nameParts[1] : '';
+
+            const payload = {
+                first_name: firstName,
+                last_name: lastName,
+                badge_id: newOffender.badgeId,
+                dob: newOffender.dob,
+                image_url: null,
+                address_line_1: newOffender.address,
+                city: newOffender.city,
+                state: newOffender.state,
+                zip_code: newOffender.zipCode,
+                start_date: newOffender.beginDate,
+                end_date: newOffender.endDate || null,
+                risk_level: newOffender.risk,
+                assigned_officer_id: selectedOfficer
+            };
+
+            const response = await axios.post('http://localhost:8000/offenders', payload);
+
+            // Refresh the list or add to state
+            // For now, just re-fetching or adding manually if we want to save a call
+            // But since the list format is different from the create response, let's just re-fetch
+            const fetchOffenders = async () => {
+                try {
+                    const response = await axios.get(`http://localhost:8000/offenders?officer_id=${selectedOfficer}`);
+                    setOffenders(response.data);
+                } catch (error) {
+                    console.error("Error fetching offenders:", error);
+                }
+            };
+            fetchOffenders();
+            setIsAddOffenderModalOpen(false);
+        } catch (error) {
+            console.error("Error adding offender:", error);
+            alert("Failed to add offender. Please check the console for details.");
+        }
     };
 
     const SortIcon = ({ column }) => {
@@ -111,12 +191,31 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">My Caseload</h2>
                     <p className="text-slate-500">Active Offenders: {filteredOffenders.length}</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <select
+                        value={selectedOffice}
+                        onChange={(e) => setSelectedOffice(e.target.value)}
+                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
+                    >
+                        <option value="">All Offices</option>
+                        {offices.map(office => (
+                            <option key={office.location_id} value={office.location_id}>{office.name}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={selectedOfficer}
+                        onChange={handleOfficerChange}
+                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
+                    >
+                        {officers.map(officer => (
+                            <option key={officer.id} value={officer.id}>{officer.name}</option>
+                        ))}
+                    </select>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <Search className="w-4 h-4 text-slate-400" />

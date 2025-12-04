@@ -225,6 +225,7 @@ Tracks history of living arrangements and approval status. Replaces `AZ_DOC_HOME
 | `address_line_1` | VARCHAR(255) | Not Null | Street address. |
 | `city` | VARCHAR(100) | Not Null | City. |
 | `state` | VARCHAR(50) | Not Null | State. |
+| `zip_code` | VARCHAR(10) | Not Null | Zip/Postal Code for assignment. |
 | `host_name` | VARCHAR(100) | Nullable | Primary resident (e.g., Mother, Spouse). |
 | `relationship_type` | VARCHAR(50) | Nullable | Relationship to offender (Replaces `RELATION_SHIP_ID`). |
 | `approval_status` | VARCHAR(50) | Default 'Pending' | 'Pending', 'Approved', 'Denied'. |
