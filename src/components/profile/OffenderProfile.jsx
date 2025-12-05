@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Circle, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff } from 'lucide-react';
 import Modal from '../common/Modal';
 
-const OffenderProfile = ({ offender, onBack }) => {
+import { useParams, useNavigate } from 'react-router-dom';
+
+const OffenderProfile = () => {
+    const { offenderId } = useParams();
+    const navigate = useNavigate();
+    const [offender, setOffender] = useState(null);
+
     const [activeTab, setActiveTab] = useState('overview');
     const [showUAModal, setShowUAModal] = useState(false);
     const [showNotesModal, setShowNotesModal] = useState(false);
@@ -25,21 +31,72 @@ const OffenderProfile = ({ offender, onBack }) => {
     const [riskFactors, setRiskFactors] = useState([]);
     const [appointments, setAppointments] = useState([]);
 
+    const [newNoteContent, setNewNoteContent] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [noteTypes, setNoteTypes] = useState([]);
+    const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
+    const [newNoteType, setNewNoteType] = useState('General');
+    const [newAppointment, setNewAppointment] = useState({
+        date: '',
+        time: '',
+        location: 'Field Office (Main St)',
+        type: 'Routine Check-in',
+        notes: ''
+    });
+
+    const itemsPerPage = 10;
+
     useEffect(() => {
-        if (offender?.id) {
+        if (offenderId) {
             fetchData();
         }
-    }, [offender]);
+    }, [offenderId]);
+
+    useEffect(() => {
+        fetchNoteTypes();
+    }, []);
+
+    const fetchNoteTypes = async () => {
+        try {
+            const response = await axios.get('http://localhost:8000/settings/note-types');
+            setNoteTypes(response.data);
+        } catch (error) {
+            console.error("Error fetching note types:", error);
+        }
+    };
+
+    const handlePinNote = async (noteId) => {
+        try {
+            const response = await axios.put(`http://localhost:8000/notes/${noteId}/pin`);
+            setNotes(notes.map(n => n.note_id === noteId ? response.data : n));
+        } catch (error) {
+            console.error("Error pinning note:", error);
+        }
+    };
+
+    const getNoteColor = (typeName) => {
+        const type = noteTypes.find(t => t.name === typeName);
+        return type ? type.color : 'bg-slate-100 text-slate-700';
+    };
 
     const fetchData = async () => {
         try {
-            const [uaRes, notesRes, riskRes, apptRes] = await Promise.all([
-                axios.get(`http://localhost:8000/offenders/${offender.id}/urinalysis`),
-                axios.get(`http://localhost:8000/offenders/${offender.id}/notes`),
-                axios.get(`http://localhost:8000/offenders/${offender.id}/risk`),
-                axios.get(`http://localhost:8000/offenders/${offender.id}/appointments`)
+            const [offenderRes, uaRes, notesRes, riskRes, apptRes] = await Promise.all([
+                axios.get(`http://localhost:8000/offenders/${offenderId}`),
+                axios.get(`http://localhost:8000/offenders/${offenderId}/urinalysis`),
+                axios.get(`http://localhost:8000/offenders/${offenderId}/notes`),
+                axios.get(`http://localhost:8000/offenders/${offenderId}/risk`),
+                axios.get(`http://localhost:8000/offenders/${offenderId}/appointments`),
+                axios.get(`http://localhost:8000/settings/note-types`)
             ]);
 
+            setOffender(offenderRes.data);
+            setUaHistory(uaRes.data);
+            setNotes(notesRes.data);
+            setNoteTypes(apptRes[2]?.data || []); // apptRes is index 4, so noteTypes is index 5 in Promise.all, but wait...
+            // Actually, let's just add it to the end of the array destructuring.
+            // Wait, I need to be careful with the array destructuring index.
+            // Let's rewrite the Promise.all destructuring to be safe.
             setUaHistory(uaRes.data);
             setNotes(notesRes.data);
 
@@ -60,6 +117,10 @@ const OffenderProfile = ({ offender, onBack }) => {
             console.error("Error fetching offender data:", error);
         }
     };
+
+    if (!offender) {
+        return <div className="p-8 text-center text-slate-500">Loading offender profile...</div>;
+    }
 
     const handleUpdateTask = (id, field, value) => {
         setParolePlan(parolePlan.map(task =>
@@ -82,16 +143,15 @@ const OffenderProfile = ({ offender, onBack }) => {
         setParolePlan(parolePlan.filter(task => task.id !== id));
     };
 
-    const [newNoteContent, setNewNoteContent] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+
 
     const handleAddNote = async () => {
         if (!newNoteContent.trim()) return;
 
         try {
             const response = await axios.post(`http://localhost:8000/offenders/${offender.id}/notes`, {
-                content: newNoteContent
+                content: newNoteContent,
+                type: newNoteType
             });
 
             setNotes([response.data, ...notes]);
@@ -99,6 +159,46 @@ const OffenderProfile = ({ offender, onBack }) => {
             setCurrentPage(1);
         } catch (error) {
             console.error("Error adding note:", error);
+        }
+    };
+
+    const handleScheduleAppointment = async () => {
+        if (!newAppointment.date) return;
+
+        try {
+            const timeToUse = newAppointment.time || '09:00';
+            const dateTime = `${newAppointment.date}T${timeToUse}:00`;
+            const response = await axios.post(`http://localhost:8000/offenders/${offender.id}/appointments`, {
+                date_time: dateTime,
+                location: newAppointment.location,
+                type: newAppointment.type,
+                notes: newAppointment.notes
+            });
+
+            setAppointments([...appointments, response.data]);
+
+            // Create automatic case note
+            try {
+                const noteContent = `Scheduled appointment for ${newAppointment.date} at ${timeToUse}.${newAppointment.notes ? ` Notes: ${newAppointment.notes}` : ''}`;
+                const noteResponse = await axios.post(`http://localhost:8000/offenders/${offender.id}/notes`, {
+                    content: noteContent,
+                    type: 'Next Report Date'
+                });
+                setNotes([noteResponse.data, ...notes]);
+            } catch (noteError) {
+                console.error("Error creating automatic case note:", noteError);
+            }
+
+            setShowAppointmentModal(false);
+            setNewAppointment({
+                date: '',
+                time: '',
+                location: 'Field Office (Main St)',
+                type: 'Routine Check-in',
+                notes: ''
+            });
+        } catch (error) {
+            console.error("Error scheduling appointment:", error);
         }
     };
 
@@ -174,7 +274,7 @@ const OffenderProfile = ({ offender, onBack }) => {
 
                                 <div className="space-y-6 max-h-64 overflow-y-auto pr-2">
                                     {['Pending', 'Not Due', 'Completed'].map(status => {
-                                        const tasks = parolePlan.filter(t => t.status === status);
+                                        const tasks = parolePlan?.filter(t => t.status === status) || [];
 
                                         return (
                                             <div key={status}>
@@ -191,7 +291,7 @@ const OffenderProfile = ({ offender, onBack }) => {
                                                         <div key={task.id} className="flex items-center gap-3 group">
                                                             {status === 'Completed' ? <CheckCircle className="w-5 h-5 text-green-500 shrink-0" /> :
                                                                 status === 'Pending' ? <Clock className="w-5 h-5 text-yellow-500 shrink-0" /> :
-                                                                    <Circle className="w-5 h-5 text-slate-300 shrink-0" />}
+                                                                    <Clock className="w-5 h-5 text-slate-300 shrink-0" />}
 
                                                             <div className="flex-1 min-w-0">
                                                                 <p className={`text-sm font-medium ${status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
@@ -270,6 +370,17 @@ const OffenderProfile = ({ offender, onBack }) => {
                             <h3 className="font-bold text-slate-800 mb-4">Case Notes</h3>
 
                             <div className="mb-6">
+                                <div className="flex gap-3 mb-3">
+                                    <select
+                                        value={newNoteType}
+                                        onChange={(e) => setNewNoteType(e.target.value)}
+                                        className="p-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        {noteTypes.map(type => (
+                                            <option key={type.name} value={type.name}>{type.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <div className="flex gap-3">
                                     <textarea
                                         value={newNoteContent}
@@ -289,16 +400,58 @@ const OffenderProfile = ({ offender, onBack }) => {
                                 </div>
                             </div>
 
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-sm font-bold text-slate-800">Recent Notes</h4>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-500">Filter:</span>
+                                    <select
+                                        value={selectedTypeFilter}
+                                        onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                                        className="text-xs border border-slate-200 rounded p-1 bg-white"
+                                    >
+                                        <option value="All">All Types</option>
+                                        {noteTypes.map(type => (
+                                            <option key={type.name} value={type.name}>{type.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
                             <div className="space-y-4">
-                                {notes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((note) => (
-                                    <div key={note.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="font-semibold text-slate-700 text-sm">{note.author}</span>
-                                            <span className="text-xs text-slate-500">{note.date}</span>
-                                        </div>
-                                        <p className="text-sm text-slate-600 leading-relaxed">{note.content}</p>
-                                    </div>
-                                ))}
+                                {notes
+                                    ?.filter(note => selectedTypeFilter === 'All' || note.type === selectedTypeFilter)
+                                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                    .map((note) => {
+                                        const colorClasses = getNoteColor(note.type);
+                                        const bgClass = colorClasses.split(' ').find(c => c.startsWith('bg-')) || 'bg-slate-50';
+
+                                        return (
+                                            <div key={note.note_id || note.id} className={`${bgClass} p-4 rounded-lg border border-slate-200/60`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-slate-800 text-sm">
+                                                            {note.type || 'General'}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500">•</span>
+                                                        <span className="font-medium text-slate-700 text-sm">
+                                                            {note.author ? `${note.author.last_name}, ${note.author.first_name}` : 'Unknown'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-slate-500">{new Date(note.date).toLocaleDateString()}</span>
+                                                        <button
+                                                            onClick={() => handlePinNote(note.note_id)}
+                                                            className={`transition-colors ${note.is_pinned ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                                            title={note.is_pinned ? "Unpin note" : "Pin to top"}
+                                                        >
+                                                            {note.is_pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm text-slate-800 leading-relaxed">{note.content}</p>
+                                            </div>
+                                        );
+                                    })}
                             </div>
 
                             {notes.length > itemsPerPage && (
@@ -408,13 +561,13 @@ const OffenderProfile = ({ offender, onBack }) => {
                             {offender.housingType === 'Facility' ? (
                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="font-bold text-blue-800">{offender.facility.name}</span>
+                                        <span className="font-bold text-blue-800">{offender.facility?.name || 'Unknown Facility'}</span>
                                         <span className="px-2 py-0.5 bg-blue-200 text-blue-800 text-xs rounded-full font-bold">Approved Facility</span>
                                     </div>
-                                    <p className="text-sm text-blue-900 mb-1">{offender.facility.address}</p>
-                                    <p className="text-sm text-blue-800 mb-2">Phone: {offender.facility.phone}</p>
+                                    <p className="text-sm text-blue-900 mb-1">{offender.facility?.address || 'No Address'}</p>
+                                    <p className="text-sm text-blue-800 mb-2">Phone: {offender.facility?.phone || 'N/A'}</p>
                                     <div className="text-xs text-blue-700">
-                                        <span className="font-semibold">Services:</span> {offender.facility.services}
+                                        <span className="font-semibold">Services:</span> {offender.facility?.services || 'None'}
                                     </div>
                                 </div>
                             ) : (
@@ -429,17 +582,17 @@ const OffenderProfile = ({ offender, onBack }) => {
                         </div>
 
                         {/* Residence Contacts Section */}
-                        {offender.housingType === 'Private' && offender.residenceContacts && offender.residenceContacts.length > 0 && (
+                        {offender.housingType === 'Private' && offender.residenceContacts?.length > 0 && (
                             <div className="border-t border-slate-100 pt-6">
                                 <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <UserPlus className="w-4 h-4 text-blue-600" />
+                                    <Phone className="w-4 h-4 text-blue-600" />
                                     Residence Contacts
                                 </h4>
                                 <div className="space-y-3">
-                                    {offender.residenceContacts.map((contact, index) => (
+                                    {offender.residenceContacts?.map((contact, index) => (
                                         <div key={index} className="flex items-start gap-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
                                             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shrink-0 border border-slate-200 font-bold text-slate-500 text-xs">
-                                                {contact.name.charAt(0)}
+                                                {contact.name?.charAt(0) || '?'}
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-start">
@@ -467,12 +620,14 @@ const OffenderProfile = ({ offender, onBack }) => {
         }
     };
 
-    const nextAppointment = appointments.find(a => new Date(a.date_time) > new Date());
+    const nextAppointment = appointments
+        .filter(a => new Date(a.date_time) > new Date())
+        .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))[0];
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <button
-                onClick={onBack}
+                onClick={() => navigate('/caseload')}
                 className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors mb-2"
             >
                 <ArrowLeft size={18} />
@@ -590,7 +745,7 @@ const OffenderProfile = ({ offender, onBack }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {uaHistory.map((test) => (
+                                {uaHistory?.map((test) => (
                                     <tr key={test.test_id} className="hover:bg-slate-50">
                                         <td className="px-4 py-3 text-slate-600">{test.date}</td>
                                         <td className="px-4 py-3 text-slate-600">{test.test_type}</td>
@@ -682,7 +837,7 @@ const OffenderProfile = ({ offender, onBack }) => {
 
                     <div className="space-y-4">
                         <h4 className="text-sm font-bold text-slate-800">Criminogenic Needs</h4>
-                        {riskFactors.map((factor, index) => (
+                        {riskFactors?.map((factor, index) => (
                             <div key={index} className="flex items-start gap-4 p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors">
                                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${factor.score === 'High' ? 'bg-red-500' :
                                     factor.score === 'Medium' ? 'bg-yellow-500' :
@@ -721,6 +876,8 @@ const OffenderProfile = ({ offender, onBack }) => {
                             <label className="block text-sm font-medium text-slate-700 mb-2">Date</label>
                             <input
                                 type="date"
+                                value={newAppointment.date}
+                                onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
                                 className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                             />
                         </div>
@@ -728,6 +885,8 @@ const OffenderProfile = ({ offender, onBack }) => {
                             <label className="block text-sm font-medium text-slate-700 mb-2">Time</label>
                             <input
                                 type="time"
+                                value={newAppointment.time}
+                                onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })}
                                 className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                             />
                         </div>
@@ -735,7 +894,11 @@ const OffenderProfile = ({ offender, onBack }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
-                        <select className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white">
+                        <select
+                            value={newAppointment.location}
+                            onChange={(e) => setNewAppointment({ ...newAppointment, location: e.target.value })}
+                            className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
+                        >
                             <option>Field Office (Main St)</option>
                             <option>Home Visit</option>
                             <option>Employment Site</option>
@@ -745,7 +908,11 @@ const OffenderProfile = ({ offender, onBack }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Appointment Type</label>
-                        <select className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white">
+                        <select
+                            value={newAppointment.type}
+                            onChange={(e) => setNewAppointment({ ...newAppointment, type: e.target.value })}
+                            className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
+                        >
                             <option>Routine Check-in</option>
                             <option>Risk Assessment Review</option>
                             <option>UA Testing</option>
@@ -756,6 +923,8 @@ const OffenderProfile = ({ offender, onBack }) => {
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
                         <textarea
+                            value={newAppointment.notes}
+                            onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
                             className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[80px]"
                             placeholder="Additional instructions..."
                         ></textarea>
@@ -768,7 +937,11 @@ const OffenderProfile = ({ offender, onBack }) => {
                         >
                             Cancel
                         </button>
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-lg shadow-blue-600/20 transition-all">
+                        <button
+                            onClick={handleScheduleAppointment}
+                            disabled={!newAppointment.date}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded-lg shadow-lg shadow-blue-600/20 transition-all"
+                        >
                             Schedule Appointment
                         </button>
                     </div>

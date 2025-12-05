@@ -48,6 +48,27 @@
     - [x] Add remote origin
     - [x] Push to GitHub (User Completed)
 
+    - [x] Push to GitHub (User Completed)
+
+## Completed Session (System Settings & Automation)
+- [x] Implement System Settings <!-- id: 27 -->
+    - [x] Add SystemSettings table
+    - [x] Seed onboarding_due_delay
+    - [x] Implement dynamic onboarding task assignment
+- [x] Implement Automated Reporting <!-- id: 28 -->
+    - [x] Add Redis and Celery dependencies
+    - [x] Create docker-compose.yml
+    - [x] Configure Celery Beat schedule
+    - [x] Configure Celery Beat schedule
+    - [x] Create daily warrant check task
+- [x] Implement Reports Module <!-- id: 29 -->
+    - [x] Backend: PDF generation with ReportLab and Matplotlib
+    - [x] Frontend: Interactive Dashboard with Recharts
+    - [x] Downloadable PDF reports
+- [x] Fix Blank Caseloads <!-- id: 30 -->
+    - [x] Update seed script to include supervisors in assignment
+    - [x] Guarantee minimum caseload for all officers
+
 ## Future Work (Next Session)
 - [x] Database Implementation <!-- id: 21 -->
     - [x] Set up SQL Server environment (Replaced with PostgreSQL)

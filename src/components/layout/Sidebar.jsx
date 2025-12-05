@@ -1,14 +1,18 @@
 import React from 'react';
-import { Users, Calendar, FileText, Settings, Shield, CheckSquare, Briefcase } from 'lucide-react';
+import { Users, Calendar, FileText, Settings, Shield, CheckSquare, Briefcase, LayoutDashboard } from 'lucide-react';
 
-const Sidebar = ({ activeView, setActiveView }) => {
+import { Link, useLocation } from 'react-router-dom';
+
+const Sidebar = () => {
+    const location = useLocation();
     const navItems = [
-        { id: 'caseload', label: 'My Caseload', icon: Users },
-        { id: 'office', label: 'Office Module', icon: Briefcase },
-        { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-        { id: 'calendar', label: 'Calendar', icon: Calendar },
-        { id: 'reports', label: 'Reports', icon: FileText },
-        { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { id: 'caseload', label: 'My Caseload', path: '/caseload', icon: Users },
+        { id: 'office', label: 'Office Module', path: '/office', icon: Briefcase },
+        { id: 'tasks', label: 'Tasks', path: '/tasks', icon: CheckSquare },
+        { id: 'calendar', label: 'Calendar', path: '/calendar', icon: Calendar },
+        { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
+        { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
     ];
 
     return (
@@ -24,11 +28,11 @@ const Sidebar = ({ activeView, setActiveView }) => {
             <nav className="flex-1 p-4 space-y-2">
                 {navItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive = activeView === item.id;
+                    const isActive = location.pathname.startsWith(item.path);
                     return (
-                        <button
+                        <Link
                             key={item.id}
-                            onClick={() => setActiveView(item.id)}
+                            to={item.path}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
                                 : 'text-navy-100 hover:bg-navy-800 hover:text-white'
@@ -36,7 +40,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
                         >
                             <Icon size={20} />
                             <span className="font-medium">{item.label}</span>
-                        </button>
+                        </Link>
                     );
                 })}
             </nav>

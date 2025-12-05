@@ -139,6 +139,8 @@ class CaseNote(Base):
     author_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
     date = Column(DateTime, default=datetime.utcnow)
     content = Column(Text, nullable=False)
+    type = Column(String(50), default='General')
+    is_pinned = Column(Boolean, default=False)
 
     offender = relationship("Offender")
     author = relationship("Officer")
@@ -167,3 +169,9 @@ class Appointment(Base):
 
     offender = relationship("Offender")
     officer = relationship("Officer")
+
+class SystemSettings(Base):
+    __tablename__ = 'system_settings'
+    key = Column(String(50), primary_key=True)
+    value = Column(String(255), nullable=False)
+    description = Column(Text)

@@ -8,11 +8,11 @@ import CalendarModule from './components/modules/CalendarModule';
 import ReportsModule from './components/modules/ReportsModule';
 import SettingsModule from './components/modules/SettingsModule';
 import OfficeModule from './components/modules/OfficeModule';
+import Dashboard from './components/Dashboard';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeView, setActiveView] = useState('caseload');
-  const [selectedOffender, setSelectedOffender] = useState(null);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -20,48 +20,25 @@ function App() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setSelectedOffender(null);
-    setActiveView('caseload');
-  };
-
-  const handleSelectOffender = (offender) => {
-    setSelectedOffender(offender);
-    setActiveView('profile');
-  };
-
-  const handleBackToDashboard = () => {
-    setSelectedOffender(null);
-    setActiveView('caseload');
   };
 
   if (!isLoggedIn) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  const renderContent = () => {
-    switch (activeView) {
-      case 'caseload':
-        return <CaseloadDashboard onSelectOffender={handleSelectOffender} />;
-      case 'profile':
-        return <OffenderProfile offender={selectedOffender} onBack={handleBackToDashboard} />;
-      case 'office':
-        return <OfficeModule />;
-      case 'tasks':
-        return <TasksModule />;
-      case 'calendar':
-        return <CalendarModule />;
-      case 'reports':
-        return <ReportsModule />;
-      case 'settings':
-        return <SettingsModule />;
-      default:
-        return <CaseloadDashboard onSelectOffender={handleSelectOffender} />;
-    }
-  };
-
   return (
-    <AppShell activeView={activeView} setActiveView={setActiveView} onLogout={handleLogout}>
-      {renderContent()}
+    <AppShell onLogout={handleLogout}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/caseload" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/caseload" element={<CaseloadDashboard />} />
+        <Route path="/offenders/:offenderId" element={<OffenderProfile />} />
+        <Route path="/office" element={<OfficeModule />} />
+        <Route path="/tasks" element={<TasksModule />} />
+        <Route path="/calendar" element={<CalendarModule />} />
+        <Route path="/reports" element={<ReportsModule />} />
+        <Route path="/settings" element={<SettingsModule />} />
+      </Routes>
     </AppShell>
   );
 }

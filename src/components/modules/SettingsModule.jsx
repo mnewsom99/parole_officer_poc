@@ -1,9 +1,59 @@
-import React, { useState } from 'react';
-import { User, Bell, Shield, Globe, Moon, Save, Database } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Bell, Shield, Globe, Moon, Save, Database, Plus, Trash2, FileText } from 'lucide-react';
+import axios from 'axios';
 import SchemaViewer from './SchemaViewer';
 
 const SettingsModule = () => {
     const [activeView, setActiveView] = useState('profile');
+    const [noteTypes, setNoteTypes] = useState([]);
+    const [newType, setNewType] = useState('');
+    const [newColor, setNewColor] = useState('bg-slate-100 text-slate-700');
+
+    const colorOptions = [
+        { label: 'Gray', value: 'bg-slate-100 text-slate-700' },
+        { label: 'Blue', value: 'bg-blue-100 text-blue-700' },
+        { label: 'Green', value: 'bg-green-100 text-green-700' },
+        { label: 'Red', value: 'bg-red-100 text-red-700' },
+        { label: 'Yellow', value: 'bg-yellow-100 text-yellow-700' },
+        { label: 'Purple', value: 'bg-purple-100 text-purple-700' },
+    ];
+
+    useEffect(() => {
+        fetchNoteTypes();
+    }, []);
+
+    const fetchNoteTypes = async () => {
+        try {
+            const response = await axios.get('http://localhost:8000/settings/note-types');
+            setNoteTypes(response.data);
+        } catch (error) {
+            console.error("Error fetching note types:", error);
+        }
+    };
+
+    const handleAddType = () => {
+        if (newType && !noteTypes.some(t => t.name === newType)) {
+            setNoteTypes([...noteTypes, { name: newType, color: newColor }]);
+            setNewType('');
+            setNewColor('bg-slate-100 text-slate-700');
+        }
+    };
+
+    const handleRemoveType = (typeName) => {
+        if (window.confirm("Removing this type will remove the color coding from any existing notes of this type. Are you sure?")) {
+            setNoteTypes(noteTypes.filter(t => t.name !== typeName));
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            await axios.put('http://localhost:8000/settings/note-types', { types: noteTypes });
+            alert('Settings saved successfully!');
+        } catch (error) {
+            console.error("Error saving settings:", error);
+            alert('Failed to save settings.');
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -12,7 +62,10 @@ const SettingsModule = () => {
                     <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
                     <p className="text-slate-500">Manage your account and preferences</p>
                 </div>
-                <button className="flex items-center gap-2 bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-4 rounded-lg shadow-lg shadow-navy-900/20 transition-all">
+                <button
+                    onClick={handleSaveSettings}
+                    className="flex items-center gap-2 bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-4 rounded-lg shadow-lg shadow-navy-900/20 transition-all"
+                >
                     <Save className="w-4 h-4" />
                     Save Changes
                 </button>
@@ -35,8 +88,14 @@ const SettingsModule = () => {
                             Notifications
                         </button>
                         <button className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                            <Shield className="w-4 h-4" />
                             Security
+                        </button>
+                        <button
+                            onClick={() => setActiveView('notes')}
+                            className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'notes' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <FileText className="w-4 h-4" />
+                            Case Notes
                         </button>
                         <div className="my-2 border-t border-slate-100"></div>
                         <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase">System</div>
@@ -54,6 +113,79 @@ const SettingsModule = () => {
                 <div className="md:col-span-2 space-y-6">
                     {activeView === 'data' ? (
                         <SchemaViewer />
+                    ) : activeView === 'notes' ? (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-800 mb-4">Case Note Configuration</h3>
+                            <p className="text-sm text-slate-500 mb-6">Manage the types of case notes available when documenting offender interactions.</p>
+
+                            <div className="flex gap-2 mb-6">
+                                <input
+                                    type="text"
+                                    value={newType}
+                                    onChange={(e) => setNewType(e.target.value)}
+                                    placeholder="Enter new note type..."
+                                    className="flex-1 p-2 border border-slate-200 rounded-lg text-sm"
+                                />
+                                <select
+                                    value={newColor}
+                                    onChange={(e) => setNewColor(e.target.value)}
+                                    className="p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                >
+                                    {colorOptions.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={handleAddType}
+                                    disabled={!newType}
+                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Plus size={16} />
+                                    Add
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {noteTypes.map((type, index) => (
+                                    <div key={index} className="flex gap-2 items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <input
+                                            type="text"
+                                            value={type.name}
+                                            onChange={(e) => {
+                                                const newTypes = [...noteTypes];
+                                                newTypes[index].name = e.target.value;
+                                                setNoteTypes(newTypes);
+                                            }}
+                                            className="flex-1 p-2 border border-slate-200 rounded text-sm"
+                                        />
+                                        <select
+                                            value={type.color}
+                                            onChange={(e) => {
+                                                const newTypes = [...noteTypes];
+                                                newTypes[index].color = e.target.value;
+                                                setNoteTypes(newTypes);
+                                            }}
+                                            className="p-2 border border-slate-200 rounded text-sm bg-white w-32"
+                                        >
+                                            {colorOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                        <div className={`w-8 h-8 rounded border border-slate-200 ${type.color.split(' ').find(c => c.startsWith('bg-'))}`}></div>
+                                        <button
+                                            onClick={() => handleRemoveType(type.name)}
+                                            className="text-slate-400 hover:text-red-500 transition-colors p-2"
+                                            title="Remove Type"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {noteTypes.length === 0 && (
+                                    <p className="text-center text-slate-400 text-sm py-4">No note types configured.</p>
+                                )}
+                            </div>
+                        </div>
                     ) : (
                         <>
                             {/* Profile Section */}

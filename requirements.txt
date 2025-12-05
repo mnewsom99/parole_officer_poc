@@ -4,3 +4,7 @@ sqlalchemy==2.0.27
 psycopg2-binary==2.9.11
 faker==23.2.1
 python-dotenv==1.0.1
+celery==5.3.6
+redis==5.0.1
+reportlab==4.0.9
+matplotlib==3.8.2

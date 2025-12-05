@@ -3,7 +3,10 @@ import { MoreHorizontal, AlertTriangle, CheckCircle, Clock, ChevronRight, Search
 import axios from 'axios';
 import AddOffenderModal from './AddOffenderModal';
 
-const CaseloadDashboard = ({ onSelectOffender }) => {
+import { useNavigate } from 'react-router-dom';
+
+const CaseloadDashboard = () => {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddOffenderModalOpen, setIsAddOffenderModalOpen] = useState(false);
     const [selectedOfficer, setSelectedOfficer] = useState('');
@@ -12,6 +15,10 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
     const [officers, setOfficers] = useState([]);
     const [offices, setOffices] = useState([]);
     const [offenders, setOffenders] = useState([]);
+
+    const onSelectOffender = (offender) => {
+        navigate(`/offenders/${offender.id}`);
+    };
 
     // Fetch Offices
     useEffect(() => {
@@ -200,7 +207,7 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                     <select
                         value={selectedOffice}
                         onChange={(e) => setSelectedOffice(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
+                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[140px] cursor-pointer"
                     >
                         <option value="">All Offices</option>
                         {offices.map(office => (
@@ -210,7 +217,7 @@ const CaseloadDashboard = ({ onSelectOffender }) => {
                     <select
                         value={selectedOfficer}
                         onChange={handleOfficerChange}
-                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
+                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[180px] cursor-pointer"
                     >
                         {officers.map(officer => (
                             <option key={officer.id} value={officer.id}>{officer.name}</option>

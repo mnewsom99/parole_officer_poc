@@ -3,6 +3,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+import itertools
 from . import models, database
 
 fake = Faker()
@@ -24,7 +25,9 @@ def generate_seed_data():
         db.query(models.RiskAssessment).delete()
         db.query(models.Appointment).delete()
         db.query(models.Facility).delete()
+        db.query(models.Facility).delete()
         db.query(models.Role).delete()
+        db.query(models.SystemSettings).delete()
         db.commit()
 
         # Generate Roles
@@ -34,6 +37,32 @@ def generate_seed_data():
             role = models.Role(role_id=i, role_name=role_name, description=f"Role for {role_name}")
             db.add(role)
             role_map[role_name] = i
+        db.commit()
+
+        # Generate System Settings
+        import json
+        note_types_config = [
+            {"name": "General", "color": "bg-slate-100 text-slate-700"},
+            {"name": "Home Visit", "color": "bg-blue-100 text-blue-700"},
+            {"name": "Field Visit", "color": "bg-green-100 text-green-700"},
+            {"name": "Office Visit", "color": "bg-purple-100 text-purple-700"},
+            {"name": "Violation", "color": "bg-red-100 text-red-700"},
+            {"name": "Phone Call", "color": "bg-yellow-100 text-yellow-700"}
+        ]
+
+        settings = [
+            models.SystemSettings(
+                key='onboarding_due_delay',
+                value='3',
+                description='Days after start date when onboarding is due'
+            ),
+            models.SystemSettings(
+                key='note_types',
+                value=json.dumps(note_types_config),
+                description='Configuration for case note types and colors'
+            )
+        ]
+        db.add_all(settings)
         db.commit()
 
         # Generate Offices
@@ -99,6 +128,11 @@ def generate_seed_data():
                 )
                 db.add(officer)
                 officers_list.append(officer)
+        
+        # Add supervisors to officers_list so they also get cases
+        for sup in supervisors.values():
+            officers_list.append(sup)
+            
         db.commit()
 
         # Generate Facilities
@@ -122,11 +156,13 @@ def generate_seed_data():
         db.commit()
 
         # Generate Offenders & Episodes
-        for _ in range(200):
+        officer_cycle = itertools.cycle(officers_list)
+        
+        for i in range(200):
             first_name = fake.first_name()
             last_name = fake.last_name()
             offender = models.Offender(
-                badge_id=f"DOC-{random.randint(10000, 99999)}",
+                badge_id=f"DOC-{random.randint(100000, 999999)}",
                 first_name=first_name,
                 last_name=last_name,
                 dob=fake.date_of_birth(minimum_age=18, maximum_age=70),
@@ -135,9 +171,15 @@ def generate_seed_data():
             db.add(offender)
             db.flush()
 
+            # Ensure every officer gets at least 2 cases, then random
+            if i < len(officers_list) * 2:
+                assigned_officer = next(officer_cycle)
+            else:
+                assigned_officer = random.choice(officers_list)
+
             episode = models.SupervisionEpisode(
                 offender_id=offender.offender_id,
-                assigned_officer_id=random.choice(officers_list).officer_id,
+                assigned_officer_id=assigned_officer.officer_id,
                 start_date=fake.date_between(start_date='-2y', end_date='today'),
                 status=random.choice(['Active', 'Active', 'Active', 'Closed']),
                 risk_level_at_start=random.choice(['Low', 'Medium', 'High'])

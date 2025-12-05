@@ -134,13 +134,24 @@ class Urinalysis(UrinalysisBase):
 
 class CaseNoteBase(BaseModel):
     content: str
+    type: Optional[str] = 'General'
+    is_pinned: Optional[bool] = False
     date: Optional[datetime] = None
+
+class NoteTypeConfig(BaseModel):
+    name: str
+    color: str
+
+class NoteTypeUpdate(BaseModel):
+    types: List[NoteTypeConfig]
 
 class CaseNote(CaseNoteBase):
     note_id: UUID
     offender_id: UUID
     author_id: Optional[UUID] = None
     author: Optional[Officer] = None
+    type: Optional[str] = 'General'
+    is_pinned: Optional[bool] = False
 
     class Config:
         from_attributes = True
