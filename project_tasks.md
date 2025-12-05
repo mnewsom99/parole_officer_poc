@@ -88,3 +88,52 @@
 - [ ] Security Compliance <!-- id: 26 -->
     - [ ] Review general security requirements
     - [ ] Review AZ-specific security requirements
+- [ ] Employment Tracking <!-- id: 31 -->
+    - [ ] Track offender employment status and history
+- [ ] Document Management <!-- id: 32 -->
+    - [ ] Upload and manage offender documents (PDFs, Images)
+- [ ] Offender Analytics <!-- id: 33 -->
+    - [ ] Visual stats on offender population and trends
+- [ ] Release Types Management <!-- id: 34 -->
+    - [ ] Configure and track different release types (Parole, Probation, etc.)
+- [ ] Case Transfer Automation <!-- id: 35 -->
+    - [ ] Automate case transfers based on residence/location changes
+- [ ] Territory Management (Settings) <!-- id: 36 -->
+    - [ ] Configure Office Coverage (ZIP Codes)
+    - [ ] Configure Officer Coverage (ZIP Codes)
+- [ ] Resource Management <!-- id: 37 -->
+    - [ ] Manage Rehabilitation Programs
+
+## Backend Integration Audit (Hardcoded Data Cleanup) <!-- id: 38 -->
+### Dashboard & Reports
+- [x] **Dashboard.jsx**: Connect "Warrants Issued" (Bar Chart) to backend aggregation API.
+- [x] **Dashboard.jsx**: Connect "Quick Stats" (Caseload, Compliant, Warrants) to backend.
+- [ ] **ReportsModule.jsx**: Key Metrics (Total Caseload, Compliance Rate, Pending Tasks) are hardcoded.
+- [ ] **ReportsModule.jsx**: "Risk Level Distribution" chart is hardcoded.
+- [ ] **ReportsModule.jsx**: "Monthly Contact Compliance" chart is hardcoded.
+- [ ] **ReportsModule.jsx**: Implement date range filtering (Last 30 Days dropdown).
+
+### Offender Profile
+- [ ] **OffenderProfile.jsx**: Replace hardcoded `parolePlan` with integration to `Task` model (Supervision Plan).
+- [ ] **OffenderProfile.jsx**: "Recent Activity" sidebar is static HTML. Connect to `CaseNote`, `Appointment`, and `Urinalysis` events.
+- [ ] **OffenderProfile.jsx**: "Risk Assessment Module" tab is a static placeholder. Connect to `RiskAssessment` model.
+- [ ] **OffenderProfile.jsx**: "Urine Analysis" tab content (placeholder card) conflicts with the functional "Drug Test" modal. Resolve UI/UX and integrate.
+
+### Task Management
+- [ ] **TasksModule.jsx**: Connect `tasks` list to `Task` model.
+- [ ] **TasksModule.jsx**: "Assign To" dropdown uses hardcoded `allUsers` array. Connect to `/officers` or `/users` endpoint.
+- [ ] **TasksModule.jsx**: Implement `handleCreateTask` logic (currently `console.log` only).
+
+### Calendar & Scheduling
+- [ ] **CalendarModule.jsx**: Connect `events` list to `Appointment` model.
+- [ ] **CalendarModule.jsx**: Implement real calendar grid logic (currently mock 35-day grid).
+
+### Supervisor Office Module
+- [ ] **OfficeModule.jsx**: Connect `pendingTasks` to a real "Review Queue" (likely based on pending `Task` or `Assessment` status).
+- [ ] **OfficeModule.jsx**: "Transfer Cases" button has no logic. Implement `PUT /offenders/{id}` officer assignment.
+- [ ] **OfficeModule.jsx**: "Assign Task" button has no logic. Implement `POST /tasks`.
+- [ ] **OfficeModule.jsx**: "Total Officers" and "Tasks Assigned" stats are partially mock.
+
+### Settings & Context
+- [ ] **SettingsModule.jsx**: "Preferences" (Dark Mode, Email Notifications) are visual only. Implement persistence.
+- [ ] **UserContext.jsx**: `availableRoles` state is initialized but never populated.

@@ -882,7 +882,7 @@ const OffenderProfile = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Time</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Time (Optional)</label>
                             <input
                                 type="time"
                                 value={newAppointment.time}

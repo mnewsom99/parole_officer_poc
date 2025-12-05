@@ -22,6 +22,7 @@ class User(Base):
     role_id = Column(Integer, ForeignKey('roles.role_id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
+    is_active = Column(Boolean, default=True)
 
     role = relationship("Role")
 

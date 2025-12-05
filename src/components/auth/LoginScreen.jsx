@@ -1,17 +1,44 @@
 import React, { useState } from 'react';
 import { Shield, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 
-const LoginScreen = ({ onLogin }) => {
-    const [isLoading, setIsLoading] = useState(false);
+import { useUser } from '../../context/UserContext';
 
-    const handleSubmit = (e) => {
+const LoginScreen = () => {
+    const { login } = useUser();
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        // Mock network delay
-        setTimeout(() => {
+        setError('');
+        try {
+            await login(username, password);
+        } catch (err) {
+            if (err.response) {
+                // Server responded with a status code
+                if (err.response.status === 401) {
+                    setError('Invalid username or password.');
+                } else if (err.response.status >= 500) {
+                    setError('Server error. Please try again later.');
+                } else {
+                    setError(`An unexpected error occurred. (Status: ${err.response.status})`);
+                }
+            } else if (err.request) {
+                // No response received
+                setError('Unable to connect to server. Please check your connection.');
+            } else if (err.message) {
+                // JS Error or manual throw
+                setError(err.message);
+            } else {
+                // Request setup error
+                setError('An error occurred. Please try again.');
+            }
+        } finally {
             setIsLoading(false);
-            onLogin();
-        }, 1500);
+        }
     };
 
     return (
@@ -31,14 +58,15 @@ const LoginScreen = ({ onLogin }) => {
                 <div className="p-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Badge ID</label>
+                            <label className="text-sm font-semibold text-slate-700 ml-1">Username</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                                 <input
                                     type="text"
-                                    defaultValue="4922"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium text-slate-800"
-                                    placeholder="Enter your Badge ID"
+                                    placeholder="Enter your username"
                                 />
                             </div>
                         </div>
@@ -49,12 +77,14 @@ const LoginScreen = ({ onLogin }) => {
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                                 <input
                                     type="password"
-                                    defaultValue="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium text-slate-800"
                                     placeholder="Enter your password"
                                 />
                             </div>
                         </div>
+                        {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
 
                         <button
                             type="submit"
@@ -82,8 +112,8 @@ const LoginScreen = ({ onLogin }) => {
                         </p>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

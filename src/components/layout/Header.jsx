@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Bell, Search, ChevronDown, User, LogOut } from 'lucide-react';
+import { useUser } from '../../context/UserContext';
 
 const Header = ({ onLogout }) => {
+    const { currentUser } = useUser();
     const [showNotifications, setShowNotifications] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -71,8 +73,8 @@ const Header = ({ onLogout }) => {
                             <User size={16} />
                         </div>
                         <div className="text-left hidden md:block">
-                            <p className="text-sm font-semibold text-slate-700 group-hover:text-navy-700">Officer Anderson</p>
-                            <p className="text-xs text-slate-500">Badge #4922</p>
+                            <p className="text-sm font-semibold text-slate-700 group-hover:text-navy-700">{currentUser?.name || 'User'}</p>
+                            <p className="text-xs text-slate-500">{currentUser?.badgeId && currentUser?.badgeId !== 'N/A' ? `Badge #${currentUser.badgeId}` : currentUser?.role || 'Guest'}</p>
                         </div>
                         <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600" />
                     </button>

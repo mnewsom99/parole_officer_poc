@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { UserProvider, useUser } from './context/UserContext';
 import LoginScreen from './components/auth/LoginScreen';
 import AppShell from './components/layout/AppShell';
 import CaseloadDashboard from './components/dashboard/CaseloadDashboard';
@@ -10,24 +11,34 @@ import SettingsModule from './components/modules/SettingsModule';
 import OfficeModule from './components/modules/OfficeModule';
 import Dashboard from './components/Dashboard';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  return (
+    <UserProvider>
+      <AppContent />
+    </UserProvider>
+  );
+}
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-  };
+const AppContent = () => {
+  const { currentUser, isLoading, logout } = useUser();
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
-  if (!isLoggedIn) {
-    return <LoginScreen onLogin={handleLogin} />;
+  if (!currentUser) {
+    return <LoginScreen />;
   }
 
   return (
-    <AppShell onLogout={handleLogout}>
+    <AppShell onLogout={logout}>
+
       <Routes>
         <Route path="/" element={<Navigate to="/caseload" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -41,6 +52,6 @@ function App() {
       </Routes>
     </AppShell>
   );
-}
+};
 
 export default App;

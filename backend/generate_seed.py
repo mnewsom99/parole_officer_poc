@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 import itertools
-from . import models, database
+from . import models, database, auth
 
 fake = Faker()
 
@@ -84,7 +84,7 @@ def generate_seed_data():
             user = models.User(
                 username=f"sup_{name.lower()}",
                 email=f"sup.{name.lower()}@example.com",
-                password_hash='hash123',
+                password_hash=auth.get_password_hash('hash123'),
                 role_id=role_map['Supervisor']
             )
             db.add(user)
@@ -107,11 +107,12 @@ def generate_seed_data():
         for name, office in offices.items():
             supervisor = supervisors[name]
             # Create 3-5 officers per office
-            for _ in range(random.randint(3, 5)):
+            for i in range(1, random.randint(4, 6)):
+                username = f"officer.{name.lower()}.{i}"
                 user = models.User(
-                    username=fake.user_name(),
-                    email=fake.email(),
-                    password_hash='hash123',
+                    username=username,
+                    email=f"{username}@example.com",
+                    password_hash=auth.get_password_hash('hash123'),
                     role_id=role_map['Officer']
                 )
                 db.add(user)
@@ -228,11 +229,14 @@ def generate_seed_data():
 
             # Generate Case Notes
             for _ in range(random.randint(2, 5)):
+                note_type = random.choice(['General', 'Home Visit', 'Field Visit', 'Office Visit', 'Violation', 'Phone Call'])
                 note = models.CaseNote(
                     offender_id=offender.offender_id,
                     author_id=random.choice(officers_list).officer_id,
                     date=fake.date_time_between(start_date='-1y', end_date='now'),
-                    content=fake.paragraph(nb_sentences=3)
+                    content=fake.paragraph(nb_sentences=3),
+                    type=note_type,
+                    is_pinned=random.choice([True, False]) if note_type == 'Violation' else False
                 )
                 db.add(note)
 
