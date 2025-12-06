@@ -47,7 +47,29 @@ CREATE TABLE offenders (
     last_name VARCHAR(50) NOT NULL,
     dob DATE NOT NULL,
     image_url VARCHAR(255),
+    gender VARCHAR(20),
+    is_sex_offender BOOLEAN DEFAULT FALSE,
+    is_gang_member BOOLEAN DEFAULT FALSE,
+    gang_affiliation VARCHAR(100),
+    release_date DATE,
+    reversion_date DATE,
+    release_type VARCHAR(50),
+    initial_placement VARCHAR(100),
+    general_comments TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Programs Table (Treatments, Interventions, Sanctions)
+CREATE TABLE programs (
+    program_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offender_id UUID REFERENCES offenders(offender_id),
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL, -- Program, Intervention, Sanction, Treatment
+    provider VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'Pending',
+    start_date DATE,
+    end_date DATE,
+    notes TEXT
 );
 
 -- SupervisionEpisodes Table
@@ -143,3 +165,29 @@ CREATE TABLE events (
     status VARCHAR(20) DEFAULT 'Scheduled',
     outcome_notes TEXT
 );
+
+-- Territories Table (Zip Code Assignment)
+CREATE TABLE territories (
+    zip_code VARCHAR(10) PRIMARY KEY,
+    assigned_officer_id UUID REFERENCES officers(officer_id),
+    region_name VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Special Assignments Table (Specialty Caseloads & Facilities)
+CREATE TABLE special_assignments (
+    assignment_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    type VARCHAR(50) NOT NULL, -- 'Facility', 'Specialty', 'Admin'
+    name VARCHAR(100) NOT NULL,
+    address VARCHAR(255),
+    zip_code VARCHAR(10),
+    assigned_officer_id UUID REFERENCES officers(officer_id),
+    priority INT DEFAULT 1
+);
+
+-- Update Residences to include Zip Code and Special Assignment Link
+ALTER TABLE residences ADD COLUMN zip_code VARCHAR(10);
+ALTER TABLE residences ADD COLUMN special_assignment_id UUID REFERENCES special_assignments(assignment_id);
+
+-- Update Locations to include Zip Code
+ALTER TABLE locations ADD COLUMN zip_code VARCHAR(10);

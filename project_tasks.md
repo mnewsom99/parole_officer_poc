@@ -1,5 +1,13 @@
 # Tasks
 
+- [ ] **Production Refactor (Immediate Priority)** <!-- id: 39 -->
+    - [ ] Infrastructure: Create `docker-compose.yml` for PostgreSQL <!-- id: 40 -->
+    - [ ] Infrastructure: Update `database.py` and `.env` to connect to PostgreSQL <!-- id: 41 -->
+    - [ ] Backend: Refactor `get_offenders` for server-side pagination & filtering <!-- id: 42 -->
+    - [ ] Backend: Update `get_offenders` return format to `{ "data": [], "total": int }` schema <!-- id: 43 -->
+    - [ ] Frontend: Update `CaseloadDashboard.jsx` to fetch using new pagination API <!-- id: 44 -->
+    - [ ] Frontend: Add Search Input and Pagination Controls (Next/Prev) <!-- id: 45 -->
+
 - [x] Implement Urinalysis History Modal <!-- id: 0 -->
 - [x] Implement Notes Modal <!-- id: 1 -->
 - [x] Implement Risk Assessment Modal <!-- id: 2 -->

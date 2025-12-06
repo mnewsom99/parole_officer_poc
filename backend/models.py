@@ -9,7 +9,7 @@ Base = declarative_base()
 
 class Role(Base):
     __tablename__ = 'roles'
-    role_id = Column(Integer, primary_key=True, index=True)
+    role_id = Column(Integer, primary_key=True)
     role_name = Column(String(50), unique=True, nullable=False)
     description = Column(String(255))
 
@@ -32,6 +32,11 @@ class Location(Base):
     name = Column(String(100), nullable=False)
     address = Column(String(255), nullable=False)
     type = Column(String(50), nullable=False)
+    zip_code = Column(String(10))
+    phone = Column(String(50))
+    fax = Column(String(50))
+
+    territories = relationship("Territory", back_populates="location")
 
 class Officer(Base):
     __tablename__ = 'officers'
@@ -42,11 +47,12 @@ class Officer(Base):
     badge_number = Column(String(20), unique=True, nullable=False)
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
-    phone_number = Column(String(20))
+    phone_number = Column(String(50))
 
     user = relationship("User")
     location = relationship("Location")
     supervisor = relationship("Officer", remote_side=[officer_id])
+    territories = relationship("Territory", secondary="territory_officers", back_populates="officers")
 
 class Offender(Base):
     __tablename__ = 'offenders'
@@ -56,7 +62,30 @@ class Offender(Base):
     last_name = Column(String(50), nullable=False)
     dob = Column(Date, nullable=False)
     image_url = Column(String(255))
+    gender = Column(String(20))
+    is_sex_offender = Column(Boolean, default=False)
+    is_gang_member = Column(Boolean, default=False)
+    gang_affiliation = Column(String(100))
+    release_date = Column(Date)
+    reversion_date = Column(Date)
+    release_type = Column(String(50))
+    initial_placement = Column(String(100))
+    general_comments = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Program(Base):
+    __tablename__ = 'programs'
+    program_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
+    name = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)
+    provider = Column(String(100))
+    status = Column(String(20), default='Pending')
+    start_date = Column(Date)
+    end_date = Column(Date)
+    notes = Column(Text)
+
+    offender = relationship("Offender")
 
 class SupervisionEpisode(Base):
     __tablename__ = 'supervision_episodes'
@@ -87,27 +116,19 @@ class Task(Base):
     episode = relationship("SupervisionEpisode")
     creator = relationship("Officer")
 
-class Facility(Base):
-    __tablename__ = 'facilities'
-    facility_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(100), nullable=False)
-    address = Column(String(255), nullable=False)
-    phone = Column(String(20))
-    services_offered = Column(Text)
-
 class Residence(Base):
     __tablename__ = 'residences'
     residence_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'))
-    facility_id = Column(UUID(as_uuid=True), ForeignKey('facilities.facility_id'), nullable=True)
     address_line_1 = Column(String(255), nullable=False)
     city = Column(String(100), nullable=False)
     state = Column(String(50), nullable=False)
-    zip_code = Column(String(10), nullable=False)
+    zip_code = Column(String(10))
     is_current = Column(Boolean, default=False)
-    
+    special_assignment_id = Column(UUID(as_uuid=True), ForeignKey('special_assignments.assignment_id'), nullable=True)
+
     episode = relationship("SupervisionEpisode", backref="residences")
-    facility = relationship("Facility")
+    special_assignment = relationship("SpecialAssignment")
     contacts = relationship("ResidenceContact", backref="residence")
 
 class ResidenceContact(Base):
@@ -174,5 +195,33 @@ class Appointment(Base):
 class SystemSettings(Base):
     __tablename__ = 'system_settings'
     key = Column(String(50), primary_key=True)
-    value = Column(String(255), nullable=False)
+    value = Column(Text, nullable=False)
     description = Column(Text)
+
+class Territory(Base):
+    __tablename__ = 'territories'
+    zip_code = Column(String(10), primary_key=True)
+    assigned_location_id = Column(UUID(as_uuid=True), ForeignKey('locations.location_id'), nullable=True)
+    region_name = Column(String(100))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    location = relationship("Location", back_populates="territories")
+    officers = relationship("Officer", secondary="territory_officers", back_populates="territories")
+
+class TerritoryOfficer(Base):
+    __tablename__ = 'territory_officers'
+    zip_code = Column(String(10), ForeignKey('territories.zip_code'), primary_key=True)
+    officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), primary_key=True)
+    is_primary = Column(Boolean, default=False)
+
+class SpecialAssignment(Base):
+    __tablename__ = 'special_assignments'
+    assignment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    type = Column(String(50)) # Facility, Specialty, Admin
+    name = Column(String(100))
+    address = Column(String(255))
+    zip_code = Column(String(10))
+    assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    priority = Column(Integer, default=1)
+
+    officer = relationship("Officer")

@@ -64,7 +64,22 @@ const SchemaViewer = () => {
                                 </div>
                                 {expandedTable === tableName && (
                                     <div className="p-4 bg-white">
-                                        <p className="text-sm text-slate-500 mb-4 italic">{data.description}</p>
+                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-4 text-sm">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <span className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</span>
+                                                    <p className="text-slate-700">{data.description || 'No description provided.'}</p>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-xs font-bold text-slate-500 uppercase mb-1">Context & Reason</span>
+                                                    <p className="text-slate-700">{data.context || 'Standard Schema Entity'}</p>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-xs font-bold text-slate-500 uppercase mb-1">Usage</span>
+                                                    <p className="text-slate-700">{data.usage || 'Backend API'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-xs text-slate-500 uppercase bg-slate-50">
                                                 <tr>

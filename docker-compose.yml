@@ -11,8 +11,10 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - POSTGRES_URL=postgresql://user:password@db:5432/parole_db
     depends_on:
       - redis
+      - db
 
   worker:
     build: .
@@ -22,8 +24,10 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - POSTGRES_URL=postgresql://user:password@db:5432/parole_db
     depends_on:
       - redis
+      - db
 
   beat:
     build: .
@@ -33,10 +37,26 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - POSTGRES_URL=postgresql://user:password@db:5432/parole_db
     depends_on:
       - redis
+      - db
 
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=parole_db
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

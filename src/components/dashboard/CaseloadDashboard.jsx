@@ -53,14 +53,11 @@ const CaseloadDashboard = () => {
                 }));
                 setOfficers(mappedOfficers);
 
-                // Enforce permission: If restricted, lock to current user's officer ID
-                if (!hasPermission('view_all_cases') && currentUser.officerId) {
-                    setSelectedOfficer(currentUser.officerId);
-                } else if (!hasPermission('view_all_cases') && mappedOfficers.length > 0 && !selectedOfficer) {
-                    // For non-admins without specific officer ID match, auto-select first
-                    setSelectedOfficer(mappedOfficers[0].id);
-                }
-                // Admins/Managers default to "" (All) automatically if state is empty
+                setOfficers(mappedOfficers);
+
+                // Default to empty or specific logic if needed, but don't force lock
+                // If the user's officer ID is in this list and nothing is selected, select it? 
+                // No, relied on the separate "Set Defaults" effect for initial load.
             } catch (error) {
                 console.error("Error fetching officers:", error);
             }
@@ -68,12 +65,15 @@ const CaseloadDashboard = () => {
         fetchOfficers();
     }, [selectedOffice, currentUser, hasPermission]);
 
-    // Effect to enforce selection whenever currentUser changes or permissions change
+    // Set default filters based on user (PRESET ONLY, DO NOT LOCK)
     useEffect(() => {
-        if (!hasPermission('view_all_cases') && currentUser.officerId) {
+        if (currentUser?.officerId && selectedOfficer === '') {
             setSelectedOfficer(currentUser.officerId);
         }
-    }, [currentUser, hasPermission]);
+        if (currentUser?.locationId && selectedOffice === '') {
+            setSelectedOffice(currentUser.locationId);
+        }
+    }, [currentUser]);
 
     // Fetch Offenders
     // Fetch Offenders
@@ -250,8 +250,7 @@ const CaseloadDashboard = () => {
                     <select
                         value={selectedOffice}
                         onChange={(e) => setSelectedOffice(e.target.value)}
-                        disabled={!hasPermission('view_all_cases')}
-                        className={`bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[140px] cursor-pointer ${!hasPermission('view_all_cases') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[140px] cursor-pointer`}
                     >
                         <option value="">All Offices</option>
                         {offices.map(office => (
@@ -261,8 +260,7 @@ const CaseloadDashboard = () => {
                     <select
                         value={selectedOfficer}
                         onChange={handleOfficerChange}
-                        disabled={!hasPermission('view_all_cases')}
-                        className={`bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[180px] cursor-pointer ${!hasPermission('view_all_cases') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[180px] cursor-pointer`}
                     >
                         <option value="">All Officers</option>
                         {officers.map(officer => (

@@ -8,30 +8,38 @@ from . import models, database, auth
 
 fake = Faker()
 
+# Metro Phoenix Zip Codes by Region (Approximate)
+PHOENIX_REGIONS = {
+    "North": [
+        "85020", "85021", "85022", "85023", "85024", "85027", "85028", "85029", "85032", 
+        "85050", "85053", "85054", "85083", "85085", "85086", "85087", "85254", "85255", 
+        "85331", "85377"
+    ],
+    "South": [
+        "85004", "85007", "85034", "85040", "85041", "85042", "85044", "85045", "85048", 
+        "85283", "85284", "85003", "85224", "85225", "85226", "85248", "85249", "85286"
+    ],
+    "East": [
+        "85006", "85008", "85016", "85018", "85250", "85251", "85253", "85256", "85257", 
+        "85281", "85282", "85201", "85202", "85203", "85204", "85205", "85206", "85207", 
+        "85208", "85209", "85210", "85212", "85213", "85215"
+    ],
+    "West": [
+        "85009", "85031", "85033", "85035", "85037", "85043", "85301", "85302", "85303", 
+        "85304", "85305", "85306", "85307", "85308", "85309", "85310", "85323", "85335", 
+        "85338", "85339", "85340", "85345", "85351", "85353", "85354", "85355", "85361", 
+        "85363", "85381", "85382", "85383"
+    ]
+}
+
 def generate_seed_data():
     db = database.SessionLocal()
     
     try:
-        # Clear existing data
-        print("Clearing existing data...")
-        db.query(models.Task).delete()
-        db.query(models.SupervisionEpisode).delete()
-        db.query(models.Offender).delete()
-        db.query(models.Officer).delete()
-        db.query(models.User).delete()
-        db.query(models.Location).delete()
-        db.query(models.Urinalysis).delete()
-        db.query(models.CaseNote).delete()
-        db.query(models.RiskAssessment).delete()
-        db.query(models.Appointment).delete()
-        db.query(models.Facility).delete()
-        db.query(models.Facility).delete()
-        db.query(models.Role).delete()
-        db.query(models.SystemSettings).delete()
-        db.commit()
+        print("Starting generation...")
 
-        # Generate Roles
-        roles = ['Officer', 'Supervisor', 'Admin']
+        # 1. Generate Roles
+        roles = ['Officer', 'Supervisor', 'Manager', 'Admin']
         role_map = {}
         for i, role_name in enumerate(roles, 1):
             role = models.Role(role_id=i, role_name=role_name, description=f"Role for {role_name}")
@@ -39,7 +47,7 @@ def generate_seed_data():
             role_map[role_name] = i
         db.commit()
 
-        # Generate System Settings
+        # 2. System Settings
         import json
         note_types_config = [
             {"name": "General", "color": "bg-slate-100 text-slate-700"},
@@ -49,51 +57,48 @@ def generate_seed_data():
             {"name": "Violation", "color": "bg-red-100 text-red-700"},
             {"name": "Phone Call", "color": "bg-yellow-100 text-yellow-700"}
         ]
-
-        settings = [
-            models.SystemSettings(
-                key='onboarding_due_delay',
-                value='3',
-                description='Days after start date when onboarding is due'
-            ),
-            models.SystemSettings(
-                key='note_types',
-                value=json.dumps(note_types_config),
-                description='Configuration for case note types and colors'
-            )
-        ]
-        db.add_all(settings)
+        db.add(models.SystemSettings(key='note_types', value=json.dumps(note_types_config)))
         db.commit()
 
-        # Generate Offices
-        office_names = ["North", "South", "East", "West"]
-        offices = {}
-        for name in office_names:
+        # 3. Create Locations (4 Regional + 1 Specialty)
+        locations = {}
+        regional_offices = ["North", "South", "East", "West"]
+        
+        for name in regional_offices:
             loc = models.Location(
                 name=f"{name} Field Office",
-                address=f"{fake.building_number()} {name} St, {fake.city()}",
+                address=f"{fake.building_number()} {name} Ave, Phoenix, AZ",
                 type='Field Office'
             )
             db.add(loc)
-            offices[name] = loc
+            locations[name] = loc
+        
+        specialty_loc = models.Location(
+            name="Specialty Services Division",
+            address="100 W Washington St, Phoenix, AZ",
+            type='HQ'
+        )
+        db.add(specialty_loc)
+        locations["Specialty"] = specialty_loc
+        
         db.commit()
 
-        # Generate Supervisors (One per office)
+        # 4. Create Supervisors (1 per location)
         supervisors = {}
-        for name, office in offices.items():
+        for name, loc in locations.items():
             user = models.User(
                 username=f"sup_{name.lower()}",
-                email=f"sup.{name.lower()}@example.com",
-                password_hash=auth.get_password_hash('hash123'),
+                email=f"sup.{name.lower()}@doc.az.gov",
+                password_hash=auth.get_password_hash('admin123'),
                 role_id=role_map['Supervisor']
             )
             db.add(user)
             db.flush()
-
+            
             sup = models.Officer(
                 user_id=user.user_id,
-                location_id=office.location_id,
-                badge_number=f"SUP-{name[0]}-{random.randint(100, 999)}",
+                location_id=loc.location_id,
+                badge_number=f"SUP-{name[0]}-{random.randint(10,99)}",
                 first_name=fake.first_name(),
                 last_name=fake.last_name(),
                 phone_number=fake.phone_number()
@@ -102,201 +107,284 @@ def generate_seed_data():
             supervisors[name] = sup
         db.commit()
 
-        # Generate Officers (Assigned to offices and supervisors)
-        officers_list = []
-        for name, office in offices.items():
-            supervisor = supervisors[name]
-            # Create 3-5 officers per office
-            for i in range(1, random.randint(4, 6)):
-                username = f"officer.{name.lower()}.{i}"
+        # 5. Create Officers & Territories
+        all_officers = [] 
+        region_officers_map = {r: [] for r in regional_offices} 
+        zip_owner_map = {} 
+
+        # -- Field Officers --
+        officer_counter = 1
+        for region in regional_offices:
+            loc = locations[region]
+            sup = supervisors[region]
+            zips = PHOENIX_REGIONS[region]
+            
+            # Create 20 officers per region
+            num_officers = 20
+            
+            current_officers = []
+            
+            for i in range(num_officers):
+                username = f"po.{region.lower()}.{i+1}"
                 user = models.User(
                     username=username,
-                    email=f"{username}@example.com",
-                    password_hash=auth.get_password_hash('hash123'),
+                    email=f"{username}@doc.az.gov",
+                    password_hash=auth.get_password_hash('password123'),
                     role_id=role_map['Officer']
                 )
                 db.add(user)
                 db.flush()
-
-                officer = models.Officer(
+                
+                off = models.Officer(
                     user_id=user.user_id,
-                    location_id=office.location_id,
-                    supervisor_id=supervisor.officer_id,
-                    badge_number=f"PO-{random.randint(1000, 9999)}",
+                    location_id=loc.location_id,
+                    supervisor_id=sup.officer_id, # Asssigned to Region Supervisor
+                    badge_number=f"PO-{1000 + officer_counter}",
                     first_name=fake.first_name(),
                     last_name=fake.last_name(),
                     phone_number=fake.phone_number()
                 )
-                db.add(officer)
-                officers_list.append(officer)
-        
-        # Add supervisors to officers_list so they also get cases
-        for sup in supervisors.values():
-            officers_list.append(sup)
+                db.add(off)
+                current_officers.append(off)
+                all_officers.append(off)
+                region_officers_map[region].append(off)
+                officer_counter += 1
             
+            db.flush()
+
+            # Assign Territories (Zip Codes)
+            for z in zips:
+                terr = models.Territory(
+                    zip_code=z,
+                    assigned_location_id=loc.location_id,
+                    region_name=region
+                )
+                db.add(terr)
+            db.flush()
+
+            # Assign Zips to Officers (Round Robin)
+            officer_cycle = itertools.cycle(current_officers)
+            for z in zips:
+                assigned_po = next(officer_cycle)
+                to = models.TerritoryOfficer(
+                    zip_code=z,
+                    officer_id=assigned_po.officer_id,
+                    is_primary=True
+                )
+                db.add(to)
+                zip_owner_map[z] = assigned_po
+        
+        # -- Specialty Officers (SMI & Admin) --
+        specialty_types = [
+            ("SMI", 2),
+            ("HighPro", 1) 
+        ]
+        
+        specialty_officers = {"SMI": [], "HighPro": []}
+        
+        spec_sup = supervisors["Specialty"]
+        spec_loc = locations["Specialty"]
+
+        for spec_type, count in specialty_types:
+            for i in range(count):
+                username = f"spec.{spec_type.lower()}.{i+1}"
+                user = models.User(
+                    username=username,
+                    email=f"{username}@doc.az.gov",
+                    password_hash=auth.get_password_hash('password123'),
+                    role_id=role_map['Officer']
+                )
+                db.add(user)
+                db.flush()
+                
+                off = models.Officer(
+                    user_id=user.user_id,
+                    location_id=spec_loc.location_id,
+                    supervisor_id=spec_sup.officer_id, # Assigned to Specialty Supervisor
+                    badge_number=f"SP-{spec_type}-{100+i}",
+                    first_name=fake.first_name(),
+                    last_name=fake.last_name(),
+                    phone_number=fake.phone_number()
+                )
+                db.add(off)
+                specialty_officers[spec_type].append(off)
+                all_officers.append(off)
+        
+        db.commit()
+        print(f"Created {len(all_officers)} officers.")
+
+        # 6. Default Admin User
+        admin_officer = specialty_officers["HighPro"][0]
+        
+        admin_user = models.User(
+            username="admin",
+            email="admin@system.local",
+            password_hash=auth.get_password_hash("admin123"),
+            role_id=role_map['Admin']
+        )
+        db.add(admin_user)
+        db.flush()
+        
+        # Link Admin user to HighPro officer
+        temp_user_id = admin_officer.user_id
+        admin_officer.user_id = admin_user.user_id
+        admin_officer.first_name = "System"
+        admin_officer.last_name = "Admin"
+        
+        db.add(admin_officer)
+        db.flush()
+        
+        if temp_user_id:
+            db.query(models.User).filter(models.User.user_id == temp_user_id).delete()
         db.commit()
 
-        # Generate Facilities
+        # 7. Generate Facilities (as SpecialAssignments)
         facilities = []
         facility_data = [
-            {"name": "Hope House", "services": "Substance Abuse Treatment, Job Placement"},
-            {"name": "New Beginnings", "services": "Reentry Support, Counseling"},
-            {"name": "Freedom Center", "services": "Housing Assistance, Life Skills"},
-            {"name": "Recovery Works", "services": "Inpatient Treatment, Group Therapy"}
+            {"name": "Hope House", "services": "Substance Abuse Treatment"},
+            {"name": "New Beginnings", "services": "Reentry Support"},
+            {"name": "Freedom Center", "services": "Housing Assistance"},
+            {"name": "Recovery Works", "services": "Inpatient Treatment"}
         ]
         
         for fac in facility_data:
-            facility = models.Facility(
+            sa = models.SpecialAssignment(
+                type="Facility",
                 name=fac["name"],
-                address=f"{fake.building_number()} {fake.street_name()}, {fake.city()}",
-                phone=fake.phone_number(),
-                services_offered=fac["services"]
+                address=f"{fake.building_number()} {fake.street_name()}, Phoenix, AZ",
+                zip_code=fake.zipcode()
             )
-            db.add(facility)
-            facilities.append(facility)
+            db.add(sa)
+            facilities.append(sa)
         db.commit()
 
-        # Generate Offenders & Episodes
-        officer_cycle = itertools.cycle(officers_list)
+        # 8. Generate Offenders (600 count)
+        print("Generating 600 offenders...")
         
-        for i in range(200):
-            first_name = fake.first_name()
-            last_name = fake.last_name()
+        target_smi = 80
+        target_admin = 40
+        target_standard = 600 - target_smi - target_admin
+        
+        case_types = (['SMI'] * target_smi) + (['Admin'] * target_admin) + (['Standard'] * target_standard)
+        random.shuffle(case_types)
+        
+        smi_officer_cycle = itertools.cycle(specialty_officers["SMI"])
+        
+        for i, c_type in enumerate(case_types):
+            if i % 100 == 0:
+                print(f"  Processed {i} offenders...")
+            
+            first = fake.first_name()
+            last = fake.last_name()
+            
+            assigned_officer = None
+            assigned_zip = None
+            region_name = None
+            
+            if c_type == 'SMI':
+                assigned_officer = next(smi_officer_cycle)
+                region_name = random.choice(regional_offices)
+                assigned_zip = random.choice(PHOENIX_REGIONS[region_name])
+                
+            elif c_type == 'Admin':
+                assigned_officer = admin_officer
+                region_name = random.choice(regional_offices)
+                assigned_zip = random.choice(PHOENIX_REGIONS[region_name])
+                
+            else: # Standard
+                region_name = random.choice(regional_offices)
+                assigned_zip = random.choice(PHOENIX_REGIONS[region_name])
+                assigned_officer = zip_owner_map.get(assigned_zip)
+                if not assigned_officer:
+                    assigned_officer = random.choice(region_officers_map[region_name])
+
+            # Offender
             offender = models.Offender(
                 badge_id=f"DOC-{random.randint(100000, 999999)}",
-                first_name=first_name,
-                last_name=last_name,
+                first_name=first,
+                last_name=last,
                 dob=fake.date_of_birth(minimum_age=18, maximum_age=70),
-                image_url=f"https://ui-avatars.com/api/?name={first_name}+{last_name}&background=random" # Reliable placeholder
+                image_url=f"https://ui-avatars.com/api/?name={first}+{last}&background=random",
+                gender=random.choice(['Male', 'Female']),
+                is_sex_offender=(random.random() < 0.05),
+                is_gang_member=(random.random() < 0.1),
+                release_date=fake.date_between(start_date='-2y', end_date='today'),
+                general_comments=f"Generated as {c_type} case."
             )
             db.add(offender)
             db.flush()
-
-            # Ensure every officer gets at least 2 cases, then random
-            if i < len(officers_list) * 2:
-                assigned_officer = next(officer_cycle)
-            else:
-                assigned_officer = random.choice(officers_list)
-
+            
+            # Episode
+            ep_status = 'Active' 
+            risk = 'High' if c_type == 'SMI' else random.choice(['Low', 'Medium', 'High'])
+            
             episode = models.SupervisionEpisode(
                 offender_id=offender.offender_id,
                 assigned_officer_id=assigned_officer.officer_id,
-                start_date=fake.date_between(start_date='-2y', end_date='today'),
-                status=random.choice(['Active', 'Active', 'Active', 'Closed']),
-                risk_level_at_start=random.choice(['Low', 'Medium', 'High'])
+                start_date=offender.release_date,
+                status=ep_status,
+                risk_level_at_start=risk
             )
             db.add(episode)
             db.flush()
-
-            # Generate Residence (Facility or Private)
-            is_in_facility = random.random() < 0.15 # 15% chance of being in a facility
+            
+            # Residence
+            is_in_facility = (random.random() < 0.05) and (c_type != 'SMI') # SMI usually in placement but keeping simple
+            
+            res_addr = fake.street_address()
+            res_sa_id = None
             
             if is_in_facility:
-                facility = random.choice(facilities)
-                residence = models.Residence(
-                    episode_id=episode.episode_id,
-                    facility_id=facility.facility_id,
-                    address_line_1=facility.address,
-                    city=facility.address.split(', ')[-1], # Simple parsing
-                    state=fake.state_abbr(),
-                    zip_code=fake.zipcode(),
-                    is_current=True
-                )
-                db.add(residence)
-            else:
-                residence = models.Residence(
-                    episode_id=episode.episode_id,
-                    address_line_1=fake.street_address(),
-                    city=fake.city(),
-                    state=fake.state_abbr(),
-                    zip_code=fake.zipcode(),
-                    is_current=True
-                )
-                db.add(residence)
-                db.flush()
-                
-                # Add Residence Contacts for private residence
-                if random.random() < 0.6: # 60% chance of having contacts
-                    for _ in range(random.randint(1, 3)):
-                        contact = models.ResidenceContact(
-                            residence_id=residence.residence_id,
-                            name=fake.name(),
-                            relation=random.choice(['Spouse', 'Parent', 'Sibling', 'Roommate', 'Child']),
-                            phone=fake.phone_number(),
-                            comments=fake.sentence()
-                        )
-                        db.add(contact)
+                fac = random.choice(facilities)
+                res_addr = fac.address.split(',')[0]
+                res_sa_id = fac.assignment_id
 
-            # Generate Case Notes
-            for _ in range(random.randint(2, 5)):
-                note_type = random.choice(['General', 'Home Visit', 'Field Visit', 'Office Visit', 'Violation', 'Phone Call'])
-                note = models.CaseNote(
-                    offender_id=offender.offender_id,
-                    author_id=random.choice(officers_list).officer_id,
-                    date=fake.date_time_between(start_date='-1y', end_date='now'),
-                    content=fake.paragraph(nb_sentences=3),
-                    type=note_type,
-                    is_pinned=random.choice([True, False]) if note_type == 'Violation' else False
-                )
-                db.add(note)
-
-            # Generate Urinalysis
-            for _ in range(random.randint(1, 3)):
-                is_positive = random.random() < 0.2
-                result = "Positive (THC)" if is_positive else "Negative"
-                ua = models.Urinalysis(
-                    offender_id=offender.offender_id,
-                    date=fake.date_between(start_date='-6m', end_date='today'),
-                    test_type=random.choice(['Random', 'Scheduled', 'Suspicion']),
-                    result=result,
-                    lab_name="LabCorp",
-                    collected_by_id=random.choice(officers_list).officer_id,
-                    notes="Offender admitted use" if is_positive else None
-                )
-                db.add(ua)
-
-            # Generate Risk Assessment
-            risk_score = random.randint(0, 30)
-            risk_level = "Low" if risk_score < 10 else "Medium" if risk_score < 20 else "High"
-            assessment = models.RiskAssessment(
-                offender_id=offender.offender_id,
-                date=fake.date_between(start_date='-1y', end_date='today'),
-                total_score=risk_score,
-                risk_level=risk_level,
-                details={
-                    "Criminal History": "High" if risk_score > 20 else "Low",
-                    "Education": "Medium",
-                    "Family": "Low",
-                    "Substance Abuse": "High" if risk_score > 15 else "Low"
-                }
+            res = models.Residence(
+                episode_id=episode.episode_id,
+                address_line_1=res_addr,
+                city="Phoenix",
+                state="AZ",
+                zip_code=assigned_zip,
+                is_current=True,
+                special_assignment_id=res_sa_id
             )
-            db.add(assessment)
+            db.add(res)
+            
+            # Notes
+            for _ in range(random.randint(0, 3)):
+                db.add(models.CaseNote(
+                    offender_id=offender.offender_id,
+                    author_id=assigned_officer.officer_id,
+                    content=fake.sentence(),
+                    type='General',
+                    date=fake.date_between(start_date='-6m', end_date='today')
+                ))
 
-            # Generate Appointment
-            appt = models.Appointment(
-                offender_id=offender.offender_id,
-                officer_id=episode.assigned_officer_id,
-                date_time=fake.future_datetime(end_date='+30d'),
-                location="Field Office",
-                type=random.choice(['Routine Check-in', 'UA Testing', 'Case Plan Review']),
-                status="Scheduled",
-                notes="Bring pay stub"
-            )
-            db.add(appt)
+            # Tasks
+            if ep_status == 'Active':
+                 for _ in range(random.randint(0, 2)):
+                     db.add(models.Task(
+                         episode_id=episode.episode_id,
+                         created_by=assigned_officer.officer_id,
+                         title=random.choice(["Review Monthly Report", "Verify Employment", "Home Visit Follow-up"]),
+                         description=fake.sentence(),
+                         due_date=fake.date_between(start_date='-1w', end_date='+2w'),
+                         status=random.choice(['Pending', 'Completed'])
+                     ))
 
-        
         db.commit()
-        print("Successfully generated seed data with Offices and Supervisors.")
-        
+        print("Done! Database re-seeded.")
+
     except Exception as e:
-        print(f"Error generating data: {e}")
+        print(f"Error seeding data: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()
 
 if __name__ == "__main__":
-    # Ensure tables exist (Drop first to reset schema)
-    print("Dropping existing tables...")
+    print("Dropping tables...")
     models.Base.metadata.drop_all(bind=database.engine)
     print("Creating tables...")
     models.Base.metadata.create_all(bind=database.engine)

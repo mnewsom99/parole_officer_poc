@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { UserContext } from '../../context/UserContext';
 import axios from 'axios';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff } from 'lucide-react';
 import Modal from '../common/Modal';
@@ -8,6 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 const OffenderProfile = () => {
     const { offenderId } = useParams();
     const navigate = useNavigate();
+    const { currentUser } = useContext(UserContext);
     const [offender, setOffender] = useState(null);
 
     const [activeTab, setActiveTab] = useState('overview');
@@ -22,6 +24,10 @@ const OffenderProfile = () => {
         { id: 3, title: 'Complete Assessments', date: '2023-11-01', status: 'Pending' },
         { id: 4, title: 'Completed Parole', date: '2024-10-15', status: 'Not Due' },
     ]);
+    // Editing State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({});
+
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTask, setNewTask] = useState({ title: '', date: '', status: 'Pending' });
 
@@ -29,7 +35,9 @@ const OffenderProfile = () => {
     const [uaHistory, setUaHistory] = useState([]);
     const [notes, setNotes] = useState([]);
     const [riskFactors, setRiskFactors] = useState([]);
+
     const [appointments, setAppointments] = useState([]);
+    const [programs, setPrograms] = useState([]);
 
     const [newNoteContent, setNewNoteContent] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -46,15 +54,7 @@ const OffenderProfile = () => {
 
     const itemsPerPage = 10;
 
-    useEffect(() => {
-        if (offenderId) {
-            fetchData();
-        }
-    }, [offenderId]);
 
-    useEffect(() => {
-        fetchNoteTypes();
-    }, []);
 
     const fetchNoteTypes = async () => {
         try {
@@ -75,28 +75,24 @@ const OffenderProfile = () => {
     };
 
     const getNoteColor = (typeName) => {
+        if (typeName === 'System') return 'bg-slate-100 text-slate-700 border-slate-200';
         const type = noteTypes.find(t => t.name === typeName);
         return type ? type.color : 'bg-slate-100 text-slate-700';
     };
 
     const fetchData = async () => {
         try {
-            const [offenderRes, uaRes, notesRes, riskRes, apptRes] = await Promise.all([
+            const [offenderRes, uaRes, notesRes, riskRes, apptRes, programsRes] = await Promise.all([
                 axios.get(`http://localhost:8000/offenders/${offenderId}`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/urinalysis`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/notes`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/risk`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/appointments`),
-                axios.get(`http://localhost:8000/settings/note-types`)
+
+                axios.get(`http://localhost:8000/offenders/${offenderId}/programs`)
             ]);
 
             setOffender(offenderRes.data);
-            setUaHistory(uaRes.data);
-            setNotes(notesRes.data);
-            setNoteTypes(apptRes[2]?.data || []); // apptRes is index 4, so noteTypes is index 5 in Promise.all, but wait...
-            // Actually, let's just add it to the end of the array destructuring.
-            // Wait, I need to be careful with the array destructuring index.
-            // Let's rewrite the Promise.all destructuring to be safe.
             setUaHistory(uaRes.data);
             setNotes(notesRes.data);
 
@@ -112,11 +108,24 @@ const OffenderProfile = () => {
             }
 
             setAppointments(apptRes.data);
+            setPrograms(programsRes.data);
 
         } catch (error) {
             console.error("Error fetching offender data:", error);
         }
     };
+
+    useEffect(() => {
+        if (offenderId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            fetchData();
+        }
+    }, [offenderId]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchNoteTypes();
+    }, []);
 
     if (!offender) {
         return <div className="p-8 text-center text-slate-500">Loading offender profile...</div>;
@@ -144,6 +153,52 @@ const OffenderProfile = () => {
     };
 
 
+
+    const handleSaveChanges = () => {
+        const changes = [];
+        const fieldLabels = {
+            phone: 'Phone Number',
+            email: 'Email Address',
+            gender: 'Gender',
+            releaseType: 'Release Type',
+            releaseDate: 'Start Date',
+            address: 'Current Address',
+            reversionDate: 'Reversion Date',
+            gangAffiliation: 'Gang Affiliation',
+            risk: 'Risk Level'
+        };
+
+        const officerName = currentUser?.name || 'Officer';
+
+        Object.keys(editForm).forEach(key => {
+            if (offender[key] !== editForm[key] && fieldLabels[key]) {
+                const oldVal = offender[key] || 'empty';
+                const newVal = editForm[key] || 'empty';
+
+                changes.push({
+                    field: fieldLabels[key],
+                    oldVal,
+                    newVal
+                });
+            }
+        });
+
+        if (changes.length > 0) {
+            const newSystemNotes = changes.map((change, index) => ({
+                note_id: Date.now() + index,
+                type: 'System',
+                content: `${officerName} changed ${change.field} from "${change.oldVal}" to "${change.newVal}" today.`,
+                author: { first_name: 'System', last_name: 'Audit', id: 0 },
+                date: new Date().toISOString().split('T')[0],
+                isPinned: false
+            }));
+
+            setNotes(prevNotes => [...newSystemNotes, ...prevNotes]);
+        }
+
+        setOffender(editForm);
+        setIsEditing(false);
+    };
 
     const handleAddNote = async () => {
         if (!newNoteContent.trim()) return;
@@ -206,7 +261,7 @@ const OffenderProfile = () => {
         { id: 'overview', label: 'Overview', icon: FileText },
         { id: 'risk', label: 'Risk Assessment', icon: AlertTriangle },
         { id: 'ua', label: 'Urine Analysis', icon: Activity },
-        { id: 'contact', label: 'Contact Info', icon: Phone },
+        { id: 'detail', label: 'Detail View', icon: Phone },
     ];
 
     const renderTabContent = () => {
@@ -214,9 +269,9 @@ const OffenderProfile = () => {
             case 'overview':
                 return (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <div className="flex justify-between items-center mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-slate-800">Parole Plan</h3>
                                     <button
                                         onClick={() => setIsAddingTask(true)}
@@ -273,100 +328,95 @@ const OffenderProfile = () => {
                                 )}
 
                                 <div className="space-y-6 max-h-64 overflow-y-auto pr-2">
-                                    {['Pending', 'Not Due', 'Completed'].map(status => {
-                                        const tasks = parolePlan?.filter(t => t.status === status) || [];
+                                    <div className="space-y-3">
+                                        {parolePlan.length === 0 && (
+                                            <p className="text-xs text-slate-400 italic">No tasks</p>
+                                        )}
+                                        {parolePlan
+                                            .sort((a, b) => {
+                                                // Sort by completion status first (Completed at bottom)
+                                                if (a.status === 'Completed' && b.status !== 'Completed') return 1;
+                                                if (a.status !== 'Completed' && b.status === 'Completed') return -1;
 
-                                        return (
-                                            <div key={status}>
-                                                <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 sticky top-0 bg-white py-1 z-10 ${status === 'Completed' ? 'text-green-600' :
-                                                    status === 'Pending' ? 'text-yellow-600' : 'text-slate-400'
-                                                    }`}>
-                                                    {status}
-                                                </h4>
-                                                <div className="space-y-3">
-                                                    {tasks.length === 0 && (
-                                                        <p className="text-xs text-slate-400 italic">No tasks</p>
-                                                    )}
-                                                    {tasks.map(task => (
-                                                        <div key={task.id} className="flex items-center gap-3 group">
-                                                            {status === 'Completed' ? <CheckCircle className="w-5 h-5 text-green-500 shrink-0" /> :
-                                                                status === 'Pending' ? <Clock className="w-5 h-5 text-yellow-500 shrink-0" /> :
-                                                                    <Clock className="w-5 h-5 text-slate-300 shrink-0" />}
+                                                // Then sort by date
+                                                return new Date(a.date) - new Date(b.date);
+                                            })
+                                            .map(task => {
+                                                const isPastDue = task.status === 'Pending' && new Date(task.date) < new Date();
+                                                const dotColor = task.status === 'Completed' ? 'bg-green-500' :
+                                                    isPastDue ? 'bg-red-500' :
+                                                        task.status === 'Pending' ? 'bg-yellow-500' :
+                                                            'bg-slate-300';
 
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className={`text-sm font-medium ${status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                                                                    {task.title}
-                                                                </p>
-                                                                <input
-                                                                    type="date"
-                                                                    value={task.date}
-                                                                    onChange={(e) => handleUpdateTask(task.id, 'date', e.target.value)}
-                                                                    className="text-xs text-slate-500 bg-transparent border-none p-0 focus:ring-0 h-auto"
-                                                                />
-                                                            </div>
+                                                return (
+                                                    <div key={task.id} className="flex items-center gap-3 group hover:bg-slate-50 p-1 rounded -mx-1 transition-colors">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`}></div>
 
-                                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                                                                <select
-                                                                    value={task.status}
-                                                                    onChange={(e) => handleUpdateTask(task.id, 'status', e.target.value)}
-                                                                    className="text-xs border border-slate-200 rounded p-1"
-                                                                >
-                                                                    <option value="Completed">Done</option>
-                                                                    <option value="Pending">Pending</option>
-                                                                    <option value="Not Due">Later</option>
-                                                                </select>
-                                                                <button
-                                                                    onClick={() => handleDeleteTask(task.id)}
-                                                                    className="text-slate-400 hover:text-red-500"
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </div>
+                                                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                                                            <span className={`text-xs font-medium truncate ${task.status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                                                                {task.title}
+                                                            </span>
+                                                            <span className="text-xs text-slate-400">-</span>
+                                                            <input
+                                                                type="date"
+                                                                value={task.date}
+                                                                onChange={(e) => handleUpdateTask(task.id, 'date', e.target.value)}
+                                                                className="text-[10px] text-slate-500 bg-transparent border-none p-0 focus:ring-0 h-auto w-auto"
+                                                            />
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+
+                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                            <select
+                                                                value={task.status}
+                                                                onChange={(e) => handleUpdateTask(task.id, 'status', e.target.value)}
+                                                                className="text-[10px] border border-slate-200 rounded py-0.5 px-1 bg-white"
+                                                            >
+                                                                <option value="Completed">Done</option>
+                                                                <option value="Pending">Pending</option>
+                                                                <option value="Not Due">Later</option>
+                                                            </select>
+                                                            <button
+                                                                onClick={() => handleDeleteTask(task.id)}
+                                                                className="text-slate-400 hover:text-red-500 p-0.5"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <h3 className="font-bold text-slate-800 mb-4">Recent Activity</h3>
-                                <div className="space-y-4">
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-                                            <div className="w-0.5 h-full bg-slate-100 my-1"></div>
-                                        </div>
-                                        <div className="pb-4">
-                                            <p className="text-sm font-medium text-slate-800">Check-in Completed</p>
-                                            <p className="text-xs text-slate-500">Yesterday, 2:15 PM</p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></div>
+                                        <div className="flex-1 flex justify-between items-center min-w-0">
+                                            <p className="text-xs font-medium text-slate-800 truncate">Check-in Completed</p>
+                                            <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">Yesterday, 2:15 PM</p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                            <div className="w-0.5 h-full bg-slate-100 my-1"></div>
-                                        </div>
-                                        <div className="pb-4">
-                                            <p className="text-sm font-medium text-slate-800">UA Result: Negative</p>
-                                            <p className="text-xs text-slate-500">Nov 28, 10:00 AM</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+                                        <div className="flex-1 flex justify-between items-center min-w-0">
+                                            <p className="text-xs font-medium text-slate-800 truncate">UA Result: Negative</p>
+                                            <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">Nov 28, 10:00 AM</p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-800">Employment Verified</p>
-                                            <p className="text-xs text-slate-500">Nov 15, 9:30 AM</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
+                                        <div className="flex-1 flex justify-between items-center min-w-0">
+                                            <p className="text-xs font-medium text-slate-800 truncate">Employment Verified</p>
+                                            <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">Nov 15, 9:30 AM</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div className="mt-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                             <h3 className="font-bold text-slate-800 mb-4">Case Notes</h3>
 
                             <div className="mb-6">
@@ -376,9 +426,11 @@ const OffenderProfile = () => {
                                         onChange={(e) => setNewNoteType(e.target.value)}
                                         className="p-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                                     >
-                                        {noteTypes.map(type => (
-                                            <option key={type.name} value={type.name}>{type.name}</option>
-                                        ))}
+                                        {noteTypes
+                                            .filter(type => type.name !== 'System')
+                                            .map(type => (
+                                                <option key={type.name} value={type.name}>{type.name}</option>
+                                            ))}
                                     </select>
                                 </div>
                                 <div className="flex gap-3">
@@ -476,7 +528,7 @@ const OffenderProfile = () => {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </div >
                 );
             case 'risk':
                 return (
@@ -507,112 +559,312 @@ const OffenderProfile = () => {
                         </button>
                     </div>
                 );
-            case 'contact':
+            case 'detail':
                 return (
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="font-bold text-slate-800 mb-6">Contact Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-                                    <Phone className="w-5 h-5 text-slate-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Primary Phone</p>
-                                    <p className="text-base font-medium text-slate-800">(555) 123-4567</p>
-                                    <p className="text-xs text-slate-500">Mobile</p>
-                                </div>
+                    <div className="space-y-6">
+                        {/* Personal & Supervision Info */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    <FileText size={18} className="text-blue-600" />
+                                    Personal & Supervision Details
+                                </h3>
+                                {!isEditing ? (
+                                    <button
+                                        onClick={() => {
+                                            setEditForm(JSON.parse(JSON.stringify(offender)));
+                                            setIsEditing(true);
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                    >
+                                        Edit Profile
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleSaveChanges}
+                                            className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded font-medium"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-                                    <Mail className="w-5 h-5 text-slate-600" />
-                                </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Email Address</p>
-                                    <p className="text-base font-medium text-slate-800">john.doe@email.com</p>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Demographics & Contact</h4>
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
+                                                <Phone size={18} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-slate-500 font-medium">Primary Phone</p>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="tel"
+                                                        value={editForm.phone || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                                        className="w-full text-sm font-semibold text-slate-800 border-b border-blue-500 focus:outline-none"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-semibold text-slate-800">{offender.phone}</p>
+                                                )}
+                                                <p className="text-xs text-slate-400">Mobile</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
+                                                <Mail size={18} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-slate-500 font-medium">Email Address</p>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="email"
+                                                        value={editForm.email || `${editForm.name?.toLowerCase().replace(', ', '.')}@email.com`}
+                                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                                        className="w-full text-sm font-semibold text-slate-800 border-b border-blue-500 focus:outline-none"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-semibold text-slate-800">{offender.name.toLowerCase().replace(', ', '.')}@email.com</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
+                                                <Calendar size={18} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500 font-medium">Age</p>
+                                                <p className="text-sm font-semibold text-slate-800">
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="text"
+                                                            value="39"
+                                                            disabled
+                                                            className="w-12 text-sm font-semibold text-slate-400 border-b border-transparent bg-transparent cursor-not-allowed"
+                                                        />
+                                                    ) : (
+                                                        "39"
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 pt-2">
+                                            <div>
+                                                <p className="text-xs text-slate-500">Gender</p>
+                                                {isEditing ? (
+                                                    <select
+                                                        value={editForm.gender || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
+                                                    >
+                                                        <option value="Male">Male</option>
+                                                        <option value="Female">Female</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{offender.gender || 'Not Specified'}</p>
+                                                )}
+                                            </div>
+                                            {offender.isSexOffender && (
+                                                <div className="col-span-2">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                                        Sex Offender Registry
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-                                    <MapPin className="w-5 h-5 text-slate-600" />
-                                </div>
+
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Current Residence</p>
-                                    <p className="text-base font-medium text-slate-800">{offender.address}</p>
-                                    <p className="text-sm text-slate-600">{offender.city}, {offender.state} {offender.zip}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-                                    <Calendar className="w-5 h-5 text-slate-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Date of Birth</p>
-                                    <p className="text-base font-medium text-slate-800">Jan 15, 1985</p>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Supervision Status</h4>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-xs text-slate-500">Release Type</p>
+                                                {isEditing ? (
+                                                    <select
+                                                        value={editForm.releaseType || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, releaseType: e.target.value })}
+                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
+                                                    >
+                                                        <option value="Parole">Parole</option>
+                                                        <option value="Probation">Probation</option>
+                                                        <option value="Mandatory Supervision">Mandatory Supervision</option>
+                                                        <option value="Transition">Transition</option>
+                                                    </select>
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{offender.releaseType || 'Parole'}</p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500">Start Date</p>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="date"
+                                                        value={editForm.releaseDate || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, releaseDate: e.target.value })}
+                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{offender.releaseDate || 'N/A'}</p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500">Current Address</p>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.address || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{offender.address || 'N/A'}</p>
+                                                )}
+                                            </div>
+                                            {offender.releaseType === 'Transition' && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold text-orange-600">Reversion Date</p>
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="date"
+                                                            value={editForm.reversionDate || ''}
+                                                            onChange={(e) => setEditForm({ ...editForm, reversionDate: e.target.value })}
+                                                            className="w-full text-sm font-bold text-orange-700 border-b border-orange-500 focus:outline-none"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-sm font-bold text-orange-700">{offender.reversionDate || 'TBD'}</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {offender.isGangMember && (
+                                            <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <AlertTriangle size={14} className="text-amber-500" />
+                                                    <span className="text-xs font-bold text-slate-700">Gang Affiliation</span>
+                                                </div>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.gangAffiliation || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, gangAffiliation: e.target.value })}
+                                                        className="w-full text-sm font-medium text-slate-800 border-b border-amber-500 focus:outline-none bg-transparent"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{offender.gangAffiliation}</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="mt-4">
+                                            <p className="text-xs text-slate-500 mb-1">Risk Assessment (ORAS)</p>
+                                            {isEditing ? (
+                                                <select
+                                                    value={editForm.risk || 'Low'}
+                                                    onChange={(e) => setEditForm({ ...editForm, risk: e.target.value })}
+                                                    className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
+                                                >
+                                                    <option value="Low">Low</option>
+                                                    <option value="Medium">Medium</option>
+                                                    <option value="High">High</option>
+                                                </select>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${offender.risk === 'High' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                        offender.risk === 'Medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                            'bg-green-50 text-green-700 border-green-200'
+                                                        }`}>
+                                                        {offender.risk} Risk
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">(See Risk Tab for details)</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Housing Details Section */}
-                        <div className="border-t border-slate-100 pt-6 mb-6">
-                            <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-blue-600" />
-                                Housing Details
-                            </h4>
-                            {offender.housingType === 'Facility' ? (
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="font-bold text-blue-800">{offender.facility?.name || 'Unknown Facility'}</span>
-                                        <span className="px-2 py-0.5 bg-blue-200 text-blue-800 text-xs rounded-full font-bold">Approved Facility</span>
-                                    </div>
-                                    <p className="text-sm text-blue-900 mb-1">{offender.facility?.address || 'No Address'}</p>
-                                    <p className="text-sm text-blue-800 mb-2">Phone: {offender.facility?.phone || 'N/A'}</p>
-                                    <div className="text-xs text-blue-700">
-                                        <span className="font-semibold">Services:</span> {offender.facility?.services || 'None'}
-                                    </div>
+                        {/* Programs & Interventions */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    <Activity size={18} className="text-blue-600" />
+                                    Programs & Interventions
+                                </h3>
+                                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ Add Program</button>
+                            </div>
+
+                            {programs && programs.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {programs.map(prog => (
+                                        <div key={prog.program_id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${prog.category === 'Sanction' ? 'bg-red-100 text-red-700' :
+                                                        prog.category === 'Treatment' ? 'bg-purple-100 text-purple-700' :
+                                                            'bg-blue-100 text-blue-700'
+                                                        }`}>{prog.category}</span>
+                                                    <span className="text-sm font-semibold text-slate-800">{prog.name}</span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mt-1">Provider: {prog.provider} • {prog.start_date ? `Started: ${prog.start_date}` : 'Not started'}</p>
+                                            </div>
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${prog.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                                prog.status === 'Active' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-slate-200 text-slate-600'
+                                                }`}>
+                                                {prog.status}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             ) : (
-                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="font-bold text-slate-700">Private Residence</span>
-                                        <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-bold">Approved</span>
-                                    </div>
-                                    <p className="text-sm text-slate-600">Standard private residence. No facility services provided.</p>
+                                <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                    <p className="text-sm text-slate-500">No active programs or interventions.</p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Residence Contacts Section */}
-                        {offender.housingType === 'Private' && offender.residenceContacts?.length > 0 && (
-                            <div className="border-t border-slate-100 pt-6">
-                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-blue-600" />
-                                    Residence Contacts
-                                </h4>
-                                <div className="space-y-3">
-                                    {offender.residenceContacts?.map((contact, index) => (
-                                        <div key={index} className="flex items-start gap-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shrink-0 border border-slate-200 font-bold text-slate-500 text-xs">
-                                                {contact.name?.charAt(0) || '?'}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-800">{contact.name}</p>
-                                                        <p className="text-xs text-slate-500">{contact.relation}</p>
-                                                    </div>
-                                                    <a href={`tel:${contact.phone}`} className="text-xs text-blue-600 hover:underline">
-                                                        {contact.phone}
-                                                    </a>
-                                                </div>
-                                                {contact.comments && (
-                                                    <p className="text-xs text-slate-600 mt-1 italic">"{contact.comments}"</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                        {/* Housing (Existing) */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <MapPin size={18} className="text-blue-600" />
+                                Housing Details
+                            </h3>
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="font-semibold text-slate-800">
+                                        {offender.housingType} Residence
+                                    </span>
+                                    <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full border border-green-200">
+                                        Approved
+                                    </span>
                                 </div>
+                                <p className="text-sm text-slate-600 mb-1">{offender.address}</p>
+                                {offender.city && <p className="text-sm text-slate-600">{offender.city}, {offender.state} {offender.zip}</p>}
+                                <p className="text-xs text-slate-400 mt-2">Standard private residence. No facility services provided.</p>
                             </div>
-                        )}
+                        </div>
+
+                        {/* General Comments */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">General Comments</h3>
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                {offender.generalComments || "No general comments recorded for this offender."}
+                            </p>
+                        </div>
                     </div>
                 );
             default:
@@ -634,28 +886,28 @@ const OffenderProfile = () => {
                 <span className="font-medium">Back to Caseload</span>
             </button>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="h-32 bg-navy-900 relative">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="h-20 bg-navy-900 relative">
                     <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
                 </div>
-                <div className="px-8 pb-8">
-                    <div className="flex flex-col md:flex-row items-start md:items-end -mt-12 gap-6">
+                <div className="px-6 pb-4">
+                    <div className="flex flex-col md:flex-row items-center md:items-end -mt-8 gap-4">
                         <img
                             src={offender.image}
                             alt={offender.name}
-                            className="w-32 h-32 rounded-2xl border-4 border-white shadow-lg object-cover bg-slate-200 relative"
+                            className="w-20 h-20 rounded-xl border-4 border-white shadow-md object-cover bg-slate-200 relative"
                         />
-                        <div className="flex-1 mb-2">
-                            <div className="flex items-center gap-3 mb-1">
-                                <h1 className="text-3xl font-bold text-slate-900">{offender.name}</h1>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${offender.risk === 'High' ? 'bg-red-100 text-red-700 border-red-200' :
+                        <div className="flex-1 mb-1 text-center md:text-left">
+                            <div className="flex items-center gap-2 mb-0.5 justify-center md:justify-start">
+                                <h1 className="text-xl font-bold text-slate-900">{offender.name}</h1>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${offender.risk === 'High' ? 'bg-red-100 text-red-700 border-red-200' :
                                     offender.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
                                         'bg-green-100 text-green-700 border-green-200'
                                     }`}>
                                     {offender.risk} Risk
                                 </span>
                             </div>
-                            <div className="flex items-center gap-4 text-slate-500 text-sm">
+                            <div className="flex items-center gap-3 text-slate-500 text-xs justify-center md:justify-start">
                                 <span>ID: {offender.badgeId}</span>
                                 <span>•</span>
                                 <span>Status: {offender.status}</span>
@@ -664,32 +916,32 @@ const OffenderProfile = () => {
                                     onClick={() => setShowAppointmentModal(true)}
                                     className="hover:text-blue-600 hover:underline transition-colors"
                                 >
-                                    Next Check-in: {nextAppointment ? new Date(nextAppointment.date_time).toLocaleDateString() : 'None Scheduled'}
+                                    Next: {nextAppointment ? new Date(nextAppointment.date_time).toLocaleDateString() : 'None'}
                                 </button>
                             </div>
                         </div>
-                        <div className="mb-2 flex gap-3">
+                        <div className="mb-1 flex gap-2">
                             <button
                                 onClick={() => setShowNotesModal(true)}
-                                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-lg shadow-sm transition-all"
+                                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all"
                             >
                                 Add Note
                             </button>
                             <button
                                 onClick={() => setShowUAModal(true)}
-                                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-lg shadow-sm transition-all flex items-center gap-2"
+                                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all flex items-center gap-1"
                             >
-                                <Beaker size={18} />
+                                <Beaker size={14} />
                                 Drug Test
                             </button>
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-lg shadow-blue-600/20 transition-all">
+                            <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded text-xs shadow-sm shadow-blue-600/20 transition-all">
                                 Message
                             </button>
                         </div>
                     </div>
 
-                    <div className="mt-8 border-b border-slate-200">
-                        <nav className="flex gap-8">
+                    <div className="mt-4 border-b border-slate-200">
+                        <nav className="flex gap-6">
                             {tabs.map((tab) => {
                                 const Icon = tab.icon;
                                 const isActive = activeTab === tab.id;
@@ -697,10 +949,10 @@ const OffenderProfile = () => {
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`pb-4 flex items-center gap-2 font-medium text-sm transition-all relative ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                                        className={`pb-2 flex items-center gap-1.5 font-medium text-xs transition-all relative ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
                                             }`}
                                     >
-                                        <Icon size={18} />
+                                        <Icon size={14} />
                                         {tab.label}
                                         {isActive && (
                                             <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>
@@ -711,7 +963,7 @@ const OffenderProfile = () => {
                         </nav>
                     </div>
 
-                    <div className="mt-8">
+                    <div className="mt-4">
                         {renderTabContent()}
                     </div>
                 </div>

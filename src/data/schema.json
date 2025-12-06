@@ -1,6 +1,8 @@
 {
     "roles": {
-        "description": "Table for roles",
+        "description": "Defines user roles and permissions.",
+        "context": "Core RBAC functionality",
+        "usage": "Login, Admin Panel, User Management",
         "fields": [
             {
                 "name": "role_id",
@@ -20,7 +22,9 @@
         ]
     },
     "users": {
-        "description": "Table for users",
+        "description": "System users (Officers, Admins, Supervisors).",
+        "context": "Authentication and Identity",
+        "usage": "Login, Profile, User Management",
         "fields": [
             {
                 "name": "user_id",
@@ -56,11 +60,18 @@
                 "name": "last_login",
                 "type": "DATETIME",
                 "key": ""
+            },
+            {
+                "name": "is_active",
+                "type": "BOOLEAN",
+                "key": ""
             }
         ]
     },
     "locations": {
-        "description": "Table for locations",
+        "description": "Physical office locations (Field Offices, HQ).",
+        "context": "Organizational hierarchy and resource allocation",
+        "usage": "Office Locations, Dashboard, Territory Management",
         "fields": [
             {
                 "name": "location_id",
@@ -81,11 +92,28 @@
                 "name": "type",
                 "type": "VARCHAR(50)",
                 "key": ""
+            },
+            {
+                "name": "zip_code",
+                "type": "VARCHAR(10)",
+                "key": ""
+            },
+            {
+                "name": "phone",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "fax",
+                "type": "VARCHAR(20)",
+                "key": ""
             }
         ]
     },
     "officers": {
-        "description": "Table for officers",
+        "description": " sworn personnel details linked to Users.",
+        "context": "Links auth User to distinct Officer entity with badge/caseload",
+        "usage": "Dashboard, Case Load, Assignments",
         "fields": [
             {
                 "name": "officer_id",
@@ -130,7 +158,9 @@
         ]
     },
     "offenders": {
-        "description": "Table for offenders",
+        "description": "Core entity for individuals under supervision.",
+        "context": "Central record for all supervision activities",
+        "usage": "All Pages (Caseload, Profile, Search)",
         "fields": [
             {
                 "name": "offender_id",
@@ -163,6 +193,51 @@
                 "key": ""
             },
             {
+                "name": "gender",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "is_sex_offender",
+                "type": "BOOLEAN",
+                "key": ""
+            },
+            {
+                "name": "is_gang_member",
+                "type": "BOOLEAN",
+                "key": ""
+            },
+            {
+                "name": "gang_affiliation",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "release_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "reversion_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "release_type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "initial_placement",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "general_comments",
+                "type": "TEXT",
+                "key": ""
+            },
+            {
                 "name": "created_at",
                 "type": "DATETIME",
                 "key": ""
@@ -170,7 +245,9 @@
         ]
     },
     "supervision_episodes": {
-        "description": "Table for supervision_episodes",
+        "description": "Tracks specific periods of supervision (Assignments).",
+        "context": "Allows history of supervision (Active vs Closed)",
+        "usage": "Offender Profile, Dashboard Stats",
         "fields": [
             {
                 "name": "episode_id",
@@ -215,7 +292,9 @@
         ]
     },
     "tasks": {
-        "description": "Table for tasks",
+        "description": "Action items and compliance tasks.",
+        "context": "Workflow management for officers",
+        "usage": "Dashboard, Offender Profile",
         "fields": [
             {
                 "name": "task_id",
@@ -260,6 +339,186 @@
             {
                 "name": "updated_at",
                 "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "territories": {
+        "description": "Geographic assignments by Zip Code.",
+        "context": "Enables auto-assignment of incoming cases",
+        "usage": "Territory Management",
+        "fields": [
+            {
+                "name": "zip_code",
+                "type": "VARCHAR(10)",
+                "key": "PK"
+            },
+            {
+                "name": "assigned_location_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "region_name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "created_at",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "territory_officers": {
+        "description": "Association table for Territory <-> Officer.",
+        "context": "Supports multiple officers sharing a single zip code coverage",
+        "usage": "Territory Management",
+        "fields": [
+            {
+                "name": "zip_code",
+                "type": "VARCHAR(10)",
+                "key": "PK"
+            },
+            {
+                "name": "officer_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "is_primary",
+                "type": "BOOLEAN",
+                "key": ""
+            }
+        ]
+    },
+    "special_assignments": {
+        "description": "Overrides for non-geographic assignments (Facilities, Specialties).",
+        "context": "Handles cases like SMI or Residential Facilities that bypass Zip rules",
+        "usage": "Territory Management",
+        "fields": [
+            {
+                "name": "assignment_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "address",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "zip_code",
+                "type": "VARCHAR(10)",
+                "key": ""
+            },
+            {
+                "name": "assigned_officer_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "priority",
+                "type": "INTEGER",
+                "key": ""
+            }
+        ]
+    },
+    "residences": {
+        "description": "Address history for offenders.",
+        "context": "Tracks current and past locations for geo-matching",
+        "usage": "Offender Profile",
+        "fields": [
+            {
+                "name": "residence_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "episode_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "address_line_1",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "city",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "state",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "zip_code",
+                "type": "VARCHAR(10)",
+                "key": ""
+            },
+            {
+                "name": "is_current",
+                "type": "BOOLEAN",
+                "key": ""
+            },
+            {
+                "name": "special_assignment_id",
+                "type": "UUID",
+                "key": "FK"
+            }
+        ]
+    },
+    "case_notes": {
+        "description": "Chronological record of interactions.",
+        "context": "Legal record of supervision",
+        "usage": "Offender Profile (Notes Tab)",
+        "fields": [
+            {
+                "name": "note_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "author_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "date",
+                "type": "DATETIME",
+                "key": ""
+            },
+            {
+                "name": "content",
+                "type": "TEXT",
+                "key": ""
+            },
+            {
+                "name": "type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "is_pinned",
+                "type": "BOOLEAN",
                 "key": ""
             }
         ]

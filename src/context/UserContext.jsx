@@ -1,34 +1,33 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-const UserContext = createContext(null);
+export const UserContext = createContext(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const UserProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
-    const [isLoading, setIsLoading] = useState(true);
-
-    const [availableRoles, setAvailableRoles] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     // Initialize: Check for token and fetch user
     useEffect(() => {
         const initAuth = async () => {
             if (token) {
+                setIsLoading(true);
                 try {
                     // Set default auth header for all axios requests
                     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                     const response = await axios.get('http://localhost:8000/users/me');
                     const user = response.data;
 
-                    // Fetch Officer details if needed (for role/badge)
-                    let officerDetails = null;
                     // Fetch Officer details for all users (if available)
+                    let officerDetails = null;
 
-                    if (true) {
-                        try {
-                            const officerRes = await axios.get(`http://localhost:8000/users/${user.user_id}/officer`);
-                            officerDetails = officerRes.data;
-                        } catch (e) { console.log('No officer details found'); }
+                    try {
+                        const officerRes = await axios.get(`http://localhost:8000/users/${user.user_id}/officer`);
+                        officerDetails = officerRes.data;
+                    } catch (e) {
+                        // console.log('No officer details found', e); 
                     }
 
                     setCurrentUser({
@@ -41,6 +40,7 @@ export const UserProvider = ({ children }) => {
                         badgeId: officerDetails ? officerDetails.badge_number : 'N/A',
                         id: user.user_id,
                         officerId: officerDetails ? officerDetails.officer_id : null,
+                        locationId: officerDetails ? officerDetails.location_id : null,
                         supervisorName: officerDetails && officerDetails.supervisor ? `${officerDetails.supervisor.first_name} ${officerDetails.supervisor.last_name}` : '',
                         officeLocation: officerDetails && officerDetails.location ? officerDetails.location.name : ''
                     });
@@ -76,11 +76,11 @@ export const UserProvider = ({ children }) => {
 
                 let officerDetails = null;
 
-                if (true) {
-                    try {
-                        const officerRes = await axios.get(`http://localhost:8000/users/${user.user_id}/officer`);
-                        officerDetails = officerRes.data;
-                    } catch (e) { console.log('No officer details found'); }
+                try {
+                    const officerRes = await axios.get(`http://localhost:8000/users/${user.user_id}/officer`);
+                    officerDetails = officerRes.data;
+                } catch (e) {
+                    // console.log('No officer details found'); 
                 }
 
                 setCurrentUser({
@@ -93,6 +93,7 @@ export const UserProvider = ({ children }) => {
                     badgeId: officerDetails ? officerDetails.badge_number : 'N/A',
                     id: user.user_id,
                     officerId: officerDetails ? officerDetails.officer_id : null,
+                    locationId: officerDetails ? officerDetails.location_id : null,
                     supervisorName: officerDetails && officerDetails.supervisor ? `${officerDetails.supervisor.first_name} ${officerDetails.supervisor.last_name}` : '',
                     officeLocation: officerDetails && officerDetails.location ? officerDetails.location.name : ''
                 });
@@ -137,11 +138,13 @@ export const UserProvider = ({ children }) => {
         }
     };
 
+    // eslint-disable-next-line react-refresh/only-export-components
     return (
-        <UserContext.Provider value={{ currentUser, login, logout, hasPermission, availableRoles, isLoading }}>
+        <UserContext.Provider value={{ currentUser, login, logout, hasPermission, isLoading }}>
             {children}
         </UserContext.Provider>
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useUser = () => useContext(UserContext);

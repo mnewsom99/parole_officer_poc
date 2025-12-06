@@ -185,10 +185,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
-@app.get("/locations", response_model=List[schemas.Location])
-def get_locations(db: Session = Depends(get_db)):
-    locations = db.query(models.Location).all()
-    return locations
+
 
 @app.get("/roles", response_model=List[schemas.Role])
 def get_roles(db: Session = Depends(get_db)):
@@ -277,31 +274,6 @@ def create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-@app.post("/locations", response_model=schemas.Location)
-def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
-    new_loc = models.Location(
-        name=location.name,
-        address=location.address,
-        type=location.type
-    )
-    db.add(new_loc)
-    db.commit()
-    db.refresh(new_loc)
-    return new_loc
-
-@app.delete("/locations/{location_id}")
-def delete_location(location_id: UUID, db: Session = Depends(get_db)):
-    loc = db.query(models.Location).filter(models.Location.location_id == location_id).first()
-    if not loc:
-        raise HTTPException(status_code=404, detail="Location not found")
-    
-    # Check if used by officers
-    if db.query(models.Officer).filter(models.Officer.location_id == location_id).first():
-        raise HTTPException(status_code=400, detail="Cannot delete location currently assigned to officers")
-
-    db.delete(loc)
-    db.commit()
-    return {"message": "Location deleted"}
 
 
 @app.get("/officers", response_model=List[schemas.Officer])
@@ -344,7 +316,7 @@ def get_offenders(officer_id: Optional[UUID] = None, location_id: Optional[UUID]
     query = db.query(models.SupervisionEpisode).options(
         joinedload(models.SupervisionEpisode.offender),
         joinedload(models.SupervisionEpisode.residences).options(
-            joinedload(models.Residence.facility),
+            joinedload(models.Residence.special_assignment),
             joinedload(models.Residence.contacts)
         )
     )
@@ -372,14 +344,15 @@ def get_offenders(officer_id: Optional[UUID] = None, location_id: Optional[UUID]
         contacts = []
 
         if current_residence:
-            if current_residence.facility:
+            if current_residence.special_assignment and current_residence.special_assignment.type == 'Facility':
                 housing_type = "Facility"
-                address_str = f"{current_residence.facility.name} - {current_residence.facility.address}"
+                sa = current_residence.special_assignment
+                address_str = f"{sa.name} - {sa.address}"
                 facility_info = {
-                    "name": current_residence.facility.name,
-                    "address": current_residence.facility.address,
-                    "phone": current_residence.facility.phone,
-                    "services": current_residence.facility.services_offered
+                    "name": sa.name,
+                    "address": sa.address,
+                    "phone": "N/A", # Facility phone not in special_assignment table yet
+                    "services": "Standard" # Placeholder
                 }
             else:
                 housing_type = "Private"
@@ -409,7 +382,16 @@ def get_offenders(officer_id: Optional[UUID] = None, location_id: Optional[UUID]
             "phone": "555-0199", # Mock phone
             "housingType": housing_type,
             "facility": facility_info,
-            "residenceContacts": contacts
+            "residenceContacts": contacts,
+            "gender": offender.gender,
+            "isSexOffender": offender.is_sex_offender,
+            "isGangMember": offender.is_gang_member,
+            "gangAffiliation": offender.gang_affiliation,
+            "releaseDate": offender.release_date,
+            "reversionDate": offender.reversion_date,
+            "releaseType": offender.release_type,
+            "initialPlacement": offender.initial_placement,
+            "generalComments": offender.general_comments
         })
         
     return results
@@ -419,7 +401,7 @@ def get_offender_details(offender_id: UUID, db: Session = Depends(get_db)):
     episode = db.query(models.SupervisionEpisode).options(
         joinedload(models.SupervisionEpisode.offender),
         joinedload(models.SupervisionEpisode.residences).options(
-            joinedload(models.Residence.facility),
+            joinedload(models.Residence.special_assignment),
             joinedload(models.Residence.contacts)
         )
     ).filter(models.SupervisionEpisode.offender_id == offender_id, models.SupervisionEpisode.status == "Active").first()
@@ -438,14 +420,15 @@ def get_offender_details(offender_id: UUID, db: Session = Depends(get_db)):
     contacts = []
 
     if current_residence:
-        if current_residence.facility:
+        if current_residence.special_assignment:
             housing_type = "Facility"
-            address_str = f"{current_residence.facility.name} - {current_residence.facility.address}"
+            sa = current_residence.special_assignment
+            address_str = f"{sa.name} - {sa.address}"
             facility_info = {
-                "name": current_residence.facility.name,
-                "address": current_residence.facility.address,
-                "phone": current_residence.facility.phone,
-                "services": current_residence.facility.services_offered
+                "name": sa.name,
+                "address": sa.address,
+                "phone": "N/A", # Facility phone not in special_assignment table yet
+                "services": "Standard" # Placeholder
             }
         else:
             housing_type = "Private"
@@ -475,7 +458,16 @@ def get_offender_details(offender_id: UUID, db: Session = Depends(get_db)):
         "phone": "555-0199", # Mock
         "housingType": housing_type,
         "facility": facility_info,
-        "residenceContacts": contacts
+        "residenceContacts": contacts,
+        "gender": offender.gender,
+        "isSexOffender": offender.is_sex_offender,
+        "isGangMember": offender.is_gang_member,
+        "gangAffiliation": offender.gang_affiliation,
+        "releaseDate": offender.release_date,
+        "reversionDate": offender.reversion_date,
+        "releaseType": offender.release_type,
+        "initialPlacement": offender.initial_placement,
+        "generalComments": offender.general_comments
     }
 
 @app.post("/offenders", response_model=schemas.Offender)
@@ -542,6 +534,10 @@ def get_risk_assessments(offender_id: UUID, db: Session = Depends(get_db)):
 def get_appointments(offender_id: UUID, db: Session = Depends(get_db)):
     return db.query(models.Appointment).filter(models.Appointment.offender_id == offender_id).options(joinedload(models.Appointment.officer)).order_by(models.Appointment.date_time.asc()).all()
 
+@app.get("/offenders/{offender_id}/programs", response_model=List[schemas.Program])
+def get_programs(offender_id: UUID, db: Session = Depends(get_db)):
+    return db.query(models.Program).filter(models.Program.offender_id == offender_id).order_by(models.Program.start_date.desc()).all()
+
 @app.post("/offenders/{offender_id}/notes", response_model=schemas.CaseNote)
 def create_case_note(offender_id: UUID, note: schemas.CaseNoteBase, db: Session = Depends(get_db)):
     # Mock author for now (first officer found)
@@ -581,7 +577,8 @@ def get_note_types(db: Session = Depends(get_db)):
             {"name": "Office Visit", "color": "bg-purple-100 text-purple-700"},
             {"name": "Violation", "color": "bg-red-100 text-red-700"},
             {"name": "Phone Call", "color": "bg-yellow-100 text-yellow-700"},
-            {"name": "Next Report Date", "color": "bg-cyan-100 text-cyan-700"}
+            {"name": "Next Report Date", "color": "bg-cyan-100 text-cyan-700"},
+            {"name": "System", "color": "bg-slate-100 text-slate-700 border-slate-200"}
         ]
     import json
     data = json.loads(setting.value)
@@ -781,6 +778,94 @@ def get_dashboard_stats(
         risk_distribution=risk_distribution
     )
 
+# --- Territory Management Endpoints ---
+
+@app.get("/territories", response_model=List[schemas.Territory])
+def get_territories(db: Session = Depends(get_db)):
+    territories = db.query(models.Territory).options(
+        joinedload(models.Territory.officers),
+        joinedload(models.Territory.location)
+    ).all()
+    # Pydantic will access .officers and .location from the ORM object
+    # We populate assigned_officer_ids manually for convenience if needed by frontend form
+    for t in territories:
+        t.assigned_officer_ids = [o.officer_id for o in t.officers]
+    return territories
+
+@app.post("/territories", response_model=schemas.Territory)
+def create_or_update_territory(territory: schemas.TerritoryCreate, db: Session = Depends(get_db)):
+    db_territory = db.query(models.Territory).filter(models.Territory.zip_code == territory.zip_code).first()
+    
+    # Resolve officer IDs to instances
+    officers = []
+    if territory.assigned_officer_ids:
+        officers = db.query(models.Officer).filter(models.Officer.officer_id.in_(territory.assigned_officer_ids)).all()
+
+    if db_territory:
+        # Update
+        db_territory.region_name = territory.region_name
+        db_territory.assigned_location_id = territory.assigned_location_id
+        db_territory.officers = officers # Update relationship
+    else:
+        # Create
+        db_territory = models.Territory(
+            zip_code=territory.zip_code,
+            region_name=territory.region_name,
+            assigned_location_id=territory.assigned_location_id
+        )
+        db_territory.officers = officers
+        db.add(db_territory)
+    
+    db.commit()
+    db.refresh(db_territory)
+    db_territory.assigned_officer_ids = [o.officer_id for o in db_territory.officers]
+    return db_territory
+
+@app.delete("/territories/{zip_code}")
+def delete_territory(zip_code: str, db: Session = Depends(get_db)):
+    db_territory = db.query(models.Territory).filter(models.Territory.zip_code == zip_code).first()
+    if not db_territory:
+        raise HTTPException(status_code=404, detail="Territory not found")
+    
+    db.delete(db_territory)
+    db.commit()
+    return {"message": "Territory deleted"}
+
+@app.get("/special-assignments", response_model=List[schemas.SpecialAssignment])
+def get_special_assignments(db: Session = Depends(get_db)):
+    return db.query(models.SpecialAssignment).order_by(models.SpecialAssignment.priority).all()
+
+@app.post("/special-assignments", response_model=schemas.SpecialAssignment)
+def create_special_assignment(assignment: schemas.SpecialAssignmentCreate, db: Session = Depends(get_db)):
+    new_assignment = models.SpecialAssignment(**assignment.dict())
+    db.add(new_assignment)
+    db.commit()
+    db.refresh(new_assignment)
+    return new_assignment
+
+@app.put("/special-assignments/{assignment_id}", response_model=schemas.SpecialAssignment)
+def update_special_assignment(assignment_id: UUID, update: schemas.SpecialAssignmentUpdate, db: Session = Depends(get_db)):
+    db_assignment = db.query(models.SpecialAssignment).filter(models.SpecialAssignment.assignment_id == assignment_id).first()
+    if not db_assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    for key, value in update.dict(exclude_unset=True).items():
+        setattr(db_assignment, key, value)
+    
+    db.commit()
+    db.refresh(db_assignment)
+    return db_assignment
+
+@app.delete("/special-assignments/{assignment_id}")
+def delete_special_assignment(assignment_id: UUID, db: Session = Depends(get_db)):
+    db_assignment = db.query(models.SpecialAssignment).filter(models.SpecialAssignment.assignment_id == assignment_id).first()
+    if not db_assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    db.delete(db_assignment)
+    db.commit()
+    return {"message": "Assignment deleted"}
+
 from fastapi.responses import StreamingResponse
 from . import reports
 
@@ -795,3 +880,7 @@ def get_monthly_report(month: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=report_{month}.pdf"}
     )
+
+@app.get("/locations", response_model=List[schemas.Location])
+def get_locations(db: Session = Depends(get_db)):
+    return db.query(models.Location).all()

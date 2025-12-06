@@ -27,12 +27,24 @@ class LocationBase(BaseModel):
     name: str
     address: str
     type: str
+    zip_code: Optional[str] = None
+    phone: Optional[str] = None
+    fax: Optional[str] = None
 
 class LocationCreate(LocationBase):
     pass
 
+class LocationUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    type: Optional[str] = None
+    zip_code: Optional[str] = None
+    phone: Optional[str] = None
+    fax: Optional[str] = None
+
 class Location(LocationBase):
     location_id: UUID
+    # territory relationship if needed
 
     class Config:
         from_attributes = True
@@ -102,10 +114,36 @@ class OffenderBase(BaseModel):
     last_name: str
     dob: date
     image_url: Optional[str] = None
+    gender: Optional[str] = None
+    is_sex_offender: Optional[bool] = False
+    is_gang_member: Optional[bool] = False
+    gang_affiliation: Optional[str] = None
+    release_date: Optional[date] = None
+    reversion_date: Optional[date] = None
+    release_type: Optional[str] = None
+    initial_placement: Optional[str] = None
+    general_comments: Optional[str] = None
 
 class Offender(OffenderBase):
     offender_id: UUID
     
+    class Config:
+        from_attributes = True
+
+# --- Programs ---
+class ProgramBase(BaseModel):
+    name: str
+    category: str
+    provider: Optional[str] = None
+    status: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class Program(ProgramBase):
+    program_id: UUID
+    offender_id: UUID
+
     class Config:
         from_attributes = True
 
@@ -115,7 +153,55 @@ class SupervisionEpisodeBase(BaseModel):
     status: str
     risk_level_at_start: str
 
-# --- Facilities ---
+# --- Territories ---
+class TerritoryBase(BaseModel):
+    zip_code: str
+    assigned_officer_ids: Optional[List[UUID]] = [] # Changed from single ID to list
+    assigned_location_id: Optional[UUID] = None
+    region_name: Optional[str] = None
+
+class TerritoryCreate(TerritoryBase):
+    pass
+
+class TerritoryUpdate(BaseModel):
+    assigned_officer_ids: Optional[List[UUID]] = None
+    assigned_location_id: Optional[UUID] = None
+    region_name: Optional[str] = None
+
+class Territory(TerritoryBase):
+    created_at: datetime
+    officers: List[Officer] = [] # Include full officer details
+    location: Optional[Location] = None # Include location details
+
+    class Config:
+        from_attributes = True
+
+# --- Special Assignments ---
+class SpecialAssignmentBase(BaseModel):
+    type: str
+    name: str
+    address: Optional[str] = None
+    zip_code: Optional[str] = None
+    assigned_officer_id: Optional[UUID] = None
+    priority: int = 1
+
+class SpecialAssignmentCreate(SpecialAssignmentBase):
+    pass
+
+class SpecialAssignmentUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    zip_code: Optional[str] = None
+    assigned_officer_id: Optional[UUID] = None
+    priority: Optional[int] = None
+
+class SpecialAssignment(SpecialAssignmentBase):
+    assignment_id: UUID
+
+    class Config:
+        from_attributes = True
+
+# --- Facilities (Deprecated - now mapped to SpecialAssignment/Facility) ---
 class FacilityBase(BaseModel):
     name: str
     address: str
@@ -153,7 +239,9 @@ class Residence(ResidenceBase):
     residence_id: UUID
     episode_id: UUID
     facility_id: Optional[UUID] = None
+    special_assignment_id: Optional[UUID] = None
     facility: Optional[Facility] = None
+    special_assignment: Optional[SpecialAssignment] = None
     contacts: List[ResidenceContact] = []
 
     class Config:
@@ -266,34 +354,6 @@ class Appointment(AppointmentBase):
     offender_id: UUID
     officer_id: Optional[UUID] = None
     officer: Optional[Officer] = None
-
-    class Config:
-        from_attributes = True
-
-# --- Tasks ---
-class TaskBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    due_date: Optional[date] = None
-    status: Optional[str] = 'Pending'
-    episode_id: Optional[UUID] = None
-
-class TaskCreate(TaskBase):
-    pass
-
-class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    due_date: Optional[date] = None
-    status: Optional[str] = None
-    episode_id: Optional[UUID] = None
-
-class Task(TaskBase):
-    task_id: UUID
-    created_by: Optional[UUID] = None
-    created_at: datetime
-    updated_at: datetime
-
     class Config:
         from_attributes = True
 

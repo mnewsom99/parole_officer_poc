@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, CheckSquare, ArrowRight, Search, UserPlus, ClipboardList } from 'lucide-react';
+import { Users, FileText, CheckSquare, ArrowRight, Search, UserPlus, ClipboardList, Calendar, UserMinus, Clock } from 'lucide-react';
 import axios from 'axios';
 
 const OfficeModule = () => {
@@ -34,7 +34,7 @@ const OfficeModule = () => {
                 const mappedOfficers = response.data.map(o => ({
                     id: o.officer_id,
                     name: `${o.first_name} ${o.last_name}`,
-                    caseload: 0, // Placeholder as API doesn't return caseload count yet
+                    caseload: Math.floor(Math.random() * 40) + 20, // Mock caseload between 20-60
                     status: 'Active'
                 }));
                 setOfficers(mappedOfficers);
@@ -56,8 +56,7 @@ const OfficeModule = () => {
         { id: 3, title: 'Sign off on Discharge', officer: 'Johnson, Sarah', date: 'Dec 10', priority: 'Low' },
     ];
 
-    // Filter pending tasks based on selected officer (mock logic since tasks are hardcoded)
-    // In a real app, we'd fetch tasks filtered by officer_id
+    // Filter pending tasks based on selected officer
     const filteredTasks = selectedOfficer
         ? pendingTasks.filter(t => {
             const officer = officers.find(o => o.id === selectedOfficer);
@@ -98,14 +97,17 @@ const OfficeModule = () => {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Row 1 */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
                     <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
                         <Users className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Total Officers</p>
+                        <p className="text-sm text-slate-500">Offenders Assigned</p>
                         <p className="text-2xl font-bold text-slate-800">
-                            {selectedOfficer ? 1 : officers.length}
+                            {selectedOfficer
+                                ? officers.find(o => o.id === selectedOfficer)?.caseload || 0
+                                : officers.reduce((acc, o) => acc + o.caseload, 0)}
                         </p>
                     </div>
                 </div>
@@ -125,6 +127,35 @@ const OfficeModule = () => {
                     <div>
                         <p className="text-sm text-slate-500">Tasks Assigned</p>
                         <p className="text-2xl font-bold text-slate-800">24</p>
+                    </div>
+                </div>
+
+                {/* Row 2 */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
+                        <ArrowRight className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Pending Transfers</p>
+                        <p className="text-2xl font-bold text-slate-800">5</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 bg-red-50 text-red-600 rounded-lg">
+                        <UserMinus className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Pending Releases</p>
+                        <p className="text-2xl font-bold text-slate-800">12</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                        <Calendar className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Future</p>
+                        <p className="text-2xl font-bold text-slate-800">8</p>
                     </div>
                 </div>
             </div>
