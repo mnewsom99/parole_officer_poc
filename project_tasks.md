@@ -89,7 +89,9 @@
     - [x] Implement Supervisor Calendar
     - [x] Implement Assessment Oversight
 - [ ] Admin Functions <!-- id: 24 -->
-    - [ ] User Management (Add/Remove Users)
+    - [x] User Management (Add/Remove Users)
+        - [x] Implement Search (Username/Email)
+        - [x] Rename 'User' column to 'Full Name' and display actual name
     - [ ] Group Automation (Create automatic tasks for groups)
 - [ ] Feedback System <!-- id: 25 -->
     - [ ] Implement User Suggestions / Error Reporting Box
@@ -111,6 +113,20 @@
     - [ ] Configure Officer Coverage (ZIP Codes)
 - [ ] Resource Management <!-- id: 37 -->
     - [ ] Manage Rehabilitation Programs
+- [ ] Offender Portal <!-- id: 46 -->
+    - [ ] Secure login for offenders to view status and appointments
+    - [ ] Self-reporting capability
+- [ ] Vendor Portal <!-- id: 47 -->
+    - [ ] Portal for service providers to manage referrals and attendance
+- [ ] Text Messaging <!-- id: 48 -->
+    - [ ] Automated SMS reminders for appointments
+    - [ ] Two-way communication channel
+- [ ] Daily Number Report <!-- id: 49 -->
+    - [ ] Automated daily stats email/dashboard
+- [ ] Program Stats Report <!-- id: 50 -->
+    - [ ] Analytics on program enrollment and success rates
+- [ ] Supervision Fees <!-- id: 51 -->
+    - [ ] Track assessment and payment of supervision fees
 
 ## Backend Integration Audit (Hardcoded Data Cleanup) <!-- id: 38 -->
 ### Dashboard & Reports

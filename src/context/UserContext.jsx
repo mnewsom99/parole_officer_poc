@@ -42,7 +42,9 @@ export const UserProvider = ({ children }) => {
                         officerId: officerDetails ? officerDetails.officer_id : null,
                         locationId: officerDetails ? officerDetails.location_id : null,
                         supervisorName: officerDetails && officerDetails.supervisor ? `${officerDetails.supervisor.first_name} ${officerDetails.supervisor.last_name}` : '',
-                        officeLocation: officerDetails && officerDetails.location ? officerDetails.location.name : ''
+                        officeLocation: officerDetails && officerDetails.location ? officerDetails.location.name : '',
+                        phone: officerDetails ? officerDetails.phone_number : '',
+                        cellPhone: officerDetails ? officerDetails.cell_phone : ''
                     });
                 } catch (error) {
                     console.error("Failed to restore session:", error);
@@ -95,7 +97,9 @@ export const UserProvider = ({ children }) => {
                     officerId: officerDetails ? officerDetails.officer_id : null,
                     locationId: officerDetails ? officerDetails.location_id : null,
                     supervisorName: officerDetails && officerDetails.supervisor ? `${officerDetails.supervisor.first_name} ${officerDetails.supervisor.last_name}` : '',
-                    officeLocation: officerDetails && officerDetails.location ? officerDetails.location.name : ''
+                    officeLocation: officerDetails && officerDetails.location ? officerDetails.location.name : '',
+                    phone: officerDetails ? officerDetails.phone_number : '',
+                    cellPhone: officerDetails ? officerDetails.cell_phone : ''
                 });
 
             } catch (fetchError) {

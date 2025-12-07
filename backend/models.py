@@ -19,7 +19,7 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    role_id = Column(Integer, ForeignKey('roles.role_id'))
+    role_id = Column(Integer, ForeignKey('roles.role_id'), index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
     is_active = Column(Boolean, default=True)
@@ -31,8 +31,8 @@ class Location(Base):
     location_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
     address = Column(String(255), nullable=False)
-    type = Column(String(50), nullable=False)
-    zip_code = Column(String(10))
+    type = Column(String(50), nullable=False, index=True)
+    zip_code = Column(String(10), index=True)
     phone = Column(String(50))
     fax = Column(String(50))
 
@@ -41,13 +41,14 @@ class Location(Base):
 class Officer(Base):
     __tablename__ = 'officers'
     officer_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id'))
-    location_id = Column(UUID(as_uuid=True), ForeignKey('locations.location_id'))
-    supervisor_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id'), index=True)
+    location_id = Column(UUID(as_uuid=True), ForeignKey('locations.location_id'), index=True)
+    supervisor_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), nullable=True, index=True)
     badge_number = Column(String(20), unique=True, nullable=False)
     first_name = Column(String(50), nullable=False)
-    last_name = Column(String(50), nullable=False)
+    last_name = Column(String(50), nullable=False, index=True)
     phone_number = Column(String(50))
+    cell_phone = Column(String(50))
 
     user = relationship("User")
     location = relationship("Location")
@@ -59,7 +60,7 @@ class Offender(Base):
     offender_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     badge_id = Column(String(20), unique=True, nullable=False)
     first_name = Column(String(50), nullable=False)
-    last_name = Column(String(50), nullable=False)
+    last_name = Column(String(50), nullable=False, index=True)
     dob = Column(Date, nullable=False)
     image_url = Column(String(255))
     gender = Column(String(20))
@@ -76,7 +77,7 @@ class Offender(Base):
 class Program(Base):
     __tablename__ = 'programs'
     program_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
     name = Column(String(100), nullable=False)
     category = Column(String(50), nullable=False)
     provider = Column(String(100))
@@ -90,11 +91,11 @@ class Program(Base):
 class SupervisionEpisode(Base):
     __tablename__ = 'supervision_episodes'
     episode_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
-    assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
+    assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date)
-    status = Column(String(20), nullable=False)
+    status = Column(String(20), nullable=False, index=True)
     risk_level_at_start = Column(String(20), nullable=False)
     closing_reason = Column(String(100))
 
@@ -104,12 +105,12 @@ class SupervisionEpisode(Base):
 class Task(Base):
     __tablename__ = 'tasks'
     task_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'))
-    created_by = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'), index=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     title = Column(String(100), nullable=False)
     description = Column(Text)
     due_date = Column(Date)
-    status = Column(String(20), default='Pending')
+    status = Column(String(20), default='Pending', index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -119,13 +120,13 @@ class Task(Base):
 class Residence(Base):
     __tablename__ = 'residences'
     residence_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'))
+    episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'), index=True)
     address_line_1 = Column(String(255), nullable=False)
     city = Column(String(100), nullable=False)
     state = Column(String(50), nullable=False)
     zip_code = Column(String(10))
-    is_current = Column(Boolean, default=False)
-    special_assignment_id = Column(UUID(as_uuid=True), ForeignKey('special_assignments.assignment_id'), nullable=True)
+    is_current = Column(Boolean, default=False, index=True)
+    special_assignment_id = Column(UUID(as_uuid=True), ForeignKey('special_assignments.assignment_id'), nullable=True, index=True)
 
     episode = relationship("SupervisionEpisode", backref="residences")
     special_assignment = relationship("SpecialAssignment")
@@ -134,7 +135,7 @@ class Residence(Base):
 class ResidenceContact(Base):
     __tablename__ = 'residence_contacts'
     contact_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    residence_id = Column(UUID(as_uuid=True), ForeignKey('residences.residence_id'))
+    residence_id = Column(UUID(as_uuid=True), ForeignKey('residences.residence_id'), index=True)
     name = Column(String(100), nullable=False)
     relation = Column(String(50))
     phone = Column(String(20))
@@ -143,12 +144,12 @@ class ResidenceContact(Base):
 class Urinalysis(Base):
     __tablename__ = 'urinalysis'
     test_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
     date = Column(Date, nullable=False)
     test_type = Column(String(50)) # Random, Scheduled
     result = Column(String(50)) # Negative, Positive (Substance)
     lab_name = Column(String(100))
-    collected_by_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    collected_by_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     notes = Column(Text)
 
     offender = relationship("Offender")
@@ -157,8 +158,8 @@ class Urinalysis(Base):
 class CaseNote(Base):
     __tablename__ = 'case_notes'
     note_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
-    author_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
+    author_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     date = Column(DateTime, default=datetime.utcnow)
     content = Column(Text, nullable=False)
     type = Column(String(50), default='General')
@@ -170,7 +171,7 @@ class CaseNote(Base):
 class RiskAssessment(Base):
     __tablename__ = 'risk_assessments'
     assessment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
     date = Column(Date, nullable=False)
     total_score = Column(Integer)
     risk_level = Column(String(20)) # Low, Medium, High
@@ -181,8 +182,8 @@ class RiskAssessment(Base):
 class Appointment(Base):
     __tablename__ = 'appointments'
     appointment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'))
-    officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
+    officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     date_time = Column(DateTime, nullable=False)
     location = Column(String(100))
     type = Column(String(50)) # Routine, UA, etc.
@@ -201,7 +202,7 @@ class SystemSettings(Base):
 class Territory(Base):
     __tablename__ = 'territories'
     zip_code = Column(String(10), primary_key=True)
-    assigned_location_id = Column(UUID(as_uuid=True), ForeignKey('locations.location_id'), nullable=True)
+    assigned_location_id = Column(UUID(as_uuid=True), ForeignKey('locations.location_id'), nullable=True, index=True)
     region_name = Column(String(100))
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -221,7 +222,7 @@ class SpecialAssignment(Base):
     name = Column(String(100))
     address = Column(String(255))
     zip_code = Column(String(10))
-    assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'))
+    assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     priority = Column(Integer, default=1)
 
     officer = relationship("Officer")

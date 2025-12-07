@@ -12,6 +12,7 @@ import OfficeModule from './components/modules/OfficeModule';
 import Dashboard from './components/Dashboard';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 function App() {
   return (
@@ -48,7 +49,11 @@ const AppContent = () => {
         <Route path="/tasks" element={<TasksModule />} />
         <Route path="/calendar" element={<CalendarModule />} />
         <Route path="/reports" element={<ReportsModule />} />
-        <Route path="/settings" element={<SettingsModule />} />
+        <Route path="/settings" element={
+          <ErrorBoundary>
+            <SettingsModule />
+          </ErrorBoundary>
+        } />
       </Routes>
     </AppShell>
   );

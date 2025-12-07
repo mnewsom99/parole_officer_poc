@@ -16,6 +16,7 @@ const CaseloadDashboard = () => {
     const [officers, setOfficers] = useState([]);
     const [offices, setOffices] = useState([]);
     const [offenders, setOffenders] = useState([]);
+    const [totalPages, setTotalPages] = useState(1);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -77,6 +78,7 @@ const CaseloadDashboard = () => {
 
     // Fetch Offenders
     // Fetch Offenders
+    // Fetch Offenders
     useEffect(() => {
         // Allow fetch if selectedOfficer is empty string (All) OR if a specific officer is selected
         // But if user is RESTRICTED, they must have a selection (enforced above)
@@ -92,19 +94,32 @@ const CaseloadDashboard = () => {
                     params.append('location_id', selectedOffice);
                 }
 
+                // Add pagination params
+                params.append('page', currentPage);
+                params.append('limit', itemsPerPage);
+
                 if (params.toString()) {
                     url += `?${params.toString()}`;
                 }
 
                 const response = await axios.get(url);
-                setOffenders(response.data);
+                // Handle new paginated response structure
+                if (response.data && response.data.data) {
+                    setOffenders(response.data.data);
+                    setTotalPages(Math.ceil(response.data.total / itemsPerPage));
+                } else if (Array.isArray(response.data)) {
+                    // Fallback for legacy array
+                    setOffenders(response.data);
+                    setTotalPages(1);
+                }
             } catch (error) {
                 console.error("Error fetching offenders:", error);
             }
         };
         fetchOffenders();
-    }, [selectedOfficer, selectedOffice]);
+    }, [selectedOfficer, selectedOffice, currentPage]); // Added currentPage dependency
 
+    // ... (Helper functions restored) ...
     const handleOfficerChange = (e) => {
         setSelectedOfficer(e.target.value);
     };
@@ -149,7 +164,14 @@ const CaseloadDashboard = () => {
         setSortConfig({ key, direction });
     };
 
+    // Server-side filtering is safer, but for now we filter the current PAGE of results client side 
+    // OR we should ideally move search to server.
+    // Given the constraints, let's continue filtering the *fetched* offenders client-side 
+    // BUT since we only fetched 25, searching locally is broken unless matches are in this page.
+    // FIXME: Search should trigger a server re-fetch.
+
     const filteredOffenders = React.useMemo(() => {
+        // ... sort logic ...
         let sortableItems = [...offenders];
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
@@ -168,16 +190,15 @@ const CaseloadDashboard = () => {
         );
     }, [offenders, sortConfig, searchQuery]);
 
-    // Reset pagination when filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery, selectedOffice, selectedOfficer]);
+    // Handle Search Reset
+    // If search is present, we should probably fetch ALL matching from server? 
+    // For now, let's keep the client-side sorting on the current page data.
 
-    // Pagination Logic
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = filteredOffenders.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredOffenders.length / itemsPerPage);
+    // const indexOfLastItem = currentPage * itemsPerPage; // No longer needed for slicing
+    // const indexOfFirstItem = indexOfLastItem - itemsPerPage; // No longer needed for slicing
+    const currentItems = filteredOffenders; // We already have the slice from server
+    // const totalPages = Math.ceil(filteredOffenders.length / itemsPerPage); // This is broken now.
+
 
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);

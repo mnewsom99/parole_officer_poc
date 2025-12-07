@@ -86,12 +86,16 @@ class OfficerBase(BaseModel):
     first_name: str
     last_name: str
     phone_number: Optional[str] = None
+    cell_phone: Optional[str] = None
 
 class OfficerUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[str] = None
     phone_number: Optional[str] = None
+    cell_phone: Optional[str] = None
+    location_id: Optional[UUID] = None
+    supervisor_id: Optional[UUID] = None
 
 class Officer(OfficerBase):
     officer_id: UUID
@@ -369,3 +373,16 @@ class DashboardStats(BaseModel):
     pending_reviews: int
     warrants_issued: int
     risk_distribution: List[RiskDistributionItem]
+
+# --- System Settings ---
+class SystemSetting(BaseModel):
+    key: str
+    value: str
+    description: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class SystemSettingUpdate(BaseModel):
+    value: str
