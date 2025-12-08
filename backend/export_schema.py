@@ -59,12 +59,46 @@ SCHEMA_METADATA = {
         "context": "Tracks current and past locations for geo-matching",
         "usage": "Offender Profile"
     },
-    "case_notes": {
-        "description": "Chronological record of interactions.",
-        "context": "Legal record of supervision",
-        "usage": "Offender Profile (Notes Tab)"
+    "programs": {
+        "description": "Rehabilitation programs assigned to offenders.",
+        "context": "Tracks progress and completion of mandated programs",
+        "usage": "Offender Profile"
+    },
+    "fee_balances": {
+        "description": "Current outstanding balance for offenders.",
+        "context": "Financial tracking",
+        "usage": "Offender Profile (Financials)"
+    },
+    "fee_transactions": {
+        "description": "Ledger of financial charges and payments.",
+        "context": "Audit trail for fees",
+        "usage": "Offender Profile (Financials)"
+    },
+    "urinalysis": {
+        "description": "Drug test records.",
+        "context": "Compliance monitoring",
+        "usage": "Offender Profile, Lab Reports"
+    },
+    "risk_assessment_types": {
+        "description": "Definitions of available risk tools (ORAS, etc).",
+        "context": "Configuration for risk scoring logic",
+        "usage": "Risk Settings"
+    },
+    "risk_assessments": {
+        "description": "Completed risk assessments for offenders.",
+        "context": "Determines supervision level",
+        "usage": "Offender Profile (Risk)"
+    },
+    "appointments": {
+        "description": "Scheduled meetings between officers and offenders.",
+        "context": "Calendar management",
+        "usage": "Calendar, Offender Profile"
+    },
+    "system_settings": {
+        "description": "Global application configuration.",
+        "context": "Key-value store for app behavior",
+        "usage": "System Configuration"
     }
-    # Add others as needed
 }
 
 def export_schema():
@@ -83,7 +117,21 @@ def export_schema():
         models.TerritoryOfficer,
         models.SpecialAssignment,
         models.Residence,
-        models.CaseNote
+        models.CaseNote,
+        models.Program,
+        models.FeeBalance,
+        models.FeeTransaction,
+        models.ResidenceContact,
+        models.Urinalysis,
+        models.RiskAssessmentType,
+        models.RiskAssessmentQuestion,
+        models.RiskAssessment,
+        models.RiskAssessmentAnswer,
+        models.Appointment,
+        models.SystemSettings,
+        models.FormTemplate,
+        models.FormSubmission,
+        models.WorkflowLog
     ]
     
     for model in model_classes:

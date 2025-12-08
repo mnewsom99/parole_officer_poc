@@ -21,10 +21,24 @@ const SchemaViewer = () => {
         { legacy: 'DOC_NUM', new: 'Offenders.badge_id', transform: 'Direct Map' },
         { legacy: 'FIRST_NAME', new: 'Offenders.first_name', transform: 'Direct Map' },
         { legacy: 'LAST_NAME', new: 'Offenders.last_name', transform: 'Direct Map' },
+        { legacy: 'DOB', new: 'Offenders.dob', transform: 'Date Conversion' },
+        { legacy: 'GENDER', new: 'Offenders.gender', transform: 'Direct Map' },
         { legacy: 'SUPERVISION_START_DATE', new: 'SupervisionEpisodes.start_date', transform: 'Date Conversion' },
+        { legacy: 'CSED', new: 'SupervisionEpisodes.end_date', transform: 'Date Conversion' },
         { legacy: 'RISK_LEVEL', new: 'SupervisionEpisodes.risk_level_at_start', transform: 'Enum Mapping' },
         { legacy: 'CURRENT_ADDRESS', new: 'Residences.address_line_1', transform: 'Parse & Split' },
-        { legacy: 'SPECIAL_CONDITIONS', new: 'Tasks (Multiple)', transform: 'One-to-Many Split' }
+        { legacy: 'SPECIAL_CONDITIONS', new: 'Tasks (Multiple)', transform: 'One-to-Many Split' },
+        { legacy: 'RISK_SCORE_TOTAL', new: 'RiskAssessments.total_score', transform: 'Direct Map' },
+        { legacy: 'RISK_ASSESSMENT_DATE', new: 'RiskAssessments.date', transform: 'Date Conversion' },
+        { legacy: 'AGE_AT_FIRST_ARREST', new: 'RiskFactors.age_first_arrest', transform: 'Logic Extraction' },
+        { legacy: 'PRIOR_FELONY_COUNT', new: 'RiskFactors.prior_felony_convictions', transform: 'Direct Map' },
+        { legacy: 'PRIOR_SEX_OFFENSES', new: 'RiskFactors.prior_sex_offenses', transform: 'Direct Map' },
+        { legacy: 'EMPLOYMENT_STATUS', new: 'RiskFactors.employment_status', transform: 'Boolean Conversion' },
+        { legacy: 'PROGRAM_ASSIGNED', new: 'Programs.name', transform: 'Lookup' },
+        { legacy: 'PROGRAM_STATUS', new: 'Programs.status', transform: 'Enum Mapping' },
+        { legacy: 'OWED_AMOUNT', new: 'FeeBalances.balance', transform: 'Decimal Conversion' },
+        { legacy: 'DRUG_TEST_DATE', new: 'Urinalysis.date', transform: 'Date Conversion' },
+        { legacy: 'DRUG_TEST_RESULT', new: 'Urinalysis.result', transform: 'Standardization' }
     ];
 
     return (

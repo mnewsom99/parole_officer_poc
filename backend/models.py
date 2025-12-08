@@ -97,6 +97,7 @@ class SupervisionEpisode(Base):
     end_date = Column(Date)
     status = Column(String(20), nullable=False, index=True)
     risk_level_at_start = Column(String(20), nullable=False)
+    current_risk_level = Column(String(20)) # Updated by Risk Assessments
     closing_reason = Column(String(100))
 
     offender = relationship("Offender")
@@ -189,6 +190,13 @@ class CaseNote(Base):
     offender = relationship("Offender")
     author = relationship("Officer")
 
+class RiskAssessmentType(Base):
+    __tablename__ = 'risk_assessment_types'
+    type_id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, nullable=False) # e.g. "ORAS"
+    description = Column(String(255))
+    scoring_matrix = Column(JSON) # e.g. [{"label": "Low", "min": 0, "max": 14}, ...]
+
 class RiskAssessmentQuestion(Base):
     __tablename__ = 'risk_assessment_questions'
     question_id = Column(Integer, primary_key=True)
@@ -197,6 +205,7 @@ class RiskAssessmentQuestion(Base):
     input_type = Column(String(50)) # 'boolean', 'select', 'date', 'integer', 'scale_0_3'
     source_type = Column(String(20)) # 'static', 'dynamic'
     assessments_list = Column(String(255)) # Pipe-separated: 'ORAS|Static-99R'
+    category = Column(String(50)) # NEW: Grouping (e.g. 'Criminal History')
     scoring_note = Column(String(255)) # Description of logic
     options = Column(JSON) # e.g., [{"label": "Yes", "value": 1}, {"label": "No", "value": 0}]
 
@@ -208,11 +217,13 @@ class RiskAssessment(Base):
     assessment_type = Column(String(50)) # NEW: 'ORAS', 'Static-99R', etc.
     status = Column(String(20), default='Draft') # NEW: 'Draft', 'Completed'
     total_score = Column(Integer)
-    risk_level = Column(String(20)) # Low, Medium, High
+    risk_level = Column(String(20)) # Calculated Level (Baseline)
+    final_risk_level = Column(String(20)) # Actual Level Applied (Override/Underride)
+    override_reason = Column(String(255)) # Reason for override
     details = Column(JSON) # Store factor breakdown as JSON
 
     offender = relationship("Offender")
-    answers = relationship("RiskAssessmentAnswer", back_populates="assessment")
+    answers = relationship("RiskAssessmentAnswer", back_populates="assessment", foreign_keys="RiskAssessmentAnswer.assessment_id")
 
 class RiskAssessmentAnswer(Base):
     __tablename__ = 'risk_assessment_answers'

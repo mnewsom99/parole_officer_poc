@@ -5,6 +5,7 @@ import SchemaViewer from './components/SchemaViewer';
 import SystemConfiguration from './components/SystemConfiguration';
 import UserManagement from './components/UserManagement';
 import TerritoryManagement from './components/TerritoryManagement';
+import RiskSettings from '../../components/admin/RiskSettings';
 import { useUser } from '../../core/context/UserContext';
 
 const SettingsModule = () => {
@@ -229,6 +230,26 @@ const SettingsModule = () => {
                         )}
 
                         {hasPermission('manage_settings') && (
+                            <button
+                                onClick={() => setActiveView('data')}
+                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'data' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                <Database className="w-4 h-4" />
+                                Database Schema
+                            </button>
+                        )}
+
+                        {hasPermission('manage_settings') && (
+                            <button
+                                onClick={() => setActiveView('risk')}
+                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'risk' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                <Shield className="w-4 h-4" />
+                                Risk Assessment
+                            </button>
+                        )}
+
+                        {hasPermission('manage_settings') && (
                             <>
                                 <div className="p-4 border-t border-slate-100 font-medium text-slate-800 mt-2">Organization</div>
                                 <button
@@ -272,6 +293,8 @@ const SettingsModule = () => {
                         <UserManagement />
                     ) : activeView === 'system' ? (
                         <SystemConfiguration />
+                    ) : activeView === 'risk' ? (
+                        <RiskSettings />
                     ) : activeView === 'security' ? (
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h3 className="text-lg font-bold text-slate-800 mb-4">Security Settings</h3>

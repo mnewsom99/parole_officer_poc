@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Trash2, Map, Search, Building, User } from 'lucide-react';
+import { Plus, Trash2, Map, Building, Edit2, ArrowUpDown } from 'lucide-react';
 
 const TerritoryManagement = () => {
     const [territories, setTerritories] = useState([]);
@@ -10,8 +10,10 @@ const TerritoryManagement = () => {
 
     // UI State
     const [showModal, setShowModal] = useState(false);
-    const [isSpecial, setIsSpecial] = useState(false); // Toggle between Zip and Special
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null); // For Special Assignments (UUID), Zip is in form
     const [activeTab, setActiveTab] = useState('geographic');
+    const [sortConfig, setSortConfig] = useState({ key: 'zip_code', direction: 'asc' });
 
     const [form, setForm] = useState({
         zip_code: '',
@@ -66,10 +68,91 @@ const TerritoryManagement = () => {
         }
     };
 
+    const handleEdit = (item) => {
+        setIsEditing(true);
+        if (activeTab === 'geographic') {
+            setForm({
+                zip_code: item.zip_code,
+                assigned_location_id: item.assigned_location_id || '',
+                assigned_officer_ids: item.officers ? item.officers.map(o => o.officer_id) : [],
+                region_name: item.region_name || '',
+                // Reset special fields
+                type: 'Facility', name: '', address: '', priority: 1
+            });
+        } else {
+            // Special
+            setEditingId(item.assignment_id);
+            setForm({
+                zip_code: item.zip_code || '',
+                assigned_location_id: '',
+                assigned_officer_ids: item.officer ? [item.officer.officer_id] : [],
+                region_name: '',
+                type: item.type,
+                name: item.name,
+                address: item.address || '',
+                priority: item.priority || 1
+            });
+        }
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setIsEditing(false);
+        setEditingId(null);
+        setForm({
+            zip_code: '',
+            assigned_location_id: '',
+            assigned_officer_ids: [],
+            region_name: '',
+            type: 'Facility',
+            name: '',
+            address: '',
+            priority: 1
+        });
+    };
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortedTerritories = () => {
+        const sorted = [...territories];
+        sorted.sort((a, b) => {
+            let aValue = a[sortConfig.key];
+            let bValue = b[sortConfig.key];
+
+            // Handle nested checks
+            if (sortConfig.key === 'location') {
+                aValue = a.location ? a.location.name : '';
+                bValue = b.location ? b.location.name : '';
+            }
+            if (sortConfig.key === 'officers') {
+                // Approximate sort by first officer's name
+                aValue = a.officers && a.officers.length > 0 ? a.officers[0].last_name : '';
+                bValue = b.officers && b.officers.length > 0 ? b.officers[0].last_name : '';
+            }
+
+            if (aValue < bValue) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+        return sorted;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             if (activeTab === 'geographic') {
+                // Geographic uses POST for Upsert based on Zip Code (PK)
                 await axios.post('http://localhost:8000/territories', {
                     zip_code: form.zip_code,
                     assigned_location_id: form.assigned_location_id,
@@ -77,16 +160,23 @@ const TerritoryManagement = () => {
                     region_name: locations.find(l => l.location_id === form.assigned_location_id)?.name || 'Assigned Region'
                 });
             } else {
-                await axios.post('http://localhost:8000/special-assignments', {
+                // Special Assignments
+                const payload = {
                     type: form.type,
                     name: form.name,
                     address: form.address,
                     zip_code: form.zip_code,
-                    assigned_officer_id: form.assigned_officer_ids[0], // Special only supports single officer for now in UI logic
+                    assigned_officer_id: form.assigned_officer_ids[0], // Single officer logic
                     priority: form.type === 'Specialty' ? 1 : 2
-                });
+                };
+
+                if (isEditing && editingId) {
+                    await axios.put(`http://localhost:8000/special-assignments/${editingId}`, payload);
+                } else {
+                    await axios.post('http://localhost:8000/special-assignments', payload);
+                }
             }
-            setShowModal(false);
+            handleCloseModal();
             fetchData();
             // Reset form
             setForm({
@@ -157,7 +247,7 @@ const TerritoryManagement = () => {
                             </p>
                         </div>
                         <button
-                            onClick={() => setShowModal(true)}
+                            onClick={() => { setIsEditing(false); setShowModal(true); }}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
                         >
                             <Plus size={16} />
@@ -172,9 +262,12 @@ const TerritoryManagement = () => {
                                 <tr>
                                     {activeTab === 'geographic' ? (
                                         <>
-                                            <th className="px-4 py-3">Zip Code</th>
-                                            <th className="px-4 py-3">Assigned Office</th>
-                                            <th className="px-4 py-3">Assigned Officers</th>
+                                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('zip_code')}>
+                                                <div className="flex items-center gap-1">Zip Code <ArrowUpDown size={12} /></div>
+                                            </th>
+                                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('officers')}>
+                                                <div className="flex items-center gap-1">Assigned Officers <ArrowUpDown size={12} /></div>
+                                            </th>
                                             <th className="px-4 py-3 text-right">Actions</th>
                                         </>
                                     ) : (
@@ -190,26 +283,29 @@ const TerritoryManagement = () => {
                             </thead>
                             <tbody>
                                 {activeTab === 'geographic' ? (
-                                    territories.map((t) => (
+                                    getSortedTerritories().map((t) => (
                                         <tr key={t.zip_code} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                                             <td className="px-4 py-3 font-medium text-slate-800">{t.zip_code}</td>
                                             <td className="px-4 py-3 text-slate-600">
                                                 {t.location ? t.location.name : 'Unassigned'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex -space-x-2">
+                                                <div className="flex flex-col gap-1">
                                                     {t.officers && t.officers.length > 0 ? (
                                                         t.officers.map((o) => (
-                                                            <div key={o.officer_id} className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-xs font-bold text-slate-600 title" title={`${o.first_name} ${o.last_name}`}>
-                                                                {o.first_name[0]}{o.last_name[0]}
-                                                            </div>
+                                                            <span key={o.officer_id} className="text-sm text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md inline-block w-fit">
+                                                                {o.first_name} {o.last_name}
+                                                            </span>
                                                         ))
                                                     ) : (
-                                                        <span className="text-slate-400 italic">None</span>
+                                                        <span className="text-slate-400 italic text-xs">Unassigned</span>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className="px-4 py-3 text-right flex justify-end gap-2">
+                                                <button onClick={() => handleEdit(t)} className="text-slate-400 hover:text-blue-600">
+                                                    <Edit2 size={16} />
+                                                </button>
                                                 <button onClick={() => handleDelete(t.zip_code)} className="text-slate-400 hover:text-red-600">
                                                     <Trash2 size={16} />
                                                 </button>
@@ -231,7 +327,10 @@ const TerritoryManagement = () => {
                                             <td className="px-4 py-3 text-slate-600">
                                                 {a.officer ? `${a.officer.first_name} ${a.officer.last_name}` : 'Unassigned'}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className="px-4 py-3 text-right flex justify-end gap-2">
+                                                <button onClick={() => handleEdit(a)} className="text-slate-400 hover:text-blue-600">
+                                                    <Edit2 size={16} />
+                                                </button>
                                                 <button onClick={() => handleDeleteSpecial(a.assignment_id)} className="text-slate-400 hover:text-red-600">
                                                     <Trash2 size={16} />
                                                 </button>
@@ -248,127 +347,139 @@ const TerritoryManagement = () => {
                                 ) : null}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            </div>
+                    </div >
+                </div >
+            </div >
 
             {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">
-                                {activeTab === 'geographic' ? 'Add Territory Assignment' : 'Add Special Assignment'}
-                            </h3>
-                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">Close</button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            {activeTab === 'geographic' ? (
-                                <>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Zip Code</label>
-                                        <input
-                                            required
-                                            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                            placeholder="e.g. 85001"
-                                            value={form.zip_code}
-                                            onChange={e => setForm({ ...form, zip_code: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Office</label>
-                                        <select
-                                            className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
-                                            value={form.assigned_location_id}
-                                            onChange={e => setForm({ ...form, assigned_location_id: e.target.value })}
-                                        >
-                                            <option value="">Select Office...</option>
-                                            {locations.map(l => (
-                                                <option key={l.location_id} value={l.location_id}>{l.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Officers (Hold Ctrl/Cmd to select multiple)</label>
-                                        <select
-                                            multiple
-                                            className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white h-32"
-                                            value={form.assigned_officer_ids}
-                                            onChange={e => {
-                                                const options = [...e.target.selectedOptions];
-                                                const values = options.map(option => option.value);
-                                                setForm({ ...form, assigned_officer_ids: values });
-                                            }}
-                                        >
-                                            {officers.map(o => (
-                                                <option key={o.officer_id} value={o.officer_id}>{o.last_name}, {o.first_name}</option>
-                                            ))}
-                                        </select>
-                                        <p className="text-xs text-slate-400 mt-1">Select one or more officers to cover this territory.</p>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="grid grid-cols-2 gap-4">
+            {
+                showModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+                            <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-800">
+                                    {isEditing ? 'Edit Assignment' : (activeTab === 'geographic' ? 'Add Territory Assignment' : 'Add Special Assignment')}
+                                </h3>
+                                <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600">Close</button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                {activeTab === 'geographic' ? (
+                                    <>
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Zip Code</label>
+                                            <input
+                                                required
+                                                disabled={isEditing} // Cannot change PK in upsert mode
+                                                className={`w-full p-2 border border-slate-200 rounded-lg text-sm ${isEditing ? 'bg-slate-100 text-slate-500' : ''}`}
+                                                placeholder="e.g. 85001"
+                                                value={form.zip_code}
+                                                onChange={e => setForm({ ...form, zip_code: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Office</label>
                                             <select
                                                 className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
-                                                value={form.type}
-                                                onChange={e => setForm({ ...form, type: e.target.value })}
+                                                value={form.assigned_location_id}
+                                                onChange={e => setForm({ ...form, assigned_location_id: e.target.value })}
                                             >
-                                                <option value="Facility">Facility (Housing)</option>
-                                                <option value="Specialty">Specialty (Caseload)</option>
+                                                <option value="">Select Office...</option>
+                                                {locations.map(l => (
+                                                    <option key={l.location_id} value={l.location_id}>{l.name}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
-                                            <input
-                                                required
-                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                                placeholder="e.g. New Freedom"
-                                                value={form.name}
-                                                onChange={e => setForm({ ...form, name: e.target.value })}
-                                            />
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Officers (Hold Ctrl/Cmd to select multiple)</label>
+                                            <select
+                                                multiple
+                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white h-32"
+                                                value={form.assigned_officer_ids}
+                                                onChange={e => {
+                                                    const options = [...e.target.selectedOptions];
+                                                    const values = options.map(option => option.value);
+                                                    setForm({ ...form, assigned_officer_ids: values });
+                                                }}
+                                            >
+                                                {officers.map(o => (
+                                                    <option key={o.officer_id} value={o.officer_id}>{o.last_name}, {o.first_name}</option>
+                                                ))}
+                                            </select>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <p className="text-xs text-slate-400">Select one or more officers.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setForm({ ...form, assigned_officer_ids: [] })}
+                                                    className="text-xs text-red-500 hover:text-red-700 underline"
+                                                >
+                                                    Clear Selection
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {form.type === 'Facility' && (
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
+                                                <select
+                                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                                    value={form.type}
+                                                    onChange={e => setForm({ ...form, type: e.target.value })}
+                                                >
+                                                    <option value="Facility">Facility (Housing)</option>
+                                                    <option value="Specialty">Specialty (Caseload)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
+                                                <input
+                                                    required
+                                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                                    placeholder="e.g. New Freedom"
+                                                    value={form.name}
+                                                    onChange={e => setForm({ ...form, name: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        {form.type === 'Facility' && (
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Address / Zip</label>
+                                                <input
+                                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                                    placeholder="123 Care Ln"
+                                                    value={form.address}
+                                                    onChange={e => setForm({ ...form, address: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Address / Zip</label>
-                                            <input
-                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                                placeholder="123 Care Ln"
-                                                value={form.address}
-                                                onChange={e => setForm({ ...form, address: e.target.value })}
-                                            />
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Officer</label>
+                                            <select
+                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                                value={form.assigned_officer_ids[0] || ''}
+                                                onChange={e => setForm({ ...form, assigned_officer_ids: [e.target.value] })}
+                                            >
+                                                <option value="">Select Lead Officer...</option>
+                                                {officers.map(o => (
+                                                    <option key={o.officer_id} value={o.officer_id}>{o.last_name}, {o.first_name}</option>
+                                                ))}
+                                            </select>
                                         </div>
-                                    )}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Officer</label>
-                                        <select
-                                            className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
-                                            value={form.assigned_officer_ids[0] || ''}
-                                            onChange={e => setForm({ ...form, assigned_officer_ids: [e.target.value] })}
-                                        >
-                                            <option value="">Select Lead Officer...</option>
-                                            {officers.map(o => (
-                                                <option key={o.officer_id} value={o.officer_id}>{o.last_name}, {o.first_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </>
-                            )}
-                            <button
-                                type="submit"
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
-                            >
-                                Save Assignment
-                            </button>
-                        </form>
+                                    </>
+                                )}
+                                <button
+                                    type="submit"
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
+                                >
+                                    Save Assignment
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

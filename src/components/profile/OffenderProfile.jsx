@@ -3,6 +3,7 @@ import { UserContext } from '../../core/context/UserContext';
 import axios from 'axios';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink } from 'lucide-react';
 import Modal from '../common/Modal';
+import RiskAssessmentModal from '../modals/RiskAssessmentModal';
 
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -12,6 +13,12 @@ const OffenderProfile = () => {
     const { currentUser, caseNoteSettings } = useContext(UserContext);
     const [offender, setOffender] = useState(null);
     const noteTypes = caseNoteSettings?.types || [];
+
+    const safeDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString();
+    };
 
     const [activeTab, setActiveTab] = useState('overview');
     const [showUAModal, setShowUAModal] = useState(false);
@@ -441,7 +448,7 @@ const OffenderProfile = () => {
                                                     <div className="flex justify-between items-center">
                                                         <p className="text-xs font-medium text-slate-800 truncate">{item.title}</p>
                                                         <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
-                                                            {new Date(item.date).toLocaleDateString()}
+                                                            {safeDate(item.date)}
                                                         </p>
                                                     </div>
                                                     <p className="text-[10px] text-slate-500 truncate">{item.desc}</p>
@@ -529,7 +536,7 @@ const OffenderProfile = () => {
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-slate-500">{new Date(note.date).toLocaleDateString()}</span>
+                                                        <span className="text-xs text-slate-500">{safeDate(note.date)}</span>
                                                         <button
                                                             onClick={() => handlePinNote(note.note_id)}
                                                             className={`transition-colors ${note.is_pinned ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
@@ -596,18 +603,30 @@ const OffenderProfile = () => {
                                     <tbody className="divide-y divide-slate-100">
                                         {riskHistory.map((risk) => (
                                             <tr key={risk.assessment_id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4">{new Date(risk.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">{safeDate(risk.date)}</td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${risk.risk_level === 'High' ? 'bg-red-100 text-red-700' :
-                                                        risk.risk_level === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-green-100 text-green-700'
-                                                        }`}>
-                                                        {risk.risk_level}
-                                                    </span>
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${(risk.final_risk_level || risk.risk_level) === 'High' ? 'bg-red-100 text-red-700' :
+                                                            (risk.final_risk_level || risk.risk_level) === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-green-100 text-green-700'
+                                                            }`}>
+                                                            {risk.final_risk_level || risk.risk_level}
+                                                        </span>
+                                                        {risk.final_risk_level && risk.final_risk_level !== risk.risk_level && (
+                                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded border border-slate-200" title={risk.override_reason}>
+                                                                Overridden (Calc: {risk.risk_level})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 font-medium">{risk.total_score}</td>
                                                 <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate">
                                                     {risk.details ? Object.keys(risk.details).length + " Factors Identified" : "No details"}
+                                                    {risk.override_reason && (
+                                                        <div className="text-[10px] text-slate-400 italic mt-0.5 truncate w-48">
+                                                            Reason: {risk.override_reason}
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}
@@ -660,7 +679,7 @@ const OffenderProfile = () => {
                                     <tbody className="divide-y divide-slate-100">
                                         {uaHistory.map((ua) => (
                                             <tr key={ua.test_id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4">{new Date(ua.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">{safeDate(ua.date)}</td>
                                                 <td className="px-6 py-4 font-medium text-slate-800">{ua.test_type}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold ${ua.result === 'Positive' ? 'bg-red-100 text-red-700' :
@@ -713,7 +732,7 @@ const OffenderProfile = () => {
                                     ${Number(feeSummary.balance).toFixed(2)}
                                 </div>
                                 <p className="text-xs text-slate-400 mt-2">
-                                    Last Updated: {new Date(feeSummary.last_updated).toLocaleString()}
+                                    Last Updated: {safeDate(feeSummary.last_updated)}
                                 </p>
                                 <div className="mt-4 pt-4 border-t border-slate-100">
                                     <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -741,7 +760,7 @@ const OffenderProfile = () => {
                                         <tbody className="divide-y divide-slate-100">
                                             {feeSummary.history.map((tx) => (
                                                 <tr key={tx.transaction_id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-6 py-4 whitespace-nowrap">{new Date(tx.transaction_date).toLocaleDateString()}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">{safeDate(tx.transaction_date)}</td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col">
                                                             <span className="font-medium text-slate-800">{tx.description}</span>
@@ -1121,7 +1140,7 @@ const OffenderProfile = () => {
                                     onClick={() => setShowAppointmentModal(true)}
                                     className="hover:text-blue-600 hover:underline transition-colors"
                                 >
-                                    Next: {nextAppointment ? new Date(nextAppointment.date_time).toLocaleDateString() : 'None'}
+                                    Next: {nextAppointment ? safeDate(nextAppointment.date_time) : 'None'}
                                 </button>
                             </div>
                         </div>
@@ -1262,7 +1281,7 @@ const OffenderProfile = () => {
                                         <span className="font-semibold text-slate-700 text-sm">
                                             {note.author ? `${note.author.last_name}, ${note.author.first_name}` : 'Unknown'}
                                         </span>
-                                        <span className="text-xs text-slate-500">{new Date(note.date).toLocaleDateString()}</span>
+                                        <span className="text-xs text-slate-500">{safeDate(note.date)}</span>
                                     </div>
                                     <p className="text-sm text-slate-600 leading-relaxed">{note.content}</p>
                                 </div>
@@ -1272,54 +1291,14 @@ const OffenderProfile = () => {
                 </div>
             </Modal>
 
-            <Modal
+            <RiskAssessmentModal
                 isOpen={showRiskModal}
                 onClose={() => setShowRiskModal(false)}
-                title="Risk Assessment Breakdown"
-            >
-                <div className="space-y-6">
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-6">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-bold text-slate-700">Overall Risk Score</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${offender.risk === 'High' ? 'bg-red-100 text-red-700 border-red-200' :
-                                offender.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                                    'bg-green-100 text-green-700 border-green-200'
-                                }`}>
-                                {offender.risk}
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-500">Based on last assessment: Oct 20, 2023</p>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h4 className="text-sm font-bold text-slate-800">Criminogenic Needs</h4>
-                        {riskFactors?.map((factor, index) => (
-                            <div key={index} className="flex items-start gap-4 p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors">
-                                <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${factor.score === 'High' ? 'bg-red-500' :
-                                    factor.score === 'Medium' ? 'bg-yellow-500' :
-                                        'bg-green-500'
-                                    }`}></div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-semibold text-slate-700 text-sm">{factor.category}</span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${factor.score === 'High' ? 'bg-red-50 text-red-600 border-red-100' :
-                                            factor.score === 'Medium' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                                                'bg-green-50 text-green-600 border-green-100'
-                                            }`}>{factor.score}</span>
-                                    </div>
-                                    <p className="text-xs text-slate-500">{factor.details}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-100 flex justify-end">
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-all">
-                            Update Assessment
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                offenderId={offenderId}
+                onSuccess={() => {
+                    fetchData(); // Refresh risk history
+                }}
+            />
 
             <Modal
                 isOpen={showAppointmentModal}

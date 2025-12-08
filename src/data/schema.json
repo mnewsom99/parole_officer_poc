@@ -100,12 +100,12 @@
             },
             {
                 "name": "phone",
-                "type": "VARCHAR(20)",
+                "type": "VARCHAR(50)",
                 "key": ""
             },
             {
                 "name": "fax",
-                "type": "VARCHAR(20)",
+                "type": "VARCHAR(50)",
                 "key": ""
             }
         ]
@@ -152,7 +152,12 @@
             },
             {
                 "name": "phone_number",
-                "type": "VARCHAR(20)",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "cell_phone",
+                "type": "VARCHAR(50)",
                 "key": ""
             }
         ]
@@ -285,6 +290,11 @@
                 "key": ""
             },
             {
+                "name": "current_risk_level",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
                 "name": "closing_reason",
                 "type": "VARCHAR(100)",
                 "key": ""
@@ -308,6 +318,11 @@
             },
             {
                 "name": "created_by",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "assigned_officer_id",
                 "type": "UUID",
                 "key": "FK"
             },
@@ -482,9 +497,9 @@
         ]
     },
     "case_notes": {
-        "description": "Chronological record of interactions.",
-        "context": "Legal record of supervision",
-        "usage": "Offender Profile (Notes Tab)",
+        "description": "Table for case_notes",
+        "context": "General data storage",
+        "usage": "Backend API",
         "fields": [
             {
                 "name": "note_id",
@@ -519,6 +534,574 @@
             {
                 "name": "is_pinned",
                 "type": "BOOLEAN",
+                "key": ""
+            }
+        ]
+    },
+    "programs": {
+        "description": "Rehabilitation programs assigned to offenders.",
+        "context": "Tracks progress and completion of mandated programs",
+        "usage": "Offender Profile",
+        "fields": [
+            {
+                "name": "program_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "category",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "provider",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "status",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "start_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "end_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "notes",
+                "type": "TEXT",
+                "key": ""
+            }
+        ]
+    },
+    "fee_balances": {
+        "description": "Current outstanding balance for offenders.",
+        "context": "Financial tracking",
+        "usage": "Offender Profile (Financials)",
+        "fields": [
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "balance",
+                "type": "FLOAT",
+                "key": ""
+            },
+            {
+                "name": "last_updated",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "fee_transactions": {
+        "description": "Ledger of financial charges and payments.",
+        "context": "Audit trail for fees",
+        "usage": "Offender Profile (Financials)",
+        "fields": [
+            {
+                "name": "transaction_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "transaction_date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "amount",
+                "type": "FLOAT",
+                "key": ""
+            },
+            {
+                "name": "description",
+                "type": "VARCHAR(255)",
+                "key": ""
+            }
+        ]
+    },
+    "residence_contacts": {
+        "description": "Table for residence_contacts",
+        "context": "General data storage",
+        "usage": "Backend API",
+        "fields": [
+            {
+                "name": "contact_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "residence_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "relation",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "phone",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "comments",
+                "type": "TEXT",
+                "key": ""
+            }
+        ]
+    },
+    "urinalysis": {
+        "description": "Drug test records.",
+        "context": "Compliance monitoring",
+        "usage": "Offender Profile, Lab Reports",
+        "fields": [
+            {
+                "name": "test_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "test_type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "result",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "lab_name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "collected_by_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "notes",
+                "type": "TEXT",
+                "key": ""
+            }
+        ]
+    },
+    "risk_assessment_types": {
+        "description": "Definitions of available risk tools (ORAS, etc).",
+        "context": "Configuration for risk scoring logic",
+        "usage": "Risk Settings",
+        "fields": [
+            {
+                "name": "type_id",
+                "type": "INTEGER",
+                "key": "PK"
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(50)",
+                "key": "Unique"
+            },
+            {
+                "name": "description",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "scoring_matrix",
+                "type": "JSON",
+                "key": ""
+            }
+        ]
+    },
+    "risk_assessment_questions": {
+        "description": "Table for risk_assessment_questions",
+        "context": "General data storage",
+        "usage": "Backend API",
+        "fields": [
+            {
+                "name": "question_id",
+                "type": "INTEGER",
+                "key": "PK"
+            },
+            {
+                "name": "universal_tag",
+                "type": "VARCHAR(50)",
+                "key": "Unique"
+            },
+            {
+                "name": "question_text",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "input_type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "source_type",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "assessments_list",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "category",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "scoring_note",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "options",
+                "type": "JSON",
+                "key": ""
+            }
+        ]
+    },
+    "risk_assessments": {
+        "description": "Completed risk assessments for offenders.",
+        "context": "Determines supervision level",
+        "usage": "Offender Profile (Risk)",
+        "fields": [
+            {
+                "name": "assessment_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "date",
+                "type": "DATE",
+                "key": ""
+            },
+            {
+                "name": "assessment_type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "status",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "total_score",
+                "type": "INTEGER",
+                "key": ""
+            },
+            {
+                "name": "risk_level",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "final_risk_level",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "override_reason",
+                "type": "VARCHAR(255)",
+                "key": ""
+            },
+            {
+                "name": "details",
+                "type": "JSON",
+                "key": ""
+            }
+        ]
+    },
+    "risk_assessment_answers": {
+        "description": "Table for risk_assessment_answers",
+        "context": "General data storage",
+        "usage": "Backend API",
+        "fields": [
+            {
+                "name": "answer_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "assessment_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "question_tag",
+                "type": "VARCHAR(50)",
+                "key": "FK"
+            },
+            {
+                "name": "value",
+                "type": "JSON",
+                "key": ""
+            },
+            {
+                "name": "is_imported",
+                "type": "BOOLEAN",
+                "key": ""
+            },
+            {
+                "name": "source_assessment_id",
+                "type": "UUID",
+                "key": "FK"
+            }
+        ]
+    },
+    "appointments": {
+        "description": "Scheduled meetings between officers and offenders.",
+        "context": "Calendar management",
+        "usage": "Calendar, Offender Profile",
+        "fields": [
+            {
+                "name": "appointment_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "officer_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "date_time",
+                "type": "DATETIME",
+                "key": ""
+            },
+            {
+                "name": "location",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "type",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "status",
+                "type": "VARCHAR(20)",
+                "key": ""
+            },
+            {
+                "name": "notes",
+                "type": "TEXT",
+                "key": ""
+            }
+        ]
+    },
+    "system_settings": {
+        "description": "Global application configuration.",
+        "context": "Key-value store for app behavior",
+        "usage": "System Configuration",
+        "fields": [
+            {
+                "name": "key",
+                "type": "VARCHAR(50)",
+                "key": "PK"
+            },
+            {
+                "name": "value",
+                "type": "TEXT",
+                "key": ""
+            },
+            {
+                "name": "description",
+                "type": "TEXT",
+                "key": ""
+            }
+        ]
+    },
+    "form_templates": {
+        "description": "Table for form_templates",
+        "context": "General data storage",
+        "usage": "Backend API",
+        "fields": [
+            {
+                "name": "template_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "key": ""
+            },
+            {
+                "name": "description",
+                "type": "TEXT",
+                "key": ""
+            },
+            {
+                "name": "form_schema",
+                "type": "JSON",
+                "key": ""
+            },
+            {
+                "name": "created_at",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "form_submissions": {
+        "description": "Table for form_submissions",
+        "context": "General data storage",
+        "usage": "Backend API",
+        "fields": [
+            {
+                "name": "submission_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "template_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "offender_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "assigned_to_user_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "created_by_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "form_data",
+                "type": "JSON",
+                "key": ""
+            },
+            {
+                "name": "status",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "is_locked",
+                "type": "BOOLEAN",
+                "key": ""
+            },
+            {
+                "name": "current_step",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "created_at",
+                "type": "DATETIME",
+                "key": ""
+            },
+            {
+                "name": "updated_at",
+                "type": "DATETIME",
+                "key": ""
+            }
+        ]
+    },
+    "workflow_logs": {
+        "description": "Table for workflow_logs",
+        "context": "General data storage",
+        "usage": "Backend API",
+        "fields": [
+            {
+                "name": "log_id",
+                "type": "UUID",
+                "key": "PK"
+            },
+            {
+                "name": "submission_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "actor_id",
+                "type": "UUID",
+                "key": "FK"
+            },
+            {
+                "name": "action",
+                "type": "VARCHAR(50)",
+                "key": ""
+            },
+            {
+                "name": "comment",
+                "type": "TEXT",
+                "key": ""
+            },
+            {
+                "name": "timestamp",
+                "type": "DATETIME",
                 "key": ""
             }
         ]
