@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, FileText, CheckSquare, ArrowRight, Search, UserPlus, ClipboardList, Calendar, UserMinus, Clock, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../core/context/UserContext';
 import { format } from 'date-fns';
 
 const OfficeModule = () => {

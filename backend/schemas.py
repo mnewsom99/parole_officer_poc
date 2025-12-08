@@ -375,12 +375,25 @@ class AppointmentBase(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
 
+class AppointmentCreate(AppointmentBase):
+    offender_id: UUID
+    officer_id: Optional[UUID] = None
+
+class AppointmentUpdate(BaseModel):
+    date_time: Optional[datetime] = None
+    location: Optional[str] = None
+    type: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    officer_id: Optional[UUID] = None
+
 class Appointment(AppointmentBase):
     appointment_id: UUID
     offender_id: UUID
     officer_id: Optional[UUID] = None
     officer: Optional[Officer] = None
     offender: Optional[Offender] = None
+
     class Config:
         from_attributes = True
 

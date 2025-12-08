@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Save, User, Bell, Shield, Database, FileText, Plus, Trash2, Calendar, Building, Map, Edit, X, Settings } from 'lucide-react';
 import axios from 'axios';
-import SchemaViewer from './SchemaViewer';
-import SystemConfiguration from './settings/SystemConfiguration';
-import UserManagement from './settings/UserManagement';
-import TerritoryManagement from './settings/TerritoryManagement';
-import { useUser } from '../../context/UserContext';
+import SchemaViewer from './components/SchemaViewer';
+import SystemConfiguration from './components/SystemConfiguration';
+import UserManagement from './components/UserManagement';
+import TerritoryManagement from './components/TerritoryManagement';
+import { useUser } from '../../core/context/UserContext';
 
 const SettingsModule = () => {
-    const { hasPermission, currentUser } = useUser();
+    const { hasPermission, currentUser, appointmentSettings, updateAppointmentType, addAppointmentType, removeAppointmentType,
+        caseNoteSettings, addCaseNoteType, removeCaseNoteType, updateCaseNoteType } = useUser();
     const [activeView, setActiveView] = useState('profile');
-    const [noteTypes, setNoteTypes] = useState([]);
+    // noteTypes removed in favor of caseNoteSettings
     const [newType, setNewType] = useState('');
     const [newColor, setNewColor] = useState('bg-slate-100 text-slate-700');
+    const [newApptColor, setNewApptColor] = useState('blue');
 
     const [profileData, setProfileData] = useState({
         firstName: '',
@@ -81,18 +83,31 @@ const SettingsModule = () => {
     const [locationForm, setLocationForm] = useState({
         name: '', address: '', phone: '', fax: '', zip_code: '', type: 'Field Office'
     });
-    const [apptTypes, setApptTypes] = useState([{ name: 'Check-in' }, { name: 'Drug Test' }]);
+    // apptTypes removed in favor of appointmentSettings via Context
     const [apptLocations, setApptLocations] = useState([{ name: 'Field Office' }, { name: 'Home' }]);
     const [newApptType, setNewApptType] = useState('');
     const [newApptLocation, setNewApptLocation] = useState('');
 
-    const colorOptions = [
+
+    // Imported NOTE_COLOR_OPTIONS in UserContext, or just redefine/use similar pattern
+    const NOTE_COLOR_OPTIONS = [
         { label: 'Gray', value: 'bg-slate-100 text-slate-700' },
         { label: 'Blue', value: 'bg-blue-100 text-blue-700' },
         { label: 'Green', value: 'bg-green-100 text-green-700' },
         { label: 'Red', value: 'bg-red-100 text-red-700' },
         { label: 'Yellow', value: 'bg-yellow-100 text-yellow-700' },
         { label: 'Purple', value: 'bg-purple-100 text-purple-700' },
+        { label: 'Cyan', value: 'bg-cyan-100 text-cyan-700' },
+    ];
+
+
+    const APPOINTMENT_COLOR_OPTIONS = [
+        { label: 'Blue', value: 'blue' },
+        { label: 'Purple', value: 'purple' },
+        { label: 'Red', value: 'red' },
+        { label: 'Green', value: 'green' },
+        { label: 'Yellow', value: 'yellow' },
+        { label: 'Gray', value: 'slate' },
     ];
 
     useEffect(() => {
@@ -138,13 +153,13 @@ const SettingsModule = () => {
 
     const handleAddApptType = () => {
         if (newApptType) {
-            setApptTypes([...apptTypes, { name: newApptType }]);
+            addAppointmentType(newApptType, newApptColor);
             setNewApptType('');
         }
     };
 
     const handleRemoveApptType = (name) => {
-        setApptTypes(apptTypes.filter(t => t.name !== name));
+        removeAppointmentType(name);
     };
 
     const handleAddApptLocation = () => {
@@ -160,13 +175,13 @@ const SettingsModule = () => {
 
     const handleAddType = () => {
         if (newType) {
-            setNoteTypes([...noteTypes, { name: newType, color: newColor }]);
+            addCaseNoteType(newType, newColor);
             setNewType('');
         }
     };
 
     const handleRemoveType = (name) => {
-        setNoteTypes(noteTypes.filter(t => t.name !== name));
+        removeCaseNoteType(name);
     };
 
     return (
@@ -213,8 +228,39 @@ const SettingsModule = () => {
                             </button>
                         )}
 
-                        <div className="my-2 border-t border-slate-100"></div>
-                        {/* ... (Rest of sidebar) ... */}
+                        {hasPermission('manage_settings') && (
+                            <>
+                                <div className="p-4 border-t border-slate-100 font-medium text-slate-800 mt-2">Organization</div>
+                                <button
+                                    onClick={() => setActiveView('appointments')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'appointments' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Calendar className="w-4 h-4" />
+                                    Appointments
+                                </button>
+                                <button
+                                    onClick={() => setActiveView('locations')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'locations' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Building className="w-4 h-4" />
+                                    Locations
+                                </button>
+                                <button
+                                    onClick={() => setActiveView('territory')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'territory' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Map className="w-4 h-4" />
+                                    Territory
+                                </button>
+                                <button
+                                    onClick={() => setActiveView('notes')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'notes' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Case Notes
+                                </button>
+                            </>
+                        )}
                     </nav>
                 </div>
 
@@ -421,6 +467,15 @@ const SettingsModule = () => {
                                         placeholder="Enter new appointment type..."
                                         className="flex-1 p-2 border border-slate-200 rounded-lg text-sm"
                                     />
+                                    <select
+                                        value={newApptColor}
+                                        onChange={(e) => setNewApptColor(e.target.value)}
+                                        className="p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                    >
+                                        {APPOINTMENT_COLOR_OPTIONS.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
                                     <button
                                         onClick={handleAddApptType}
                                         disabled={!newApptType}
@@ -432,19 +487,30 @@ const SettingsModule = () => {
                                 </div>
 
                                 <div className="space-y-2">
-                                    {apptTypes.map((type, index) => (
+                                    {appointmentSettings?.types.map((type, index) => (
                                         <div key={index} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
                                             <span className="text-sm font-medium text-slate-700">{type.name}</span>
-                                            <button
-                                                onClick={() => handleRemoveApptType(type.name)}
-                                                className="text-slate-400 hover:text-red-500 transition-colors p-1"
-                                                title="Remove"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    value={type.color}
+                                                    onChange={(e) => updateAppointmentType(type.name, e.target.value)}
+                                                    className="p-1 border border-slate-200 rounded text-xs bg-white"
+                                                >
+                                                    {APPOINTMENT_COLOR_OPTIONS.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    onClick={() => handleRemoveApptType(type.name)}
+                                                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                    title="Remove"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
-                                    {apptTypes.length === 0 && (
+                                    {appointmentSettings?.types.length === 0 && (
                                         <p className="text-center text-slate-400 text-sm py-4">No appointment types configured.</p>
                                     )}
                                 </div>
@@ -510,7 +576,7 @@ const SettingsModule = () => {
                                     onChange={(e) => setNewColor(e.target.value)}
                                     className="p-2 border border-slate-200 rounded-lg text-sm bg-white"
                                 >
-                                    {colorOptions.map(opt => (
+                                    {NOTE_COLOR_OPTIONS.map(opt => (
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
@@ -525,28 +591,28 @@ const SettingsModule = () => {
                             </div>
 
                             <div className="space-y-3">
-                                {noteTypes.map((type, index) => (
+                                {caseNoteSettings?.types?.map((type, index) => (
                                     <div key={index} className="flex gap-2 items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
                                         <input
                                             type="text"
                                             value={type.name}
                                             onChange={(e) => {
-                                                const newTypes = [...noteTypes];
+                                                const newTypes = [...caseNoteSettings.types];
                                                 newTypes[index].name = e.target.value;
-                                                setNoteTypes(newTypes);
+                                                updateCaseNoteType(newTypes); // Update context/backend
                                             }}
                                             className="flex-1 p-2 border border-slate-200 rounded text-sm"
                                         />
                                         <select
                                             value={type.color}
                                             onChange={(e) => {
-                                                const newTypes = [...noteTypes];
+                                                const newTypes = [...caseNoteSettings.types];
                                                 newTypes[index].color = e.target.value;
-                                                setNoteTypes(newTypes);
+                                                updateCaseNoteType(newTypes);
                                             }}
                                             className="p-2 border border-slate-200 rounded text-sm bg-white w-32"
                                         >
-                                            {colorOptions.map(opt => (
+                                            {NOTE_COLOR_OPTIONS.map(opt => (
                                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                                             ))}
                                         </select>
@@ -560,7 +626,7 @@ const SettingsModule = () => {
                                         </button>
                                     </div>
                                 ))}
-                                {noteTypes.length === 0 && (
+                                {(!caseNoteSettings?.types || caseNoteSettings.types.length === 0) && (
                                     <p className="text-center text-slate-400 text-sm py-4">No note types configured.</p>
                                 )}
                             </div>

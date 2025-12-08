@@ -67,7 +67,7 @@ const SystemConfiguration = () => {
     const allKeys = Array.from(new Set([
         ...Object.keys(knownSettings),
         ...settings.map(s => s.key)
-    ]));
+    ])).filter(key => !['note_types', 'appointment_types', 'appointment_locations'].includes(key));
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { UserContext } from '../../context/UserContext';
+import { UserContext } from '../../core/context/UserContext';
 import axios from 'axios';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink } from 'lucide-react';
 import Modal from '../common/Modal';
@@ -9,8 +9,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 const OffenderProfile = () => {
     const { offenderId } = useParams();
     const navigate = useNavigate();
-    const { currentUser } = useContext(UserContext);
+    const { currentUser, caseNoteSettings } = useContext(UserContext);
     const [offender, setOffender] = useState(null);
+    const noteTypes = caseNoteSettings?.types || [];
 
     const [activeTab, setActiveTab] = useState('overview');
     const [showUAModal, setShowUAModal] = useState(false);
@@ -81,7 +82,7 @@ const OffenderProfile = () => {
 
     const [newNoteContent, setNewNoteContent] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [noteTypes, setNoteTypes] = useState([]);
+    // noteTypes derived from context now
     const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
     const [newNoteType, setNewNoteType] = useState('General');
     const [newAppointment, setNewAppointment] = useState({
@@ -96,14 +97,8 @@ const OffenderProfile = () => {
 
 
 
-    const fetchNoteTypes = async () => {
-        try {
-            const response = await axios.get('http://localhost:8000/settings/note-types');
-            setNoteTypes(response.data);
-        } catch (error) {
-            console.error("Error fetching note types:", error);
-        }
-    };
+    // fetchNoteTypes removed, utilizing UserContext
+
 
     const handlePinNote = async (noteId) => {
         try {
@@ -170,8 +165,7 @@ const OffenderProfile = () => {
     }, [offenderId]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        fetchNoteTypes();
+        // Note types validation or fallback if needed
     }, []);
 
     if (!offender) {

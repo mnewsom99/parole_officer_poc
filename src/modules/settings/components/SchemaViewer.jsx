@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Database, ArrowRight, Table, Layers, ChevronRight, ChevronDown } from 'lucide-react';
-import generatedSchema from '../../data/schema.json';
+import generatedSchema from "../../../data/schema.json";
 
+// Fallback if JSON is missing or empty (for initial load before script run)
 const SchemaViewer = () => {
     const [activeTab, setActiveTab] = useState('schema');
     const [expandedTable, setExpandedTable] = useState('Offenders');
     const [schemaData, setSchemaData] = useState(generatedSchema);
 
-    // Fallback if JSON is missing or empty (for initial load before script run)
     useEffect(() => {
         if (!generatedSchema || Object.keys(generatedSchema).length === 0) {
             // Keep hardcoded as fallback or show loading

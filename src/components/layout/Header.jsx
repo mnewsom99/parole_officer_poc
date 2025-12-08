@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, Search, ChevronDown, User, LogOut } from 'lucide-react';
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../core/context/UserContext';
 
 const Header = ({ onLogout }) => {
     const { currentUser } = useUser();

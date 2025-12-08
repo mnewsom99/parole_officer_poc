@@ -46,6 +46,7 @@ def create_task(
 @router.get("", response_model=List[schemas.Task])
 def get_tasks(
     assigned_to_user_id: Optional[str] = None,
+    assigned_officer_id: Optional[str] = None, # New parameter for direct officer ID
     location_id: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -56,7 +57,12 @@ def get_tasks(
         # Filter by tasks assigned to officers in this location
         query = query.join(models.Task.assigned_officer).filter(models.Officer.location_id == location_id)
 
-    if assigned_to_user_id:
+    # Prioritize direct assigned_officer_id if provided (robust way)
+    if assigned_officer_id:
+        query = query.filter(models.Task.assigned_officer_id == assigned_officer_id)
+    
+    # Fallback to user_id lookup if only that is provided (legacy/compat way)
+    elif assigned_to_user_id:
         # Check if the user ID is an Officer ID or User ID.
         # The frontend sends a user ID (from auth) or an ID from the dropdown. 
         # Ideally, we should filter by Officer ID if the Task model uses Officer ID.

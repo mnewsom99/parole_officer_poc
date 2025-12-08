@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, AlertCircle, Plus, X, User as UserIcon, ChevronLeft, ChevronRight, Search, Briefcase, FileText, Clipboard } from 'lucide-react';
 import axios from 'axios';
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../core/context/UserContext';
 import { format } from 'date-fns';
 
 const TasksModule = () => {
@@ -95,22 +95,17 @@ const TasksModule = () => {
 
                 // Tasks are assigned to user_id, but global filter stores officer_id.
                 // We need to resolve the officer_id to a user_id.
+                // Use direct officer ID from global filter if available
                 if (globalFilter.officer) {
-                    const selectedOfficerObj = officers.find(o => o.officer_id === globalFilter.officer);
-                    if (selectedOfficerObj) {
-                        params.append('assigned_to_user_id', selectedOfficerObj.id);
-                    } else if (officers.length > 0) {
-                        // If officers are loaded but we can't find the selected one, it might be valid but not in this office list? 
-                        // Or we just proceed without it, or use it as is if it happens to be a user_id (unlikely).
-                        // For now, let's assume if it's not found in the loaded list, we skip or it won't return anything.
-                        // Actually, if we just switched offices, officers might be reloading.
-                    }
+                    params.append('assigned_officer_id', globalFilter.officer);
                 }
 
                 if (globalFilter.office) params.append('location_id', globalFilter.office);
                 if (selectedStatus) params.append('status', selectedStatus);
 
                 // Fetch Ad-hoc Tasks AND Workflows in parallel
+                // Note: Workflows endpoint might need update too if it uses similar filtering. 
+                // Assuming it might inspect params.
                 const [adHocRes, workflowRes] = await Promise.all([
                     axios.get(`http://localhost:8000/tasks?${params.toString()}`),
                     axios.get(`http://localhost:8000/workflows/tasks?${params.toString()}`)

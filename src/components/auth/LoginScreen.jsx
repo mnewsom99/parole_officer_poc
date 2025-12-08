@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../core/context/UserContext';
 
 const LoginScreen = () => {
     const { login } = useUser();

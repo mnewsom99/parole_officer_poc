@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useUser } from '../../../context/UserContext';
+import { useUser } from '../../../core/context/UserContext';
 import { User, Shield, Edit, Save, X, Search } from 'lucide-react';
 
 const UserManagement = () => {

@@ -46,6 +46,9 @@ export const UserProvider = ({ children }) => {
                         phone: officerDetails ? officerDetails.phone_number : '',
                         cellPhone: officerDetails ? officerDetails.cell_phone : ''
                     });
+
+                    // Init Settings
+                    fetchNoteSettings();
                 } catch (error) {
                     console.error("Failed to restore session:", error);
                     logout();
@@ -155,13 +158,114 @@ export const UserProvider = ({ children }) => {
         }));
     };
 
+    // Appointment Settings
+    const [appointmentSettings, setAppointmentSettings] = useState({
+        types: [
+            { name: 'Office Visit', color: 'blue' },
+            { name: 'Drug Test', color: 'purple' },
+            { name: 'Court Appearance', color: 'red' },
+            { name: 'Home Visit', color: 'green' },
+            { name: 'Other', color: 'slate' }
+        ]
+    });
+
+    const updateAppointmentType = (name, newColor) => {
+        setAppointmentSettings(prev => ({
+            types: prev.types.map(t => t.name === name ? { ...t, color: newColor } : t)
+        }));
+    };
+
+    const addAppointmentType = (name, color = 'slate') => {
+        if (!appointmentSettings.types.find(t => t.name === name)) {
+            setAppointmentSettings(prev => ({
+                types: [...prev.types, { name, color }]
+            }));
+        }
+    };
+
+    const removeAppointmentType = (name) => {
+        setAppointmentSettings(prev => ({
+            types: prev.types.filter(t => t.name !== name)
+        }));
+    };
+
+    // Case Note Settings
+    const [caseNoteSettings, setCaseNoteSettings] = useState({ types: [] });
+
+    const fetchNoteSettings = async () => {
+        try {
+            const res = await axios.get('http://localhost:8000/settings/note-types');
+            setCaseNoteSettings({ types: res.data });
+        } catch (error) {
+            console.error("Error fetching note settings:", error);
+        }
+    };
+
+    const updateCaseNoteType = async (types) => {
+        // Optimistic update
+        setCaseNoteSettings({ types });
+        try {
+            // Persist to backend
+            await axios.put('http://localhost:8000/settings/note-types', { types });
+        } catch (error) {
+            console.error("Error saving note settings:", error);
+            fetchNoteSettings(); // Revert on error
+        }
+    };
+
+    const addCaseNoteType = (name, color) => {
+        const newTypes = [...caseNoteSettings.types, { name, color }];
+        updateCaseNoteType(newTypes);
+    };
+
+    const removeCaseNoteType = (name) => {
+        const newTypes = caseNoteSettings.types.filter(t => t.name !== name);
+        updateCaseNoteType(newTypes);
+    };
+
+
     // eslint-disable-next-line react-refresh/only-export-components
     return (
-        <UserContext.Provider value={{ currentUser, login, logout, hasPermission, isLoading, globalFilter, updateGlobalFilter }}>
+        <UserContext.Provider value={{
+            currentUser,
+            login,
+            logout,
+            hasPermission,
+            isLoading,
+            globalFilter,
+            updateGlobalFilter,
+            appointmentSettings,
+            updateAppointmentType,
+            addAppointmentType,
+            removeAppointmentType,
+            caseNoteSettings,
+            updateCaseNoteType,
+            addCaseNoteType,
+            removeCaseNoteType,
+        }}>
             {children}
         </UserContext.Provider>
     );
 };
+
+export const APPOINTMENT_COLOR_THEMES = {
+    'blue': { label: 'Blue', bg: 'bg-blue-400', border: 'border-l-blue-500', text: 'text-blue-700', bgSoft: 'bg-blue-50' },
+    'purple': { label: 'Purple', bg: 'bg-purple-400', border: 'border-l-purple-500', text: 'text-purple-700', bgSoft: 'bg-purple-50' },
+    'red': { label: 'Red', bg: 'bg-red-400', border: 'border-l-red-500', text: 'text-red-700', bgSoft: 'bg-red-50' },
+    'green': { label: 'Green', bg: 'bg-green-400', border: 'border-l-green-500', text: 'text-green-700', bgSoft: 'bg-green-50' },
+    'yellow': { label: 'Yellow', bg: 'bg-yellow-400', border: 'border-l-yellow-500', text: 'text-yellow-700', bgSoft: 'bg-yellow-50' },
+    'slate': { label: 'Gray', bg: 'bg-slate-400', border: 'border-l-slate-500', text: 'text-slate-700', bgSoft: 'bg-slate-50' },
+};
+
+export const NOTE_COLOR_OPTIONS = [
+    { label: 'Gray', value: 'bg-slate-100 text-slate-700' },
+    { label: 'Blue', value: 'bg-blue-100 text-blue-700' },
+    { label: 'Green', value: 'bg-green-100 text-green-700' },
+    { label: 'Red', value: 'bg-red-100 text-red-700' },
+    { label: 'Yellow', value: 'bg-yellow-100 text-yellow-700' },
+    { label: 'Purple', value: 'bg-purple-100 text-purple-700' },
+    { label: 'Cyan', value: 'bg-cyan-100 text-cyan-700' },
+];
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useUser = () => useContext(UserContext);

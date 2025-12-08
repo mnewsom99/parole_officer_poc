@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MoreHorizontal, AlertTriangle, CheckCircle, Clock, ChevronRight, ChevronLeft, Search, UserPlus } from 'lucide-react';
 import axios from 'axios';
-import { useUser } from '../../context/UserContext';
-import AddOffenderModal from './AddOffenderModal';
+import { useUser } from '../../core/context/UserContext';
+import AddOffenderModal from './components/AddOffenderModal';
 import { useNavigate } from 'react-router-dom';
 
 const CaseloadDashboard = () => {

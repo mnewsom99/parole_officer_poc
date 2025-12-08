@@ -117,6 +117,7 @@ class Task(Base):
 
     episode = relationship("SupervisionEpisode")
     creator = relationship("Officer", foreign_keys=[created_by])
+    assigned_officer = relationship("Officer", foreign_keys=[assigned_officer_id])
 
 class FeeBalance(Base):
     __tablename__ = 'fee_balances'
