@@ -189,16 +189,42 @@ class CaseNote(Base):
     offender = relationship("Offender")
     author = relationship("Officer")
 
+class RiskAssessmentQuestion(Base):
+    __tablename__ = 'risk_assessment_questions'
+    question_id = Column(Integer, primary_key=True)
+    universal_tag = Column(String(50), unique=True, nullable=False, index=True) # e.g., 'employment_status'
+    question_text = Column(String(255), nullable=False)
+    input_type = Column(String(50)) # 'boolean', 'select', 'date', 'integer', 'scale_0_3'
+    source_type = Column(String(20)) # 'static', 'dynamic'
+    assessments_list = Column(String(255)) # Pipe-separated: 'ORAS|Static-99R'
+    scoring_note = Column(String(255)) # Description of logic
+    options = Column(JSON) # e.g., [{"label": "Yes", "value": 1}, {"label": "No", "value": 0}]
+
 class RiskAssessment(Base):
     __tablename__ = 'risk_assessments'
     assessment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
     date = Column(Date, nullable=False)
+    assessment_type = Column(String(50)) # NEW: 'ORAS', 'Static-99R', etc.
+    status = Column(String(20), default='Draft') # NEW: 'Draft', 'Completed'
     total_score = Column(Integer)
     risk_level = Column(String(20)) # Low, Medium, High
     details = Column(JSON) # Store factor breakdown as JSON
 
     offender = relationship("Offender")
+    answers = relationship("RiskAssessmentAnswer", back_populates="assessment")
+
+class RiskAssessmentAnswer(Base):
+    __tablename__ = 'risk_assessment_answers'
+    answer_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    assessment_id = Column(UUID(as_uuid=True), ForeignKey('risk_assessments.assessment_id'), index=True)
+    question_tag = Column(String(50), ForeignKey('risk_assessment_questions.universal_tag'), index=True)
+    value = Column(JSON) # Store as JSON to handle strings, bools, or numbers flexibly
+    is_imported = Column(Boolean, default=False) # True if auto-filled by "Look-Back" logic
+    source_assessment_id = Column(UUID(as_uuid=True), ForeignKey('risk_assessments.assessment_id'), nullable=True)
+
+    assessment = relationship("RiskAssessment", back_populates="answers", foreign_keys=[assessment_id])
+    question = relationship("RiskAssessmentQuestion")
 
 class Appointment(Base):
     __tablename__ = 'appointments'
