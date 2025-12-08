@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 
 from . import models, database, auth
 from .database import engine, get_db
-from .routers import auth as auth_router, users, offenders, settings, dashboard
+from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees
 from . import reports
 
 models.Base.metadata.create_all(bind=engine)
@@ -36,6 +36,10 @@ app.include_router(users.router)
 app.include_router(offenders.router)
 app.include_router(settings.router)
 app.include_router(dashboard.router)
+app.include_router(workflow.router)
+app.include_router(tasks.router)
+app.include_router(appointments.router)
+app.include_router(fees.router)
 
 @app.get("/")
 def read_root():

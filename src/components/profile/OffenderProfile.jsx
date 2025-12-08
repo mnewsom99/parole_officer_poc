@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../../context/UserContext';
 import axios from 'axios';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink } from 'lucide-react';
 import Modal from '../common/Modal';
 
 import { useParams, useNavigate } from 'react-router-dom';
@@ -35,9 +35,49 @@ const OffenderProfile = () => {
     const [uaHistory, setUaHistory] = useState([]);
     const [notes, setNotes] = useState([]);
     const [riskFactors, setRiskFactors] = useState([]);
+    const [riskHistory, setRiskHistory] = useState([]);
 
     const [appointments, setAppointments] = useState([]);
+
     const [programs, setPrograms] = useState([]);
+    const [feeSummary, setFeeSummary] = useState({ balance: 0, history: [] });
+
+    // Derived State: Recent Activity
+    const recentActivity = React.useMemo(() => {
+        const activity = [];
+
+        // Add Notes
+        notes?.forEach(n => activity.push({
+            id: `note-${n.note_id}`,
+            type: 'Note',
+            title: n.type || 'Case Note',
+            date: n.date,
+            desc: n.content,
+            color: 'bg-blue-500'
+        }));
+
+        // Add UA
+        uaHistory?.forEach(u => activity.push({
+            id: `ua-${u.test_id}`,
+            type: 'UA',
+            title: `UA Test: ${u.result || 'Pending'}`,
+            date: u.date,
+            desc: u.test_type,
+            color: u.result === 'Positive' ? 'bg-red-500' : 'bg-green-500'
+        }));
+
+        // Add Appointments
+        appointments?.forEach(a => activity.push({
+            id: `appt-${a.appointment_id}`,
+            type: 'Appt',
+            title: a.type || 'Appointment',
+            date: a.date_time,
+            desc: a.status,
+            color: 'bg-purple-500'
+        }));
+
+        return activity.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    }, [notes, uaHistory, appointments]);
 
     const [newNoteContent, setNewNoteContent] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -82,14 +122,15 @@ const OffenderProfile = () => {
 
     const fetchData = async () => {
         try {
-            const [offenderRes, uaRes, notesRes, riskRes, apptRes, programsRes] = await Promise.all([
+            const [offenderRes, uaRes, notesRes, riskRes, apptRes, programsRes, feesRes] = await Promise.all([
                 axios.get(`http://localhost:8000/offenders/${offenderId}`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/urinalysis`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/notes`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/risk`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/appointments`),
 
-                axios.get(`http://localhost:8000/offenders/${offenderId}/programs`)
+                axios.get(`http://localhost:8000/offenders/${offenderId}/programs`),
+                axios.get(`http://localhost:8000/fees/${offenderId}`)
             ]);
 
             setOffender(offenderRes.data);
@@ -97,6 +138,7 @@ const OffenderProfile = () => {
             setNotes(notesRes.data);
 
             // Process Risk Data
+            setRiskHistory(riskRes.data);
             if (riskRes.data.length > 0) {
                 const latestRisk = riskRes.data[0];
                 const factors = Object.entries(latestRisk.details || {}).map(([category, score]) => ({
@@ -109,6 +151,11 @@ const OffenderProfile = () => {
 
             setAppointments(apptRes.data);
             setPrograms(programsRes.data);
+
+            if (feesRes && feesRes.data) {
+                setFeeSummary(feesRes.data);
+            }
+
 
         } catch (error) {
             console.error("Error fetching offender data:", error);
@@ -261,6 +308,7 @@ const OffenderProfile = () => {
         { id: 'overview', label: 'Overview', icon: FileText },
         { id: 'risk', label: 'Risk Assessment', icon: AlertTriangle },
         { id: 'ua', label: 'Urine Analysis', icon: Activity },
+        { id: 'fees', label: 'Costs & Fees', icon: DollarSign },
         { id: 'detail', label: 'Detail View', icon: Phone },
     ];
 
@@ -391,27 +439,24 @@ const OffenderProfile = () => {
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <h3 className="font-bold text-slate-800 mb-4">Recent Activity</h3>
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></div>
-                                        <div className="flex-1 flex justify-between items-center min-w-0">
-                                            <p className="text-xs font-medium text-slate-800 truncate">Check-in Completed</p>
-                                            <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">Yesterday, 2:15 PM</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                                        <div className="flex-1 flex justify-between items-center min-w-0">
-                                            <p className="text-xs font-medium text-slate-800 truncate">UA Result: Negative</p>
-                                            <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">Nov 28, 10:00 AM</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
-                                        <div className="flex-1 flex justify-between items-center min-w-0">
-                                            <p className="text-xs font-medium text-slate-800 truncate">Employment Verified</p>
-                                            <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">Nov 15, 9:30 AM</p>
-                                        </div>
-                                    </div>
+                                    {recentActivity.length > 0 ? (
+                                        recentActivity.map(item => (
+                                            <div key={item.id} className="flex items-center gap-3">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${item.color} shrink-0`}></div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="text-xs font-medium text-slate-800 truncate">{item.title}</p>
+                                                        <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
+                                                            {new Date(item.date).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-500 truncate">{item.desc}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">No recent activity.</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -532,31 +577,197 @@ const OffenderProfile = () => {
                 );
             case 'risk':
                 return (
-                    <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Shield className="w-8 h-8 text-slate-400" />
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-800">Risk Assessment History</h3>
+                            <button
+                                onClick={() => setShowRiskModal(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm"
+                            >
+                                Start New Assessment
+                            </button>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Risk Assessment Module</h3>
-                        <p className="text-slate-500 max-w-md mx-auto mb-6">This module allows officers to conduct and review risk assessments (ORAS/LSI-R). Integration pending.</p>
-                        <button
-                            onClick={() => setShowRiskModal(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-lg shadow-blue-600/20 transition-all"
-                        >
-                            Start New Assessment
-                        </button>
+
+                        {riskHistory.length > 0 ? (
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <table className="w-full text-left text-sm text-slate-600">
+                                    <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
+                                        <tr>
+                                            <th className="px-6 py-3">Date</th>
+                                            <th className="px-6 py-3">Risk Level</th>
+                                            <th className="px-6 py-3">Total Score</th>
+                                            <th className="px-6 py-3">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {riskHistory.map((risk) => (
+                                            <tr key={risk.assessment_id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4">{new Date(risk.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${risk.risk_level === 'High' ? 'bg-red-100 text-red-700' :
+                                                        risk.risk_level === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-green-100 text-green-700'
+                                                        }`}>
+                                                        {risk.risk_level}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 font-medium">{risk.total_score}</td>
+                                                <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate">
+                                                    {risk.details ? Object.keys(risk.details).length + " Factors Identified" : "No details"}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Shield className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">No Assessments Found</h3>
+                                <p className="text-slate-500 mb-6">No risk assessments have been recorded for this offender.</p>
+                            </div>
+                        )}
                     </div>
                 );
             case 'ua':
                 return (
-                    <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Activity className="w-8 h-8 text-slate-400" />
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-800">Urine Analysis History</h3>
+                            <div className="flex gap-2">
+                                <a
+                                    href="https://example-lab-portal.com" // Placeholder
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                                >
+                                    <ExternalLink size={16} />
+                                    Lab Portal
+                                </a>
+                                <button className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm">
+                                    Request New Test
+                                </button>
+                            </div>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">LabCorp API Integration</h3>
-                        <p className="text-slate-500 max-w-md mx-auto mb-6">Connect to external lab partners for real-time urinalysis results and history.</p>
-                        <button className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-6 rounded-lg shadow-lg shadow-navy-900/20 transition-all">
-                            Connect Provider
-                        </button>
+
+                        {uaHistory.length > 0 ? (
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <table className="w-full text-left text-sm text-slate-600">
+                                    <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
+                                        <tr>
+                                            <th className="px-6 py-3">Date</th>
+                                            <th className="px-6 py-3">Test Type</th>
+                                            <th className="px-6 py-3">Result</th>
+                                            <th className="px-6 py-3">Collected By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {uaHistory.map((ua) => (
+                                            <tr key={ua.test_id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4">{new Date(ua.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4 font-medium text-slate-800">{ua.test_type}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${ua.result === 'Positive' ? 'bg-red-100 text-red-700' :
+                                                        ua.result === 'Negative' ? 'bg-green-100 text-green-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                        {ua.result}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-xs text-slate-500">
+                                                    {ua.collected_by ? `${ua.collected_by.last_name}, ${ua.collected_by.first_name}` : 'Unknown'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Activity className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">No Test History</h3>
+                                <p className="text-slate-500 mb-6">No urinalysis records found for this offender.</p>
+                            </div>
+                        )}
+                    </div>
+                );
+            case 'fees':
+                return (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-800">Cost of Supervision & Fees</h3>
+                            <a
+                                href="https://example-vendor-portal.com" // Placeholder link
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                            >
+                                <ExternalLink size={16} />
+                                Vendor Portal
+                            </a>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Balance Card */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 col-span-1">
+                                <h4 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wide">Current Balance</h4>
+                                <div className={`text-4xl font-bold ${feeSummary.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    ${Number(feeSummary.balance).toFixed(2)}
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">
+                                    Last Updated: {new Date(feeSummary.last_updated).toLocaleString()}
+                                </p>
+                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <DollarSign size={16} className="text-slate-400" />
+                                        <span>Status: {feeSummary.balance > 0 ? 'Payment Due' : 'In Good Standing'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Transaction History */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden col-span-1 md:col-span-2">
+                                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                    <h4 className="font-bold text-slate-800">Recent Transactions</h4>
+                                    <span className="text-xs text-slate-500">Last 5 records</span>
+                                </div>
+                                {feeSummary.history && feeSummary.history.length > 0 ? (
+                                    <table className="w-full text-left text-sm text-slate-600">
+                                        <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
+                                            <tr>
+                                                <th className="px-6 py-3">Date</th>
+                                                <th className="px-6 py-3">Description</th>
+                                                <th className="px-6 py-3">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {feeSummary.history.map((tx) => (
+                                                <tr key={tx.transaction_id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">{new Date(tx.transaction_date).toLocaleDateString()}</td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium text-slate-800">{tx.description}</span>
+                                                            <span className="text-xs text-slate-400">{tx.type}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className={`px-6 py-4 font-bold ${tx.type === 'Payment' ? 'text-green-600' : 'text-slate-800'}`}>
+                                                        {tx.type === 'Payment' ? '-' : '+'}${Number(tx.amount).toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="p-8 text-center text-slate-500 italic">
+                                        No recent transactions available.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 );
             case 'detail':
@@ -928,14 +1139,13 @@ const OffenderProfile = () => {
                                 Add Note
                             </button>
                             <button
-                                onClick={() => setShowUAModal(true)}
                                 className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all flex items-center gap-1"
                             >
-                                <Beaker size={14} />
-                                Drug Test
+                                <Mail size={14} />
+                                Email
                             </button>
                             <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded text-xs shadow-sm shadow-blue-600/20 transition-all">
-                                Message
+                                Text
                             </button>
                         </div>
                     </div>

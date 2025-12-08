@@ -178,7 +178,20 @@ const SettingsModule = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-fit">
                     <div className="p-4 border-b border-slate-100 font-medium text-slate-800">General</div>
                     <nav className="p-2 space-y-1">
-                        {/* ... (Profile, Notifications, Security) ... */}
+                        <button
+                            onClick={() => setActiveView('profile')}
+                            className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'profile' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <User className="w-4 h-4" />
+                            My Profile
+                        </button>
+                        <button
+                            onClick={() => setActiveView('security')}
+                            className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeView === 'security' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <Shield className="w-4 h-4" />
+                            Security
+                        </button>
 
                         {hasPermission('manage_users') && (
                             <button
@@ -213,6 +226,29 @@ const SettingsModule = () => {
                         <UserManagement />
                     ) : activeView === 'system' ? (
                         <SystemConfiguration />
+                    ) : activeView === 'security' ? (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-800 mb-4">Security Settings</h3>
+                            <p className="text-sm text-slate-500 mb-6">Manage your password and account security.</p>
+
+                            <div className="max-w-md space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
+                                    <input type="password" className="w-full border border-slate-200 rounded-lg py-2 px-3 text-slate-700 bg-slate-50" disabled placeholder="********" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                                    <input type="password" className="w-full border border-slate-200 rounded-lg py-2 px-3 text-slate-700" placeholder="Enter new password" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
+                                    <input type="password" className="w-full border border-slate-200 rounded-lg py-2 px-3 text-slate-700" placeholder="Confirm new password" />
+                                </div>
+                                <div className="pt-2">
+                                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Update Password</button>
+                                </div>
+                            </div>
+                        </div>
                     ) : activeView === 'territory' ? (
                         <TerritoryManagement />
                     ) : activeView === 'locations' ? (

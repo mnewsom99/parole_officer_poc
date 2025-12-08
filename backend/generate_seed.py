@@ -362,14 +362,51 @@ def generate_seed_data():
 
             # Tasks
             if ep_status == 'Active':
-                 for _ in range(random.randint(0, 2)):
+                 # Increase task count to ensure populated dashboards
+                 for _ in range(random.randint(2, 5)):
+                     task_type = random.choice([
+                         "Review Monthly Report", 
+                         "Verify Employment", 
+                         "Home Visit Follow-up",
+                         "Field Visit",
+                         "Complete Assessment",
+                         "Update Risk Assessment"
+                     ])
+                     
+                     status = 'Pending'
+                     # Randomize status a bit more
+                     rand = random.random()
+                     if rand < 0.3: status = 'Completed'
+                     elif rand < 0.5: status = 'In Progress'
+                     
                      db.add(models.Task(
                          episode_id=episode.episode_id,
                          created_by=assigned_officer.officer_id,
-                         title=random.choice(["Review Monthly Report", "Verify Employment", "Home Visit Follow-up"]),
+                         assigned_officer_id=assigned_officer.officer_id, # Assign to officer
+                         title=task_type,
                          description=fake.sentence(),
                          due_date=fake.date_between(start_date='-1w', end_date='+2w'),
-                         status=random.choice(['Pending', 'Completed'])
+                         status=status
+                     ))
+
+            # Appointments (NEW)
+            if ep_status == 'Active':
+                 for _ in range(random.randint(1, 4)):
+                     appt_date = fake.date_between(start_date='-1M', end_date='+2M')
+                     # Combine date with random time (9am - 4pm)
+                     appt_time = datetime(
+                         appt_date.year, appt_date.month, appt_date.day,
+                         random.randint(9, 16), random.choice([0, 15, 30, 45])
+                     )
+                     
+                     db.add(models.Appointment(
+                         offender_id=offender.offender_id,
+                         officer_id=assigned_officer.officer_id,
+                         date_time=appt_time,
+                         type=random.choice(['Office Visit', 'Home Visit', 'Drug Test', 'Court Appearance']),
+                         location=assigned_officer.location.name if assigned_officer.location else "Field",
+                         status='Scheduled' if appt_time > datetime.now() else 'Completed',
+                         notes=fake.sentence()
                      ))
 
         db.commit()

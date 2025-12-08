@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
@@ -107,6 +107,7 @@ class Task(Base):
     task_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'), index=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
+    assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     title = Column(String(100), nullable=False)
     description = Column(Text)
     due_date = Column(Date)
@@ -115,7 +116,26 @@ class Task(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     episode = relationship("SupervisionEpisode")
-    creator = relationship("Officer")
+    creator = relationship("Officer", foreign_keys=[created_by])
+
+class FeeBalance(Base):
+    __tablename__ = 'fee_balances'
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), primary_key=True)
+    balance = Column(Float, default=0.0)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
+    offender = relationship("Offender")
+
+class FeeTransaction(Base):
+    __tablename__ = 'fee_transactions'
+    transaction_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
+    transaction_date = Column(Date, nullable=False)
+    type = Column(String(50)) # Charge, Payment, Adjustment
+    amount = Column(Float, nullable=False)
+    description = Column(String(255))
+    
+    offender = relationship("Offender")
 
 class Residence(Base):
     __tablename__ = 'residences'
@@ -226,3 +246,43 @@ class SpecialAssignment(Base):
     priority = Column(Integer, default=1)
 
     officer = relationship("Officer")
+
+class FormTemplate(Base):
+    __tablename__ = 'form_templates'
+    template_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    form_schema = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class FormSubmission(Base):
+    __tablename__ = 'form_submissions'
+    submission_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = Column(UUID(as_uuid=True), ForeignKey('form_templates.template_id'), index=True)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), nullable=True, index=True)
+    assigned_to_user_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id'), nullable=True, index=True)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id'), index=True)
+    form_data = Column(JSON)
+    status = Column(String(50), default='Draft', index=True)
+    is_locked = Column(Boolean, default=False)
+    current_step = Column(String(50), default='Draft')
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    template = relationship("FormTemplate")
+    offender = relationship("Offender")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    logs = relationship("WorkflowLog", back_populates="submission")
+
+class WorkflowLog(Base):
+    __tablename__ = 'workflow_logs'
+    log_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    submission_id = Column(UUID(as_uuid=True), ForeignKey('form_submissions.submission_id'), index=True)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id'), index=True)
+    action = Column(String(50), nullable=False)
+    comment = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    submission = relationship("FormSubmission", back_populates="logs")
+    actor = relationship("User")

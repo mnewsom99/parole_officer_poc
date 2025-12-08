@@ -9,6 +9,7 @@ import CalendarModule from './components/modules/CalendarModule';
 import ReportsModule from './components/modules/ReportsModule';
 import SettingsModule from './components/modules/SettingsModule';
 import OfficeModule from './components/modules/OfficeModule';
+import WorkflowDashboard from './components/workflow/WorkflowDashboard';
 import Dashboard from './components/Dashboard';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -27,7 +28,7 @@ const AppContent = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
@@ -54,6 +55,7 @@ const AppContent = () => {
             <SettingsModule />
           </ErrorBoundary>
         } />
+        <Route path="/workflows" element={<WorkflowDashboard />} />
       </Routes>
     </AppShell>
   );

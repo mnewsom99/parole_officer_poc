@@ -4,6 +4,7 @@ from sqlalchemy import text
 from backend.database import SessionLocal, engine
 from backend import models
 import uuid
+from datetime import datetime, date, timedelta
 
 # Phoenix Metro Zip Codes (Selection of 50)
 PHOENIX_ZIPS = [
@@ -13,6 +14,9 @@ PHOENIX_ZIPS = [
     "85041", "85042", "85043", "85044", "85045", "85048", "85050", "85051", "85053", "85054",
     "85083", "85085", "85086", "85201", "85202", "85203", "85204", "85205", "85206", "85207"
 ]
+
+LAB_NAMES = ["Quest Diagnostics", "LabCorp", "Redwood Toxicology", "Phamatech"]
+DRUGS = ["THC", "Methamphetamine", "Cocaine", "Opiates", "Amphetamines"]
 
 def reseed():
     db = SessionLocal()
@@ -30,7 +34,12 @@ def reseed():
         print(f"Found {len(officers)} officers and {len(locations)} locations.")
 
         # 2. Clear existing Assignments (Territories and Special Assignments)
+        db.query(models.TerritoryOfficer).delete()
         db.query(models.Territory).delete()
+        
+        # Decouple residences from special assignments before deleting assignments
+        db.query(models.Residence).update({models.Residence.special_assignment_id: None})
+
         db.query(models.SpecialAssignment).delete()
         # Note: We won't delete offenders, just update them.
         db.commit()
@@ -47,11 +56,18 @@ def reseed():
             
             territory = models.Territory(
                 zip_code=zip_code,
-                assigned_officer_id=officer.officer_id,
                 assigned_location_id=location.location_id if location else None,
                 region_name="Phoenix Metro"
             )
             db.add(territory)
+            
+            # Create Primary Officer assignment
+            territory_officer = models.TerritoryOfficer(
+                zip_code=zip_code,
+                officer_id=officer.officer_id,
+                is_primary=True
+            )
+            db.add(territory_officer)
         
         db.commit()
 
@@ -139,6 +155,100 @@ def reseed():
                     # If it's a facility, update address could be nice, but simple link is enough for logic
         
         db.commit()
+
+        # 7. Seed Fee Data (COS Fees)
+        print("Seeding Fee/Financial Data...")
+        # Clear existing
+        db.query(models.FeeTransaction).delete()
+        db.query(models.FeeBalance).delete()
+        
+        for offender in db.query(models.Offender).all():
+            # Random starting balance (Ensure non-zero for demo purposes)
+            # -100 to -10 (Credit) OR 10 to 500 (Owed)
+            if random.random() < 0.3:
+                balance = round(random.uniform(-100.0, -10.0), 2)
+            else:
+                balance = round(random.uniform(10.0, 500.0), 2)
+            
+            # Create Balance Record
+            fee_balance = models.FeeBalance(
+                offender_id=offender.offender_id,
+                balance=balance,
+                last_updated=datetime.now()
+            )
+            db.add(fee_balance)
+
+            # Create 5-10 random transactions
+            num_tx = random.randint(5, 10)
+            current_date = date.today()
+            
+            for _ in range(num_tx):
+                # Random date in last 6 months
+                days_ago = random.randint(1, 180)
+                tx_date = current_date - timedelta(days=days_ago)
+                
+                is_payment = random.random() < 0.4 # 40% chance of payment
+                
+                if is_payment:
+                    amount = round(random.uniform(20.0, 100.0), 2)
+                    tx_type = "Payment"
+                    desc = "Online Payment - Vendor"
+                else:
+                    amount = 65.00 # Standard monthly fee
+                    tx_type = "Charge"
+                    desc = "Monthly Supervision Fee"
+                
+                tx = models.FeeTransaction(
+                    offender_id=offender.offender_id,
+                    transaction_date=tx_date,
+                    type=tx_type,
+                    amount=amount,
+                    description=desc
+                )
+                db.add(tx)
+            
+            # 8. Seed UA Data (Vendor Imports)
+            # Create 3-8 random UA results
+            num_ua = random.randint(3, 8)
+            
+            # Clear existing UAs for this offender (optional, but good for cleanup if re-running)
+            # Efficient bulk delete would be better outside loop, but this is simple POC script
+            db.query(models.Urinalysis).filter(models.Urinalysis.offender_id == offender.offender_id).delete()
+            
+            for _ in range(num_ua):
+                # Random date in last 6 months
+                days_ago = random.randint(1, 180)
+                test_date = current_date - timedelta(days=days_ago)
+                
+                # Determine result
+                is_positive = random.random() < 0.2 # 20% positive rate
+                result = "Positive" if is_positive else "Negative"
+                test_type = random.choice(["Random", "Scheduled", "For Cause"])
+                lab = random.choice(LAB_NAMES)
+                
+                notes = f"Imported from {lab}"
+                if is_positive:
+                    drug = random.choice(DRUGS)
+                    result = "Positive" # Schema might just store "Positive", usually detailed in notes or separate field
+                    # But based on UI "Positive (Substance)" logic ideally, let's append substance if schema supports it or just put in notes
+                    # Looking at models.py: result = Column(String(50))
+                    # And UI logic: result === 'Positive'
+                    # So let's keep result as "Positive" and add substance to notes
+                    notes += f" - Detected: {drug}"
+                
+                ua = models.Urinalysis(
+                    offender_id=offender.offender_id,
+                    date=test_date,
+                    test_type=test_type,
+                    result=result,
+                    lab_name=lab,
+                    notes=notes
+                )
+                db.add(ua)
+
+        db.commit()
+        print("Fee and UA Data Seeded.")
+
         print("Reseed Complete!")
 
     except Exception as e:

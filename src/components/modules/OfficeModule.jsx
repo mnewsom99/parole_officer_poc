@@ -1,13 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, CheckSquare, ArrowRight, Search, UserPlus, ClipboardList, Calendar, UserMinus, Clock } from 'lucide-react';
+import { Users, FileText, CheckSquare, ArrowRight, Search, UserPlus, ClipboardList, Calendar, UserMinus, Clock, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
+import { useUser } from '../../context/UserContext';
+import { format } from 'date-fns';
 
 const OfficeModule = () => {
-    const [activeTab, setActiveTab] = useState('transfer');
+    const { currentUser } = useUser();
+    const [activeTab, setActiveTab] = useState('review');
     const [offices, setOffices] = useState([]);
     const [officers, setOfficers] = useState([]);
     const [selectedOffice, setSelectedOffice] = useState('');
     const [selectedOfficer, setSelectedOfficer] = useState('');
+
+    // Stats
+    const [totalOffenders, setTotalOffenders] = useState(0);
+    const [pendingReviews, setPendingReviews] = useState([]);
+
+    // Forms
+    const [taskForm, setTaskForm] = useState({
+        title: '',
+        assigned_officer_id: '',
+        due_date: '',
+        priority: 'Normal',
+        description: '' // Mapped to instructions
+    });
 
     // Fetch Offices
     useEffect(() => {
@@ -22,7 +38,7 @@ const OfficeModule = () => {
         fetchOffices();
     }, []);
 
-    // Fetch Officers (filtered by office if selected)
+    // Fetch Officers (filtered by office)
     useEffect(() => {
         const fetchOfficers = async () => {
             try {
@@ -34,15 +50,10 @@ const OfficeModule = () => {
                 const mappedOfficers = response.data.map(o => ({
                     id: o.officer_id,
                     name: `${o.first_name} ${o.last_name}`,
-                    caseload: Math.floor(Math.random() * 40) + 20, // Mock caseload between 20-60
+                    caseload: 0, // Mock for now, or fetch individually if needed
                     status: 'Active'
                 }));
                 setOfficers(mappedOfficers);
-
-                // Reset selected officer if not in the new list
-                if (selectedOfficer && !mappedOfficers.find(o => o.id === selectedOfficer)) {
-                    setSelectedOfficer('');
-                }
             } catch (error) {
                 console.error("Error fetching officers:", error);
             }
@@ -50,19 +61,67 @@ const OfficeModule = () => {
         fetchOfficers();
     }, [selectedOffice]);
 
-    const pendingTasks = [
-        { id: 1, title: 'Approve Home Plan - Doe, J.', officer: 'Smith, John', date: 'Today', priority: 'High' },
-        { id: 2, title: 'Review Incident Report - Case #882', officer: 'Williams, Mike', date: 'Yesterday', priority: 'Medium' },
-        { id: 3, title: 'Sign off on Discharge', officer: 'Johnson, Sarah', date: 'Dec 10', priority: 'Low' },
-    ];
+    // Fetch Stats (Total Offenders)
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                // Fetch just 1 item to get the 'total' count metadata
+                const response = await axios.get('http://localhost:8000/offenders?limit=1');
+                if (response.data && response.data.total !== undefined) {
+                    setTotalOffenders(response.data.total);
+                }
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+            }
+        };
+        fetchStats();
+    }, []);
 
-    // Filter pending tasks based on selected officer
-    const filteredTasks = selectedOfficer
-        ? pendingTasks.filter(t => {
-            const officer = officers.find(o => o.id === selectedOfficer);
-            return officer && t.officer === officer.name;
-        })
-        : pendingTasks;
+    // Fetch Pending Reviews (Workflows)
+    useEffect(() => {
+        const fetchReviews = async () => {
+            try {
+                // Assuming status 'Pending_Sup_Review' is what we look for
+                const response = await axios.get('http://localhost:8000/workflows/tasks?status=Pending_Sup_Review');
+                setPendingReviews(response.data);
+            } catch (error) {
+                console.error("Error fetching reviews:", error);
+            }
+        };
+        // Fetch initially and polling/refresh could happen here
+        fetchReviews();
+    }, []);
+
+    const handleAssignTask = async () => {
+        if (!taskForm.title || !taskForm.assigned_officer_id) {
+            alert("Please fill in required fields");
+            return;
+        }
+        try {
+            await axios.post('http://localhost:8000/tasks', taskForm);
+            alert("Task Assigned Successfully");
+            setTaskForm({ title: '', assigned_officer_id: '', due_date: '', priority: 'Normal', description: '' });
+        } catch (error) {
+            console.error("Error assigning task:", error);
+            alert("Failed to assign task");
+        }
+    };
+
+    const handleReviewAction = async (submissionId, action) => {
+        try {
+            // Action: 'Approve' or 'Return' (Reject)
+            await axios.put(`http://localhost:8000/workflows/submissions/${submissionId}/action`, {
+                action: action,
+                comment: `Supervisor ${action === 'Approve' ? 'Approved' : 'Returned'}`
+            });
+            // Refresh list
+            const response = await axios.get('http://localhost:8000/workflows/tasks?status=Pending_Sup_Review');
+            setPendingReviews(response.data);
+        } catch (error) {
+            console.error("Error updating submission:", error);
+            alert("Action failed");
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -82,16 +141,6 @@ const OfficeModule = () => {
                             <option key={office.location_id} value={office.location_id}>{office.name}</option>
                         ))}
                     </select>
-                    <select
-                        value={selectedOfficer}
-                        onChange={(e) => setSelectedOfficer(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
-                    >
-                        <option value="">All Officers</option>
-                        {officers.map(officer => (
-                            <option key={officer.id} value={officer.id}>{officer.name}</option>
-                        ))}
-                    </select>
                 </div>
             </div>
 
@@ -103,11 +152,9 @@ const OfficeModule = () => {
                         <Users className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Offenders Assigned</p>
+                        <p className="text-sm text-slate-500">Total Offenders</p>
                         <p className="text-2xl font-bold text-slate-800">
-                            {selectedOfficer
-                                ? officers.find(o => o.id === selectedOfficer)?.caseload || 0
-                                : officers.reduce((acc, o) => acc + o.caseload, 0)}
+                            {totalOffenders}
                         </p>
                     </div>
                 </div>
@@ -117,7 +164,7 @@ const OfficeModule = () => {
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Pending Reviews</p>
-                        <p className="text-2xl font-bold text-slate-800">{filteredTasks.length}</p>
+                        <p className="text-2xl font-bold text-slate-800">{pendingReviews.length}</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
@@ -129,46 +176,17 @@ const OfficeModule = () => {
                         <p className="text-2xl font-bold text-slate-800">24</p>
                     </div>
                 </div>
-
-                {/* Row 2 */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
-                        <ArrowRight className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Pending Transfers</p>
-                        <p className="text-2xl font-bold text-slate-800">5</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-red-50 text-red-600 rounded-lg">
-                        <UserMinus className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Pending Releases</p>
-                        <p className="text-2xl font-bold text-slate-800">12</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                        <Calendar className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Future</p>
-                        <p className="text-2xl font-bold text-slate-800">8</p>
-                    </div>
-                </div>
             </div>
 
             {/* Module Tabs */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="flex border-b border-slate-200">
                     <button
-                        onClick={() => setActiveTab('transfer')}
-                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'transfer' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                        onClick={() => setActiveTab('review')}
+                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'review' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
-                        <ArrowRight className="w-4 h-4" />
-                        Case Transfer
+                        <ClipboardList className="w-4 h-4" />
+                        Review Queue {pendingReviews.length > 0 && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">{pendingReviews.length}</span>}
                     </button>
                     <button
                         onClick={() => setActiveTab('assign')}
@@ -178,15 +196,128 @@ const OfficeModule = () => {
                         Assign Task
                     </button>
                     <button
-                        onClick={() => setActiveTab('review')}
-                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'review' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                        onClick={() => setActiveTab('transfer')}
+                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'transfer' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
-                        <ClipboardList className="w-4 h-4" />
-                        Review Queue
+                        <ArrowRight className="w-4 h-4" />
+                        Case Transfer
                     </button>
                 </div>
 
                 <div className="p-6">
+                    {/* Review Queue Tab */}
+                    {activeTab === 'review' && (
+                        <div className="space-y-4">
+                            {pendingReviews.length > 0 ? (
+                                pendingReviews.map(task => (
+                                    <div key={task.submission_id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-full">
+                                                <Clock className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800">{task.template?.name || "Request"}</h4>
+                                                <p className="text-sm text-slate-500">
+                                                    Submitted by <span className="font-medium text-slate-700">{task.created_by?.username || 'Officer'}</span>
+                                                    {task.offender && <span> • Re: {task.offender.first_name} {task.offender.last_name}</span>}
+                                                </p>
+                                                <p className="text-xs text-slate-400 mt-1">{format(new Date(task.created_at), 'MMM d, yyyy h:mm a')}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleReviewAction(task.submission_id, 'Approve')}
+                                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200"
+                                            >
+                                                <CheckCircle className="w-4 h-4" /> Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleReviewAction(task.submission_id, 'Return')}
+                                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                                            >
+                                                <XCircle className="w-4 h-4" /> Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                                    <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                                    <p className="text-slate-500">No pending reviews found.</p>
+                                    <p className="text-xs text-slate-400">Tasks requiring supervisor approval will appear here.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Assign Task Tab */}
+                    {activeTab === 'assign' && (
+                        <div className="max-w-2xl mx-auto space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Task Title</label>
+                                <input
+                                    type="text"
+                                    value={taskForm.title}
+                                    onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="e.g., Conduct Surprise Home Visit"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Assign To</label>
+                                <select
+                                    value={taskForm.assigned_officer_id}
+                                    onChange={(e) => setTaskForm({ ...taskForm, assigned_officer_id: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="">Select Officer...</option>
+                                    {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
+                                    <input
+                                        type="date"
+                                        value={taskForm.due_date}
+                                        onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+                                    <select
+                                        value={taskForm.priority}
+                                        onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option>Low</option>
+                                        <option>Normal</option>
+                                        <option>High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Instructions</label>
+                                <textarea
+                                    value={taskForm.description}
+                                    onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 h-32 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="Enter detailed instructions..."
+                                ></textarea>
+                            </div>
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleAssignTask}
+                                    className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-6 rounded-lg shadow-lg shadow-navy-900/20 transition-all"
+                                >
+                                    Assign Task
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Case Transfer Tab (Placeholder logic still, but UI kept) */}
                     {activeTab === 'transfer' && (
                         <div className="space-y-6">
                             <div className="flex gap-4">
@@ -208,82 +339,14 @@ const OfficeModule = () => {
                                     </select>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Select Cases to Transfer</label>
-                                <div className="border border-slate-200 rounded-lg bg-slate-50 p-8 text-center text-slate-500">
-                                    Select a "From Officer" to view their caseload.
-                                </div>
+                            <div className="border border-slate-200 rounded-lg bg-slate-50 p-8 text-center text-slate-500">
+                                Select a "From Officer" to view their caseload.
                             </div>
                             <div className="flex justify-end">
                                 <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
                                     Transfer Cases
                                 </button>
                             </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'assign' && (
-                        <div className="max-w-2xl mx-auto space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Task Title</label>
-                                <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700" placeholder="e.g., Conduct Surprise Home Visit" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Assign To</label>
-                                <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700">
-                                    <option>Select Officer...</option>
-                                    {officers.map(o => <option key={o.id}>{o.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
-                                    <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-                                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700">
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Instructions</label>
-                                <textarea className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 h-32" placeholder="Enter detailed instructions..."></textarea>
-                            </div>
-                            <div className="flex justify-end">
-                                <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
-                                    Assign Task
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'review' && (
-                        <div className="space-y-4">
-                            {filteredTasks.length > 0 ? (
-                                filteredTasks.map(task => (
-                                    <div key={task.id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-2 h-12 rounded-full ${task.priority === 'High' ? 'bg-red-500' : task.priority === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800">{task.title}</h4>
-                                                <p className="text-sm text-slate-500">Submitted by <span className="font-medium text-slate-700">{task.officer}</span> • {task.date}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button className="px-3 py-1 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">Approve</button>
-                                            <button className="px-3 py-1 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">Reject</button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-8 text-slate-500">
-                                    No pending reviews found.
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>

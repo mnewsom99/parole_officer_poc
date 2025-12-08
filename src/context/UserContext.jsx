@@ -142,9 +142,22 @@ export const UserProvider = ({ children }) => {
         }
     };
 
+    // Global Filter State
+    const [globalFilter, setGlobalFilter] = useState({
+        office: '',
+        officer: ''
+    });
+
+    const updateGlobalFilter = (newFilter) => {
+        setGlobalFilter(prev => ({
+            ...prev,
+            ...newFilter
+        }));
+    };
+
     // eslint-disable-next-line react-refresh/only-export-components
     return (
-        <UserContext.Provider value={{ currentUser, login, logout, hasPermission, isLoading }}>
+        <UserContext.Provider value={{ currentUser, login, logout, hasPermission, isLoading, globalFilter, updateGlobalFilter }}>
             {children}
         </UserContext.Provider>
     );

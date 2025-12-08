@@ -77,20 +77,27 @@ def get_offenders(
                     } for c in current_residence.contacts
                 ]
         
+            # Fetch next appointment
+        next_appt = db.query(models.Appointment).filter(
+            models.Appointment.offender_id == offender.offender_id,
+            models.Appointment.date_time > datetime.utcnow(),
+            models.Appointment.status == 'Scheduled'
+        ).order_by(models.Appointment.date_time.asc()).first()
+
         results.append({
             "id": str(offender.offender_id),
             "name": f"{offender.last_name}, {offender.first_name}",
             "badgeId": offender.badge_id,
             "risk": ep.risk_level_at_start, 
             "status": ep.status,
-            "nextCheck": "2025-12-10T10:00:00", 
+            "nextCheck": next_appt.date_time.isoformat() if next_appt else "Pending", 
             "compliance": random.randint(60, 100), 
             "image": offender.image_url or f"https://ui-avatars.com/api/?name={offender.first_name}+{offender.last_name}&background=random",
             "address": address_str,
             "city": current_residence.city if current_residence else "",
             "state": current_residence.state if current_residence else "",
             "zip": current_residence.zip_code if current_residence else "",
-            "phone": "555-0199",
+            "phone": contacts[0]["phone"] if contacts else f"(602) 555-{random.randint(1000, 9999)}",
             "housingType": housing_type,
             "facility": facility_info,
             "residenceContacts": contacts,

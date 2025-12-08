@@ -6,11 +6,12 @@ import { Link, useLocation } from 'react-router-dom';
 const Sidebar = () => {
     const location = useLocation();
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { id: 'caseload', label: 'My Caseload', path: '/caseload', icon: Users },
-        { id: 'office', label: 'Office Module', path: '/office', icon: Briefcase },
         { id: 'tasks', label: 'Tasks', path: '/tasks', icon: CheckSquare },
         { id: 'calendar', label: 'Calendar', path: '/calendar', icon: Calendar },
+        { id: 'office', label: 'Office Module', path: '/office', icon: Briefcase },
+        { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { id: 'workflows', label: 'Workflows', path: '/workflows', icon: FileText },
         { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
         { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
     ];

@@ -261,6 +261,28 @@ class SupervisionEpisode(SupervisionEpisodeBase):
     class Config:
         from_attributes = True
 
+# --- Tasks ---
+class TaskBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[date] = None
+    priority: Optional[str] = 'Normal'
+    assigned_officer_id: UUID
+
+class TaskCreate(TaskBase):
+    pass
+
+class Task(TaskBase):
+    task_id: UUID
+    episode_id: Optional[UUID] = None
+    created_by: Optional[UUID] = None
+    status: Optional[str] = 'Pending'
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # --- Others ---
 class OffenderCreate(BaseModel):
     first_name: str
@@ -358,6 +380,7 @@ class Appointment(AppointmentBase):
     offender_id: UUID
     officer_id: Optional[UUID] = None
     officer: Optional[Officer] = None
+    offender: Optional[Offender] = None
     class Config:
         from_attributes = True
 
@@ -386,3 +409,65 @@ class SystemSetting(BaseModel):
 
 class SystemSettingUpdate(BaseModel):
     value: str
+
+
+# --- Workflows & Dynamic Forms ---
+
+class FormTemplateBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    form_schema: Dict[str, Any]
+
+class FormTemplateCreate(FormTemplateBase):
+    pass
+
+class FormTemplate(FormTemplateBase):
+    template_id: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class WorkflowLogBase(BaseModel):
+    action: str
+    comment: Optional[str] = None
+    timestamp: datetime
+
+class WorkflowLog(WorkflowLogBase):
+    log_id: UUID
+    submission_id: UUID
+    actor_id: UUID
+    actor: Optional[User] = None # Basic user info
+    class Config:
+        from_attributes = True
+
+class FormSubmissionBase(BaseModel):
+    template_id: UUID
+    offender_id: Optional[UUID] = None
+    assigned_to_user_id: Optional[UUID] = None
+    form_data: Dict[str, Any]
+
+class FormSubmissionCreate(FormSubmissionBase):
+    pass
+
+class FormSubmission(FormSubmissionBase):
+    submission_id: UUID
+    created_by_id: UUID
+    status: str
+    is_locked: bool
+    current_step: str
+    created_at: datetime
+    updated_at: datetime
+    
+    template: Optional[FormTemplate] = None
+    offender: Optional[Offender] = None
+    assigned_to: Optional[User] = None
+    created_by: Optional[User] = None
+    logs: List[WorkflowLog] = []
+
+    class Config:
+        from_attributes = True
+
+class WorkflowAction(BaseModel):
+    action: str # Submit, Approve, Deny, Return
+    comment: Optional[str] = None
+    target_user_id: Optional[UUID] = None # For re-assignment logic

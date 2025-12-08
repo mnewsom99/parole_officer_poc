@@ -114,6 +114,7 @@ CREATE TABLE tasks (
     task_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     episode_id UUID REFERENCES supervision_episodes(episode_id),
     created_by UUID REFERENCES officers(officer_id),
+    assigned_officer_id UUID REFERENCES officers(officer_id),
     title VARCHAR(100) NOT NULL,
     description TEXT,
     due_date DATE,
@@ -191,3 +192,19 @@ ALTER TABLE residences ADD COLUMN special_assignment_id UUID REFERENCES special_
 
 -- Update Locations to include Zip Code
 ALTER TABLE locations ADD COLUMN zip_code VARCHAR(10);
+
+-- Fee Cache Tables (Vendor Integration)
+CREATE TABLE fee_balances (
+    offender_id UUID PRIMARY KEY REFERENCES offenders(offender_id),
+    balance FLOAT DEFAULT 0.0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE fee_transactions (
+    transaction_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offender_id UUID REFERENCES offenders(offender_id),
+    transaction_date DATE NOT NULL,
+    type VARCHAR(50),
+    amount FLOAT NOT NULL,
+    description VARCHAR(255)
+);

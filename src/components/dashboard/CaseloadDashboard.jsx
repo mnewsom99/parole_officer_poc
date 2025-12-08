@@ -6,21 +6,21 @@ import AddOffenderModal from './AddOffenderModal';
 import { useNavigate } from 'react-router-dom';
 
 const CaseloadDashboard = () => {
-    const { currentUser, hasPermission } = useUser();
+    const { currentUser, hasPermission, globalFilter, updateGlobalFilter } = useUser();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddOffenderModalOpen, setIsAddOffenderModalOpen] = useState(false);
-    const [selectedOfficer, setSelectedOfficer] = useState('');
-    const [selectedOffice, setSelectedOffice] = useState('');
+    // Local filter state removed in favor of globalFilter
     const [sortConfig, setSortConfig] = useState({ key: 'nextCheck', direction: 'ascending' });
     const [officers, setOfficers] = useState([]);
     const [offices, setOffices] = useState([]);
     const [offenders, setOffenders] = useState([]);
+    const [totalOffenders, setTotalOffenders] = useState(0); // Store server-side total
     const [totalPages, setTotalPages] = useState(1);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 25;
+    const itemsPerPage = 50;
 
     const onSelectOffender = (offender) => {
         navigate(`/offenders/${offender.id}`);
@@ -31,7 +31,8 @@ const CaseloadDashboard = () => {
         const fetchOffices = async () => {
             try {
                 const response = await axios.get('http://localhost:8000/locations');
-                setOffices(response.data);
+                const sortedOffices = response.data.sort((a, b) => a.name.localeCompare(b.name));
+                setOffices(sortedOffices);
             } catch (error) {
                 console.error("Error fetching offices:", error);
             }
@@ -44,8 +45,8 @@ const CaseloadDashboard = () => {
         const fetchOfficers = async () => {
             try {
                 let url = 'http://localhost:8000/officers';
-                if (selectedOffice) {
-                    url += `?location_id=${selectedOffice}`;
+                if (globalFilter.office) {
+                    url += `?location_id=${globalFilter.office}`;
                 }
                 const response = await axios.get(url);
                 const mappedOfficers = response.data.map(o => ({
@@ -54,44 +55,44 @@ const CaseloadDashboard = () => {
                 }));
                 setOfficers(mappedOfficers);
 
+                mappedOfficers.sort((a, b) => a.name.localeCompare(b.name));
                 setOfficers(mappedOfficers);
-
-                // Default to empty or specific logic if needed, but don't force lock
-                // If the user's officer ID is in this list and nothing is selected, select it? 
-                // No, relied on the separate "Set Defaults" effect for initial load.
             } catch (error) {
                 console.error("Error fetching officers:", error);
             }
         };
         fetchOfficers();
-    }, [selectedOffice, currentUser, hasPermission]);
+    }, [globalFilter.office, currentUser, hasPermission]);
 
     // Set default filters based on user (PRESET ONLY, DO NOT LOCK)
+    // Only set if global filter is empty (first load) to respect persistence
     useEffect(() => {
-        if (currentUser?.officerId && selectedOfficer === '') {
-            setSelectedOfficer(currentUser.officerId);
+        if (!currentUser) return;
+
+        const updates = {};
+        if (currentUser.officerId && !globalFilter.officer) {
+            updates.officer = currentUser.officerId;
         }
-        if (currentUser?.locationId && selectedOffice === '') {
-            setSelectedOffice(currentUser.locationId);
+        if (currentUser.locationId && !globalFilter.office) {
+            updates.office = currentUser.locationId;
         }
-    }, [currentUser]);
+
+        if (Object.keys(updates).length > 0) {
+            updateGlobalFilter(updates);
+        }
+    }, [currentUser]); // Run when user loads, check global state inside
 
     // Fetch Offenders
-    // Fetch Offenders
-    // Fetch Offenders
     useEffect(() => {
-        // Allow fetch if selectedOfficer is empty string (All) OR if a specific officer is selected
-        // But if user is RESTRICTED, they must have a selection (enforced above)
-
         const fetchOffenders = async () => {
             try {
                 let url = 'http://localhost:8000/offenders';
                 const params = new URLSearchParams();
 
-                if (selectedOfficer) {
-                    params.append('officer_id', selectedOfficer);
-                } else if (selectedOffice) {
-                    params.append('location_id', selectedOffice);
+                if (globalFilter.officer) {
+                    params.append('officer_id', globalFilter.officer);
+                } else if (globalFilter.office) {
+                    params.append('location_id', globalFilter.office);
                 }
 
                 // Add pagination params
@@ -103,13 +104,13 @@ const CaseloadDashboard = () => {
                 }
 
                 const response = await axios.get(url);
-                // Handle new paginated response structure
                 if (response.data && response.data.data) {
                     setOffenders(response.data.data);
+                    setTotalOffenders(response.data.total);
                     setTotalPages(Math.ceil(response.data.total / itemsPerPage));
                 } else if (Array.isArray(response.data)) {
-                    // Fallback for legacy array
                     setOffenders(response.data);
+                    setTotalOffenders(response.data.length);
                     setTotalPages(1);
                 }
             } catch (error) {
@@ -117,11 +118,11 @@ const CaseloadDashboard = () => {
             }
         };
         fetchOffenders();
-    }, [selectedOfficer, selectedOffice, currentPage]); // Added currentPage dependency
+    }, [globalFilter.officer, globalFilter.office, currentPage]);
 
     // ... (Helper functions restored) ...
     const handleOfficerChange = (e) => {
-        setSelectedOfficer(e.target.value);
+        updateGlobalFilter({ officer: e.target.value });
     };
 
     const formatNextCheck = (dateString) => {
@@ -164,21 +165,21 @@ const CaseloadDashboard = () => {
         setSortConfig({ key, direction });
     };
 
-    // Server-side filtering is safer, but for now we filter the current PAGE of results client side 
-    // OR we should ideally move search to server.
-    // Given the constraints, let's continue filtering the *fetched* offenders client-side 
-    // BUT since we only fetched 25, searching locally is broken unless matches are in this page.
-    // FIXME: Search should trigger a server re-fetch.
-
     const filteredOffenders = React.useMemo(() => {
-        // ... sort logic ...
         let sortableItems = [...offenders];
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
-                if (a[sortConfig.key] < b[sortConfig.key]) {
+                let aVal = a[sortConfig.key];
+                let bVal = b[sortConfig.key];
+
+                // Handle strings case-insensitive
+                if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+                if (aVal < bVal) {
                     return sortConfig.direction === 'ascending' ? -1 : 1;
                 }
-                if (a[sortConfig.key] > b[sortConfig.key]) {
+                if (aVal > bVal) {
                     return sortConfig.direction === 'ascending' ? 1 : -1;
                 }
                 return 0;
@@ -190,14 +191,9 @@ const CaseloadDashboard = () => {
         );
     }, [offenders, sortConfig, searchQuery]);
 
-    // Handle Search Reset
-    // If search is present, we should probably fetch ALL matching from server? 
-    // For now, let's keep the client-side sorting on the current page data.
-
-    // const indexOfLastItem = currentPage * itemsPerPage; // No longer needed for slicing
-    // const indexOfFirstItem = indexOfLastItem - itemsPerPage; // No longer needed for slicing
-    const currentItems = filteredOffenders; // We already have the slice from server
-    // const totalPages = Math.ceil(filteredOffenders.length / itemsPerPage); // This is broken now.
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredOffenders;
 
 
     const handlePageChange = (pageNumber) => {
@@ -233,7 +229,7 @@ const CaseloadDashboard = () => {
                 start_date: newOffender.beginDate,
                 end_date: newOffender.endDate || null,
                 risk_level: newOffender.risk,
-                assigned_officer_id: selectedOfficer
+                assigned_officer_id: globalFilter.officer
             };
 
             const response = await axios.post('http://localhost:8000/offenders', payload);
@@ -241,8 +237,8 @@ const CaseloadDashboard = () => {
             // Refresh the list or add to state
             const fetchOffenders = async () => {
                 try {
-                    const response = await axios.get(`http://localhost:8000/offenders?officer_id=${selectedOfficer}`);
-                    setOffenders(response.data);
+                    const response = await axios.get(`http://localhost:8000/offenders?officer_id=${globalFilter.officer}`);
+                    setOffenders(response.data.data || response.data);
                 } catch (error) {
                     console.error("Error fetching offenders:", error);
                 }
@@ -261,16 +257,22 @@ const CaseloadDashboard = () => {
     };
 
     return (
+
         <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">My Caseload</h2>
-                    <p className="text-slate-500">Active Offenders: {filteredOffenders.length}</p>
+                    <p className="text-slate-500">Active Offenders: {totalOffenders}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <select
-                        value={selectedOffice}
-                        onChange={(e) => setSelectedOffice(e.target.value)}
+                        value={globalFilter.office}
+                        onChange={(e) => {
+                            updateGlobalFilter({
+                                office: e.target.value,
+                                officer: '' // Reset officer when office changes
+                            });
+                        }}
                         className={`bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[140px] cursor-pointer`}
                     >
                         <option value="">All Offices</option>
@@ -279,7 +281,7 @@ const CaseloadDashboard = () => {
                         ))}
                     </select>
                     <select
-                        value={selectedOfficer}
+                        value={globalFilter.officer}
                         onChange={handleOfficerChange}
                         className={`bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[180px] cursor-pointer`}
                     >
@@ -327,22 +329,22 @@ const CaseloadDashboard = () => {
                                 Risk Level <SortIcon column="risk" />
                             </th>
                             <th
-                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                                className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors w-1/4"
                                 onClick={() => handleSort('address')}
                             >
                                 Address <SortIcon column="address" />
                             </th>
                             <th
                                 className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
-                                onClick={() => handleSort('phone')}
+                                onClick={() => handleSort('zip')}
                             >
-                                Phone <SortIcon column="phone" />
+                                Zip Code <SortIcon column="zip" />
                             </th>
                             <th
                                 className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
-                                onClick={() => handleSort('compliance')}
+                                onClick={() => handleSort('phone')}
                             >
-                                Compliance <SortIcon column="compliance" />
+                                Phone <SortIcon column="phone" />
                             </th>
                             <th
                                 className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
@@ -377,11 +379,14 @@ const CaseloadDashboard = () => {
                                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offender.address)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-sm text-blue-600 hover:underline truncate max-w-[150px] block"
+                                        className="text-sm text-blue-600 hover:underline truncate max-w-[300px] block"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         {offender.address}
                                     </a>
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-slate-700">
+                                    {offender.zip}
                                 </td>
                                 <td className="px-4 py-2 whitespace-nowrap">
                                     <a
@@ -391,15 +396,6 @@ const CaseloadDashboard = () => {
                                     >
                                         {offender.phone}
                                     </a>
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="w-full bg-slate-200 rounded-full h-2.5 w-24">
-                                        <div
-                                            className={`h-2.5 rounded-full ${offender.compliance > 80 ? 'bg-green-500' : offender.compliance > 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                            style={{ width: `${offender.compliance}%` }}
-                                        ></div>
-                                    </div>
-                                    <span className="text-xs text-slate-500 mt-1 block">{offender.compliance}%</span>
                                 </td>
                                 <td className="px-4 py-2 whitespace-nowrap">
                                     <div className="flex items-center gap-2">
@@ -422,7 +418,7 @@ const CaseloadDashboard = () => {
 
             {/* Pagination Controls */}
             {
-                filteredOffenders.length > itemsPerPage && (
+                totalOffenders > itemsPerPage && (
                     <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-b-xl shadow-sm">
                         <div className="flex flex-1 justify-between sm:hidden">
                             <button
@@ -443,8 +439,8 @@ const CaseloadDashboard = () => {
                         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                             <div>
                                 <p className="text-sm text-gray-700">
-                                    Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to <span className="font-medium">{Math.min(indexOfLastItem, filteredOffenders.length)}</span> of{' '}
-                                    <span className="font-medium">{filteredOffenders.length}</span> results
+                                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalOffenders)}</span> of{' '}
+                                    <span className="font-medium">{totalOffenders}</span> results
                                 </p>
                             </div>
                             <div>
