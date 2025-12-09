@@ -57,7 +57,17 @@ def generate_seed_data():
             {"name": "Violation", "color": "bg-red-100 text-red-700"},
             {"name": "Phone Call", "color": "bg-yellow-100 text-yellow-700"}
         ]
+        
+        offender_flags_config = [
+            {"name": "SMI", "color": "bg-purple-100 text-purple-700"},
+            {"name": "Veteran", "color": "bg-blue-100 text-blue-700"},
+            {"name": "Sex Offender", "color": "bg-orange-100 text-orange-800"},
+            {"name": "GPS", "color": "bg-slate-100 text-slate-700"},
+            {"name": "Gang Member", "color": "bg-red-100 text-red-700"}
+        ]
+        
         db.add(models.SystemSettings(key='note_types', value=json.dumps(note_types_config)))
+        db.add(models.SystemSettings(key='offender_flags', value=json.dumps(offender_flags_config)))
         db.commit()
 
         # 3. Create Locations (4 Regional + 1 Specialty)
@@ -258,6 +268,39 @@ def generate_seed_data():
             facilities.append(sa)
         db.commit()
 
+        # 7b. Generate Risk Types & Questions
+        oras = models.RiskAssessmentType(
+            type_id=1, name="ORAS", description="Ohio Risk Assessment System",
+            scoring_matrix=[{"label": "Low", "min": 0, "max": 14}, {"label": "Medium", "min": 15, "max": 23}, {"label": "High", "min": 24, "max": 99}]
+        )
+        db.add(oras)
+        
+        static99 = models.RiskAssessmentType(
+            type_id=2, name="Static-99R", description="Sex Offender Risk Assessment",
+            scoring_matrix=[{"label": "Low", "min": 0, "max": 1}, {"label": "Moderate-Low", "min": 2, "max": 3}, {"label": "Moderate-High", "min": 4, "max": 5}, {"label": "High", "min": 6, "max": 99}]
+        )
+        db.add(static99)
+        db.flush()
+
+        # Mock Questions (Universal)
+        questions_data = [
+            ("employment_status", "Are you currently employed?", "boolean", "ORAS", [{"label": "No", "value": 1}, {"label": "Yes", "value": 0}]),
+            ("prior_felony_convictions", "Number of prior felony convictions?", "integer", "ORAS", None),
+            ("drug_use_problems", "History of drug use problems?", "boolean", "ORAS", [{"label": "Yes", "value": 1}, {"label": "No", "value": 0}]),
+            ("age_at_first_arrest", "Age at first arrest?", "integer", "ORAS", None)
+        ]
+        
+        for q_tag, q_text, q_type, q_assess, q_opts in questions_data:
+            db.add( models.RiskAssessmentQuestion(
+                universal_tag=q_tag,
+                question_text=q_text,
+                input_type=q_type,
+                source_type='dynamic',
+                assessments_list=q_assess,
+                options=q_opts if q_opts else None
+            ))
+        db.commit()
+
         # 8. Generate Offenders (600 count)
         print("Generating 600 offenders...")
         
@@ -306,11 +349,32 @@ def generate_seed_data():
                 dob=fake.date_of_birth(minimum_age=18, maximum_age=70),
                 image_url=f"https://ui-avatars.com/api/?name={first}+{last}&background=random",
                 gender=random.choice(['Male', 'Female']),
-                is_sex_offender=(random.random() < 0.05),
-                is_gang_member=(random.random() < 0.1),
+                # REMOVED: is_sex_offender, is_gang_member
+                
                 release_date=fake.date_between(start_date='-2y', end_date='today'),
-                general_comments=f"Generated as {c_type} case."
+                
+                # New Fields
+                csed_date=fake.date_between(start_date='today', end_date='+5y'),
+                
+                # Dynamic Flags Generation
+                special_flags = [],
+                housing_status=random.choice(['Stable', 'Transient', 'Home Arrest', 'Homeless']) if random.random() < 0.3 else 'Stable',
+                icots_number=f"ICOTS-{random.randint(10000, 99999)}" if random.random() < 0.10 else None,
+                
+                general_comments=f"Generated as {c_type} case.",
+                employment_status=random.choice(['Employed', 'Unemployed', 'Unemployable'])
             )
+            
+            # Populate special_flags randomly
+            flags = []
+            if random.random() < 0.20: flags.append("Sex Offender")
+            if random.random() < 0.15: flags.append("Gang Member")
+            if c_type == 'SMI' or random.random() < 0.15: flags.append("SMI")
+            if random.random() < 0.15: flags.append("Veteran")
+            if random.random() < 0.15: flags.append("GPS")
+            
+            offender.special_flags = flags
+            
             db.add(offender)
             db.flush()
             
@@ -408,6 +472,57 @@ def generate_seed_data():
                          status='Scheduled' if appt_time > datetime.now() else 'Completed',
                          notes=fake.sentence()
                      ))
+
+            # Urinalysis (NEW)
+            for _ in range(random.randint(0, 5)):
+                ua_date = fake.date_between(start_date='-6m', end_date='today')
+                is_positive = random.random() < 0.15
+                
+                db.add(models.Urinalysis(
+                    offender_id=offender.offender_id,
+                    date=ua_date,
+                    test_type=random.choice(['Random', 'Scheduled', 'Suspicion']),
+                    result='Positive (THC)' if is_positive else 'Negative',
+                    lab_name="LabCorp" if random.random() < 0.5 else "Sonora Quest",
+                    collected_by_id=assigned_officer.officer_id,
+                    notes="Dilute sample" if random.random() < 0.05 else None
+                ))
+
+            # Usage Fees (NEW)
+            balance = random.uniform(0, 500) if random.random() < 0.3 else 0.0
+            db.add(models.FeeBalance(
+                offender_id=offender.offender_id,
+                balance=round(balance, 2)
+            ))
+            # Default Monthly Charge
+            db.add(models.FeeTransaction(
+                offender_id=offender.offender_id,
+                transaction_date=datetime.now().date().replace(day=1),
+                type='Charge',
+                amount=65.00,
+                description="Monthly Supervision Fee"
+            ))
+
+            # Risk Assessment History (NEW)
+            num_assessments = random.randint(1, 2)
+            for _ in range(num_assessments):
+                a_type = 'SMI' if c_type == 'SMI' else 'ORAS' # Simplified
+                if a_type == 'ORAS':
+                    score = random.randint(0, 35)
+                    level = 'Low'
+                    if score > 14: level = 'Medium'
+                    if score > 23: level = 'High'
+                    
+                    db.add(models.RiskAssessment(
+                        offender_id=offender.offender_id,
+                        date=fake.date_between(start_date='-1y', end_date='today'),
+                        assessment_type='ORAS',
+                        status='Completed',
+                        total_score=score,
+                        risk_level=level,
+                        final_risk_level=level,
+                        details={"employment": 0, "criminal_history": score}
+                    ))
 
         db.commit()
         print("Done! Database re-seeded.")

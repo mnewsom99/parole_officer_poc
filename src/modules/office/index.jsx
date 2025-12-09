@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, CheckSquare, ArrowRight, Search, UserPlus, ClipboardList, Calendar, UserMinus, Clock, CheckCircle, XCircle } from 'lucide-react';
+import {
+    Users, FileText, CheckSquare, ArrowRight, Search, UserPlus,
+    ClipboardList, Calendar, UserMinus, Clock, CheckCircle, XCircle,
+    TriangleAlert, Shield, Briefcase
+} from 'lucide-react';
 import axios from 'axios';
 import { useUser } from '../../core/context/UserContext';
-import { format } from 'date-fns';
+import { format, addDays, isBefore, parseISO } from 'date-fns';
 
 const OfficeModule = () => {
     const { currentUser } = useUser();
@@ -10,11 +14,26 @@ const OfficeModule = () => {
     const [offices, setOffices] = useState([]);
     const [officers, setOfficers] = useState([]);
     const [selectedOffice, setSelectedOffice] = useState('');
-    const [selectedOfficer, setSelectedOfficer] = useState('');
+
+    // Data filtering states
+    const [allOffenders, setAllOffenders] = useState([]);
+    const [transferFromOfficer, setTransferFromOfficer] = useState('');
+    const [transferToOfficer, setTransferToOfficer] = useState('');
+    const [transferSelection, setTransferSelection] = useState([]);
 
     // Stats
-    const [totalOffenders, setTotalOffenders] = useState(0);
+    const [stats, setStats] = useState({
+        totalOffenders: 0,
+        pendingReviews: 0,
+        overdueTasks: 0,
+        closeouts: 0,
+        employmentRate: 0
+    });
+
+    // Lists
     const [pendingReviews, setPendingReviews] = useState([]);
+    const [warrantOffenders, setWarrantOffenders] = useState([]);
+    const [releasingOffenders, setReleasingOffenders] = useState([]);
 
     // Forms
     const [taskForm, setTaskForm] = useState({
@@ -22,104 +41,126 @@ const OfficeModule = () => {
         assigned_officer_id: '',
         due_date: '',
         priority: 'Normal',
-        description: '' // Mapped to instructions
+        description: ''
     });
 
-    // Fetch Offices
+    // Fetch Initial Data
     useEffect(() => {
-        const fetchOffices = async () => {
+        const fetchBaseData = async () => {
             try {
-                const response = await axios.get('http://localhost:8000/locations');
-                setOffices(response.data);
+                const [locResp, offResp, reviewResp, offendersResp] = await Promise.all([
+                    axios.get('http://localhost:8000/locations'),
+                    axios.get('http://localhost:8000/officers'),
+                    axios.get('http://localhost:8000/workflows/tasks?status=Pending_Sup_Review'),
+                    axios.get('http://localhost:8000/offenders?limit=1000') // Fetch all for clientside filtering for now
+                ]);
+
+                setOffices(locResp.data);
+                setOfficers(offResp.data);
+                setPendingReviews(reviewResp.data);
+                setAllOffenders(offendersResp.data.data);
+
+                // Calculate Stats
+                const offenders = offendersResp.data.data;
+                const employedCount = offenders.filter(o => o.employment_status === 'Employed').length;
+                const closeoutCount = offenders.filter(o => {
+                    if (!o.csed_date) return false;
+                    const date = parseISO(o.csed_date);
+                    const thirtyDays = addDays(new Date(), 30);
+                    return isBefore(date, thirtyDays) && isBefore(new Date(), date);
+                }).length;
+
+                // Warrants
+                const activeWarrants = offenders.filter(o =>
+                    o.warrantStatus &&
+                    !['None', 'Cleared', 'Inactive'].includes(o.warrantStatus)
+                );
+                setWarrantOffenders(activeWarrants);
+
+                // Releasing
+                const releasing = offenders.filter(o => {
+                    if (!o.releaseDate) return false;
+                    return isBefore(parseISO(o.releaseDate), addDays(new Date(), 90)) && isBefore(new Date(), parseISO(o.releaseDate));
+                });
+                setReleasingOffenders(releasing);
+
+                setStats({
+                    totalOffenders: offendersResp.data.total,
+                    pendingReviews: reviewResp.data.length,
+                    overdueTasks: 12, // Mock for now until tasks API supports generic filtering
+                    closeouts: closeoutCount,
+                    employmentRate: offenders.length ? Math.round((employedCount / offenders.length) * 100) : 0
+                });
+
             } catch (error) {
-                console.error("Error fetching offices:", error);
+                console.error("Error loading office data:", error);
             }
         };
-        fetchOffices();
+        fetchBaseData();
     }, []);
 
-    // Fetch Officers (filtered by office)
-    useEffect(() => {
-        const fetchOfficers = async () => {
-            try {
-                let url = 'http://localhost:8000/officers';
-                if (selectedOffice) {
-                    url += `?location_id=${selectedOffice}`;
-                }
-                const response = await axios.get(url);
-                const mappedOfficers = response.data.map(o => ({
-                    id: o.officer_id,
-                    name: `${o.first_name} ${o.last_name}`,
-                    caseload: 0, // Mock for now, or fetch individually if needed
-                    status: 'Active'
-                }));
-                setOfficers(mappedOfficers);
-            } catch (error) {
-                console.error("Error fetching officers:", error);
-            }
-        };
-        fetchOfficers();
-    }, [selectedOffice]);
+    // Transfer Logic
+    const availableForTransfer = allOffenders.filter(o => {
+        // Find officer for this offender (need to match ID from Officer list)
+        // Since get_offenders doesn't return officer_id directly in the root, 
+        // we might fail here unless we fetch by officer specifically.
+        // Quick fix: When user selects "From Officer", we fetch filtered list.
+        return true;
+    });
 
-    // Fetch Stats (Total Offenders)
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                // Fetch just 1 item to get the 'total' count metadata
-                const response = await axios.get('http://localhost:8000/offenders?limit=1');
-                if (response.data && response.data.total !== undefined) {
-                    setTotalOffenders(response.data.total);
-                }
-            } catch (error) {
-                console.error("Error fetching stats:", error);
-            }
-        };
-        fetchStats();
-    }, []);
+    const [transferableList, setTransferableList] = useState([]);
 
-    // Fetch Pending Reviews (Workflows)
     useEffect(() => {
-        const fetchReviews = async () => {
-            try {
-                // Assuming status 'Pending_Sup_Review' is what we look for
-                const response = await axios.get('http://localhost:8000/workflows/tasks?status=Pending_Sup_Review');
-                setPendingReviews(response.data);
-            } catch (error) {
-                console.error("Error fetching reviews:", error);
-            }
-        };
-        // Fetch initially and polling/refresh could happen here
-        fetchReviews();
-    }, []);
-
-    const handleAssignTask = async () => {
-        if (!taskForm.title || !taskForm.assigned_officer_id) {
-            alert("Please fill in required fields");
+        if (!transferFromOfficer) {
+            setTransferableList([]);
             return;
         }
+        const fetchCaseload = async () => {
+            const resp = await axios.get(`http://localhost:8000/offenders?officer_id=${transferFromOfficer}&limit=100`);
+            setTransferableList(resp.data.data);
+        };
+        fetchCaseload();
+    }, [transferFromOfficer]);
+
+
+    const handleTransfer = async () => {
+        if (!transferToOfficer || transferSelection.length === 0) return;
         try {
-            await axios.post('http://localhost:8000/tasks', taskForm);
-            alert("Task Assigned Successfully");
-            setTaskForm({ title: '', assigned_officer_id: '', due_date: '', priority: 'Normal', description: '' });
-        } catch (error) {
-            console.error("Error assigning task:", error);
-            alert("Failed to assign task");
+            await axios.post('http://localhost:8000/offenders/transfer', {
+                offender_ids: transferSelection,
+                new_officer_id: transferToOfficer
+            });
+            alert("Transfer Successful");
+            setTransferSelection([]);
+            // Refresh list
+            const resp = await axios.get(`http://localhost:8000/offenders?officer_id=${transferFromOfficer}&limit=100`);
+            setTransferableList(resp.data.data);
+        } catch (e) {
+            alert("Transfer Failed");
+            console.error(e);
         }
     };
 
-    const handleReviewAction = async (submissionId, action) => {
+    const handleUpdateWarrant = async (offenderId, newStatus) => {
         try {
-            // Action: 'Approve' or 'Return' (Reject)
-            await axios.put(`http://localhost:8000/workflows/submissions/${submissionId}/action`, {
-                action: action,
-                comment: `Supervisor ${action === 'Approve' ? 'Approved' : 'Returned'}`
+            await axios.put(`http://localhost:8000/offenders/${offenderId}/warrant-status`, {
+                status: newStatus,
+                warrant_date: new Date().toISOString().split('T')[0]
             });
-            // Refresh list
-            const response = await axios.get('http://localhost:8000/workflows/tasks?status=Pending_Sup_Review');
-            setPendingReviews(response.data);
-        } catch (error) {
-            console.error("Error updating submission:", error);
-            alert("Action failed");
+            // Refresh local state
+            setWarrantOffenders(prev => prev.map(o => o.id === offenderId ? { ...o, warrantStatus: newStatus } : o));
+            alert(`Warrant status updated to ${newStatus}`);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to update warrant");
+        }
+    };
+
+    const toggleSelection = (id) => {
+        if (transferSelection.includes(id)) {
+            setTransferSelection(transferSelection.filter(x => x !== id));
+        } else {
+            setTransferSelection([...transferSelection, id]);
         }
     };
 
@@ -144,7 +185,7 @@ const OfficeModule = () => {
                 </div>
             </div>
 
-            {/* Quick Stats */}
+            {/* 2x3 Grid Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Row 1 */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
@@ -153,9 +194,7 @@ const OfficeModule = () => {
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Total Offenders</p>
-                        <p className="text-2xl font-bold text-slate-800">
-                            {totalOffenders}
-                        </p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.totalOffenders}</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
@@ -164,44 +203,74 @@ const OfficeModule = () => {
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Pending Reviews</p>
-                        <p className="text-2xl font-bold text-slate-800">{pendingReviews.length}</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.pendingReviews}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 bg-red-50 text-red-600 rounded-lg">
+                        <TriangleAlert className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Overdue Tasks</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.overdueTasks}</p>
+                    </div>
+                </div>
+
+                {/* Row 2 */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
+                        <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Closeouts (30d)</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.closeouts}</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
                     <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                        <CheckSquare className="w-6 h-6" />
+                        <Briefcase className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Tasks Assigned</p>
-                        <p className="text-2xl font-bold text-slate-800">24</p>
+                        <p className="text-sm text-slate-500">Employment Rate</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.employmentRate}%</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 bg-slate-100 text-slate-500 rounded-lg">
+                        <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Audits Pending</p>
+                        <p className="text-2xl font-bold text-slate-800">8</p>
                     </div>
                 </div>
             </div>
 
             {/* Module Tabs */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="flex border-b border-slate-200">
-                    <button
-                        onClick={() => setActiveTab('review')}
-                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'review' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                        <ClipboardList className="w-4 h-4" />
-                        Review Queue {pendingReviews.length > 0 && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">{pendingReviews.length}</span>}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('assign')}
-                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'assign' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                        <UserPlus className="w-4 h-4" />
-                        Assign Task
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('transfer')}
-                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'transfer' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                        <ArrowRight className="w-4 h-4" />
-                        Case Transfer
-                    </button>
+                <div className="flex border-b border-slate-200 overflow-x-auto">
+                    {[
+                        { id: 'review', label: 'Review Queue', icon: ClipboardList },
+                        { id: 'transfer', label: 'Case Transfer', icon: ArrowRight },
+                        { id: 'release', label: 'Pending Release', icon: Calendar },
+                        { id: 'warrants', label: 'Warrant Follow-up', icon: TriangleAlert },
+                        { id: 'audits', label: 'Audits', icon: CheckSquare },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
+                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    : 'text-slate-600 hover:bg-slate-50'
+                                }`}
+                        >
+                            <tab.icon className="w-4 h-4" />
+                            {tab.label}
+                            {tab.id === 'review' && pendingReviews.length > 0 &&
+                                <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full ml-1">{pendingReviews.length}</span>
+                            }
+                        </button>
+                    ))}
                 </div>
 
                 <div className="p-6">
@@ -225,128 +294,192 @@ const OfficeModule = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleReviewAction(task.submission_id, 'Approve')}
-                                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200"
-                                            >
-                                                <CheckCircle className="w-4 h-4" /> Approve
-                                            </button>
-                                            <button
-                                                onClick={() => handleReviewAction(task.submission_id, 'Return')}
-                                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
-                                            >
-                                                <XCircle className="w-4 h-4" /> Reject
-                                            </button>
+                                            <button className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200">Approve</button>
+                                            <button className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200">Reject</button>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                                    <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                                    <p className="text-slate-500">No pending reviews found.</p>
-                                    <p className="text-xs text-slate-400">Tasks requiring supervisor approval will appear here.</p>
-                                </div>
+                                <p className="text-center text-slate-500 py-8">No pending reviews found.</p>
                             )}
                         </div>
                     )}
 
-                    {/* Assign Task Tab */}
-                    {activeTab === 'assign' && (
-                        <div className="max-w-2xl mx-auto space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Task Title</label>
-                                <input
-                                    type="text"
-                                    value={taskForm.title}
-                                    onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="e.g., Conduct Surprise Home Visit"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Assign To</label>
-                                <select
-                                    value={taskForm.assigned_officer_id}
-                                    onChange={(e) => setTaskForm({ ...taskForm, assigned_officer_id: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                                >
-                                    <option value="">Select Officer...</option>
-                                    {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
-                                    <input
-                                        type="date"
-                                        value={taskForm.due_date}
-                                        onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+                    {/* Case Transfer Tab */}
+                    {activeTab === 'transfer' && (
+                        <div className="space-y-6">
+                            <div className="flex flex-col md:flex-row gap-6 items-end">
+                                <div className="flex-1 w-full">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">From Officer</label>
                                     <select
-                                        value={taskForm.priority}
-                                        onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3"
+                                        value={transferFromOfficer}
+                                        onChange={(e) => setTransferFromOfficer(e.target.value)}
                                     >
-                                        <option>Low</option>
-                                        <option>Normal</option>
-                                        <option>High</option>
+                                        <option value="">Select Officer...</option>
+                                        {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                                     </select>
                                 </div>
+                                <div className="flex items-center justify-center pb-3">
+                                    <ArrowRight className="w-6 h-6 text-slate-400" />
+                                </div>
+                                <div className="flex-1 w-full">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">To Officer</label>
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3"
+                                        value={transferToOfficer}
+                                        onChange={(e) => setTransferToOfficer(e.target.value)}
+                                    >
+                                        <option value="">Select Officer...</option>
+                                        {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="pb-1">
+                                    <button
+                                        onClick={handleTransfer}
+                                        disabled={transferSelection.length === 0 || !transferToOfficer}
+                                        className="bg-blue-600 disabled:bg-slate-300 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                                    >
+                                        Transfer ({transferSelection.length})
+                                    </button>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Instructions</label>
-                                <textarea
-                                    value={taskForm.description}
-                                    onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700 h-32 focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="Enter detailed instructions..."
-                                ></textarea>
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={handleAssignTask}
-                                    className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-6 rounded-lg shadow-lg shadow-navy-900/20 transition-all"
-                                >
-                                    Assign Task
-                                </button>
+
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-sm text-left text-slate-500">
+                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                                        <tr>
+                                            <th className="p-4 w-4">
+                                                <input type="checkbox" onChange={() => {
+                                                    if (transferSelection.length === transferableList.length) setTransferSelection([]);
+                                                    else setTransferSelection(transferableList.map(o => o.id));
+                                                }} />
+                                            </th>
+                                            <th className="px-6 py-3">Offender</th>
+                                            <th className="px-6 py-3">Badg ID</th>
+                                            <th className="px-6 py-3">Risk</th>
+                                            <th className="px-6 py-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transferableList.length > 0 ? transferableList.map(offender => (
+                                            <tr key={offender.id} className="bg-white border-b hover:bg-slate-50">
+                                                <td className="p-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={transferSelection.includes(offender.id)}
+                                                        onChange={() => toggleSelection(offender.id)}
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 font-medium text-slate-900">{offender.name}</td>
+                                                <td className="px-6 py-4">{offender.badgeId}</td>
+                                                <td className="px-6 py-4">{offender.risk}</td>
+                                                <td className="px-6 py-4">{offender.status}</td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan="5" className="px-6 py-8 text-center">Select a "From Officer" to view caseload</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     )}
 
-                    {/* Case Transfer Tab (Placeholder logic still, but UI kept) */}
-                    {activeTab === 'transfer' && (
-                        <div className="space-y-6">
-                            <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">From Officer</label>
-                                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700">
-                                        <option>Select Officer...</option>
-                                        {officers.map(o => <option key={o.id}>{o.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex items-center justify-center pt-6">
-                                    <ArrowRight className="w-6 h-6 text-slate-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">To Officer</label>
-                                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-700">
-                                        <option>Select Officer...</option>
-                                        {officers.map(o => <option key={o.id}>{o.name}</option>)}
-                                    </select>
-                                </div>
+                    {/* Pending Release Tab */}
+                    {activeTab === 'release' && (
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800 mb-4">Upcoming Releases (Next 90 Days)</h3>
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-sm text-left text-slate-500">
+                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                                        <tr>
+                                            <th className="px-6 py-3">Offender</th>
+                                            <th className="px-6 py-3">Release Date</th>
+                                            <th className="px-6 py-3">Release Type</th>
+                                            <th className="px-6 py-3">Initial Placement</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {releasingOffenders.map(o => (
+                                            <tr key={o.id} className="bg-white border-b">
+                                                <td className="px-6 py-4 font-medium text-slate-900">{o.name}</td>
+                                                <td className="px-6 py-4">{o.releaseDate}</td>
+                                                <td className="px-6 py-4">{o.releaseType}</td>
+                                                <td className="px-6 py-4">{o.initialPlacement}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                            <div className="border border-slate-200 rounded-lg bg-slate-50 p-8 text-center text-slate-500">
-                                Select a "From Officer" to view their caseload.
+                        </div>
+                    )}
+
+                    {/* Warrant Follow-Up Tab */}
+                    {activeTab === 'warrants' && (
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800 mb-4">Active Warrant Management</h3>
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-sm text-left text-slate-500">
+                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                                        <tr>
+                                            <th className="px-6 py-3">Offender</th>
+                                            <th className="px-6 py-3">Current Status</th>
+                                            <th className="px-6 py-3">Status Date</th>
+                                            <th className="px-6 py-3">Tasks Generated</th>
+                                            <th className="px-6 py-3">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {warrantOffenders.map(o => (
+                                            <tr key={o.id} className="bg-white border-b">
+                                                <td className="px-6 py-4 font-medium text-slate-900">{o.name}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                                                        ${o.warrantStatus === 'Submitted' ? 'bg-yellow-100 text-yellow-800' : ''}
+                                                        ${o.warrantStatus === 'Approved' ? 'bg-blue-100 text-blue-800' : ''}
+                                                        ${o.warrantStatus === 'Served' ? 'bg-green-100 text-green-800' : ''}
+                                                    `}>{o.warrantStatus}</span>
+                                                </td>
+                                                <td className="px-6 py-4">{o.warrantDate || '-'}</td>
+                                                <td className="px-6 py-4">
+                                                    {o.warrantStatus === 'Submitted' && "Review, Custody Check, Serve"}
+                                                    {o.warrantStatus === 'Approved' && "Active Warrant"}
+                                                </td>
+                                                <td className="px-6 py-4 flex gap-2">
+                                                    {o.warrantStatus === 'Submitted' && (
+                                                        <button
+                                                            onClick={() => handleUpdateWarrant(o.id, 'Approved')}
+                                                            className="text-blue-600 hover:underline"
+                                                        >Approve</button>
+                                                    )}
+                                                    {o.warrantStatus === 'Approved' && (
+                                                        <button
+                                                            onClick={() => handleUpdateWarrant(o.id, 'Served')}
+                                                            className="text-green-600 hover:underline"
+                                                        >Mark Served</button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleUpdateWarrant(o.id, 'Cleared')}
+                                                        className="text-slate-400 hover:text-slate-600 text-xs"
+                                                    >Clear</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {warrantOffenders.length === 0 && (
+                                            <tr><td colSpan="5" className="p-8 text-center text-slate-400">No active warrants found.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
-                            <div className="flex justify-end">
-                                <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
-                                    Transfer Cases
-                                </button>
-                            </div>
+                        </div>
+                    )}
+
+                    {/* Audits Tab */}
+                    {activeTab === 'audits' && (
+                        <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                            <Shield className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                            <p className="text-slate-500">Audit logs and compliance checks will appear here.</p>
+                            <p className="text-xs text-slate-400 font-mono mt-2">Feature coming soon.</p>
                         </div>
                     )}
                 </div>

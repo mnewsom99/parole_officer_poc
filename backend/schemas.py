@@ -126,13 +126,48 @@ class OffenderBase(BaseModel):
     reversion_date: Optional[date] = None
     release_type: Optional[str] = None
     initial_placement: Optional[str] = None
+    initial_placement: Optional[str] = None
     general_comments: Optional[str] = None
+    employment_status: Optional[str] = None
+    unemployable_reason: Optional[str] = None
+    warrant_status: Optional[str] = 'None'
+    warrant_date: Optional[date] = None
 
 class Offender(OffenderBase):
     offender_id: UUID
+    special_flags: List[str] = []
+    # employment info will be fetched separately or embedded?
+    # Let's verify if we need it here. Typically get_offender_details uses explicit dict construction.
+    # But for relationship loading:
+    # employments: List['Employment'] = [] 
+    # 'Employment' not defined yet unless I use string forward ref or move Offender down.
+    # Schemas are order dependent. Offender is line 130. Employment is line 270.
+    # I should define Employment BEFORE Offender or use ForwardRef.
+    # Or just NOT put it in Offender schema if I don't need nested loading via schema.
+    # backend/routers/offenders.py constructs the Dict manually for details.
+    # So I might NOT need it in Pydantic 'Offender' model if I don't use it for serialization there.
+    # BUT I should keep the fields I added (employment_status) available.
+    # I already added employment_status to OffenderBase.
+    # I will skip adding 'employments' list to Offender schema to avoid ForwardRef issues for now.
+    pass
     
     class Config:
         from_attributes = True
+
+# ... (rest of the file content until end)
+
+class WorkflowAction(BaseModel):
+    action: str # Submit, Approve, Deny, Return
+    comment: Optional[str] = None
+    target_user_id: Optional[UUID] = None # For re-assignment logic
+
+class TransferRequest(BaseModel):
+    offender_ids: List[UUID]
+    new_officer_id: UUID
+
+class WarrantStatusUpdate(BaseModel):
+    status: str # 'Submitted', 'Approved', 'Served', 'Cleared'
+    warrant_date: Optional[date] = None
 
 # --- Programs ---
 class ProgramBase(BaseModel):
@@ -199,6 +234,13 @@ class SpecialAssignmentUpdate(BaseModel):
     assigned_officer_id: Optional[UUID] = None
     priority: Optional[int] = None
 
+class OffenderFlagConfig(BaseModel):
+    name: str
+    color: str
+
+class OffenderFlagUpdate(BaseModel):
+    flags: List[OffenderFlagConfig]
+
 class SpecialAssignment(SpecialAssignmentBase):
     assignment_id: UUID
 
@@ -247,6 +289,43 @@ class Residence(ResidenceBase):
     facility: Optional[Facility] = None
     special_assignment: Optional[SpecialAssignment] = None
     contacts: List[ResidenceContact] = []
+
+    class Config:
+        from_attributes = True
+
+# --- Employment ---
+class EmploymentBase(BaseModel):
+    employer_name: str
+    address_line_1: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    phone: Optional[str] = None
+    supervisor: Optional[str] = None
+    pay_rate: Optional[str] = None
+    is_current: bool = True
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+class EmploymentCreate(EmploymentBase):
+    pass
+
+class EmploymentUpdate(BaseModel):
+    employer_name: Optional[str] = None
+    address_line_1: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    phone: Optional[str] = None
+    supervisor: Optional[str] = None
+    pay_rate: Optional[str] = None
+    is_current: Optional[bool] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+class Employment(EmploymentBase):
+    employment_id: UUID
+    offender_id: UUID
 
     class Config:
         from_attributes = True
@@ -359,6 +438,8 @@ class RiskAssessmentBase(BaseModel):
     date: date
     total_score: Optional[int] = None
     risk_level: Optional[str] = None
+    final_risk_level: Optional[str] = None
+    override_reason: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
 
 class RiskAssessment(RiskAssessmentBase):

@@ -5,8 +5,7 @@ from fastapi.responses import StreamingResponse
 
 from . import models, database, auth
 from .database import engine, get_db
-from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees
-from . import reports
+from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees, assessments
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -17,7 +16,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
-
 
 app = FastAPI(title="Parole Officer Dashboard API")
 
@@ -40,6 +38,7 @@ app.include_router(workflow.router)
 app.include_router(tasks.router)
 app.include_router(appointments.router)
 app.include_router(fees.router)
+app.include_router(assessments.router)
 
 @app.get("/")
 def read_root():

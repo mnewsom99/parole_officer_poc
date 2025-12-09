@@ -49,6 +49,7 @@ export const UserProvider = ({ children }) => {
 
                     // Init Settings
                     fetchNoteSettings();
+                    fetchOffenderFlagSettings();
                 } catch (error) {
                     console.error("Failed to restore session:", error);
                     logout();
@@ -223,6 +224,42 @@ export const UserProvider = ({ children }) => {
         updateCaseNoteType(newTypes);
     };
 
+    // Offender Flag Settings
+    const [offenderFlagSettings, setOffenderFlagSettings] = useState({ types: [] });
+
+    const fetchOffenderFlagSettings = async () => {
+        try {
+            const res = await axios.get('http://localhost:8000/settings/offender-flags');
+            setOffenderFlagSettings({ types: res.data });
+        } catch (error) {
+            console.error("Error fetching offender flag settings:", error);
+        }
+    };
+
+    const updateOffenderFlagType = async (types) => {
+        // Optimistic update
+        setOffenderFlagSettings({ types });
+        try {
+            // Persist to backend - Key matches schema: "flags"
+            await axios.put('http://localhost:8000/settings/offender-flags', { flags: types });
+        } catch (error) {
+            console.error("Error saving offender flag settings:", error);
+            fetchOffenderFlagSettings(); // Revert on error
+        }
+    };
+
+    const addOffenderFlagType = (name, color) => {
+        if (!offenderFlagSettings.types.find(t => t.name === name)) {
+            const newTypes = [...offenderFlagSettings.types, { name, color }];
+            updateOffenderFlagType(newTypes);
+        }
+    };
+
+    const removeOffenderFlagType = (name) => {
+        const newTypes = offenderFlagSettings.types.filter(t => t.name !== name);
+        updateOffenderFlagType(newTypes);
+    };
+
 
     // eslint-disable-next-line react-refresh/only-export-components
     return (
@@ -241,7 +278,13 @@ export const UserProvider = ({ children }) => {
             caseNoteSettings,
             updateCaseNoteType,
             addCaseNoteType,
+            updateCaseNoteType,
+            addCaseNoteType,
             removeCaseNoteType,
+            offenderFlagSettings,
+            updateOffenderFlagType,
+            addOffenderFlagType,
+            removeOffenderFlagType,
         }}>
             {children}
         </UserContext.Provider>

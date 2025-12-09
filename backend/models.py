@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Float
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Float, Uuid as UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from datetime import datetime
 
@@ -64,13 +63,27 @@ class Offender(Base):
     dob = Column(Date, nullable=False)
     image_url = Column(String(255))
     gender = Column(String(20))
-    is_sex_offender = Column(Boolean, default=False)
-    is_gang_member = Column(Boolean, default=False)
     gang_affiliation = Column(String(100))
     release_date = Column(Date)
     reversion_date = Column(Date)
     release_type = Column(String(50))
     initial_placement = Column(String(100))
+    
+    # IDs & Statuses
+    csed_date = Column(Date) # Community Supervision End Date
+    
+    # Dynamic Flags: ["SMI", "Veteran", "Sex Offender", "GPS", "Gang Member"]
+    special_flags = Column(JSON, default=list)
+    
+    housing_status = Column(String(50)) # e.g. "Home Arrest"
+    icots_number = Column(String(50))
+    employment_status = Column(String(50)) # Employed, Unemployed, Unemployable
+    unemployable_reason = Column(String(50)) # SSI, SMI, etc.
+    
+    # Warrant Status
+    warrant_status = Column(String(50), default='None') # None, Submitted, Approved, Issued, Served, Cleared
+    warrant_date = Column(Date)
+    
     general_comments = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -162,6 +175,24 @@ class ResidenceContact(Base):
     relation = Column(String(50))
     phone = Column(String(20))
     comments = Column(Text)
+
+class Employment(Base):
+    __tablename__ = 'employments'
+    employment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
+    employer_name = Column(String(100), nullable=False)
+    address_line_1 = Column(String(255))
+    city = Column(String(100))
+    state = Column(String(50))
+    zip_code = Column(String(10))
+    phone = Column(String(20))
+    supervisor = Column(String(100))
+    pay_rate = Column(String(50)) # e.g. "$15/hr"
+    is_current = Column(Boolean, default=True)
+    start_date = Column(Date)
+    end_date = Column(Date)
+    
+    offender = relationship("Offender", backref="employments")
 
 class Urinalysis(Base):
     __tablename__ = 'urinalysis'

@@ -118,7 +118,36 @@ def update_appointment_locations(update: schemas.AppointmentLocationUpdate, db: 
         setting.value = json.dumps(locs_data)
     
     db.commit()
+    db.commit()
     return update.locations
+
+@router.get("/settings/offender-flags", response_model=List[schemas.OffenderFlagConfig])
+def get_offender_flags(db: Session = Depends(get_db)):
+    setting = db.query(models.SystemSettings).filter(models.SystemSettings.key == "offender_flags").first()
+    if not setting:
+        return [
+            {"name": "SMI", "color": "bg-purple-100 text-purple-700"},
+            {"name": "Veteran", "color": "bg-blue-100 text-blue-700"},
+            {"name": "Sex Offender", "color": "bg-orange-100 text-orange-800"},
+            {"name": "GPS", "color": "bg-slate-100 text-slate-700"},
+            {"name": "Gang Member", "color": "bg-red-100 text-red-700"}
+        ]
+    data = json.loads(setting.value)
+    return data
+
+@router.put("/settings/offender-flags", response_model=List[schemas.OffenderFlagConfig])
+def update_offender_flags(update: schemas.OffenderFlagUpdate, db: Session = Depends(get_db)):
+    flags_data = [t.dict() for t in update.flags]
+    
+    setting = db.query(models.SystemSettings).filter(models.SystemSettings.key == "offender_flags").first()
+    if not setting:
+        setting = models.SystemSettings(key="offender_flags", value=json.dumps(flags_data))
+        db.add(setting)
+    else:
+        setting.value = json.dumps(flags_data)
+    
+    db.commit()
+    return update.flags
 
 @router.get("/locations", response_model=List[schemas.Location])
 def get_locations(db: Session = Depends(get_db)):

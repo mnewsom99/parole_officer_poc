@@ -1,300 +1,151 @@
-# Tasks
+# Project Tasks Roadmap
 
-- [ ] **Production Refactor (Immediate Priority)** <!-- id: 39 -->
-    - [ ] Infrastructure: Create `docker-compose.yml` for PostgreSQL <!-- id: 40 -->
-    - [ ] Infrastructure: Update `database.py` and `.env` to connect to PostgreSQL <!-- id: 41 -->
-    - [x] Backend: Refactor `get_offenders` for server-side pagination & filtering <!-- id: 42 -->
-    - [x] Backend: Update `get_offenders` return format to `{ "data": [], "total": int }` schema <!-- id: 43 -->
-    - [x] Frontend: Update `CaseloadDashboard.jsx` to fetch using new pagination API <!-- id: 44 -->
-    - [x] Frontend: Add Search Input and Pagination Controls (Next/Prev) <!-- id: 45 -->
-    - [x] Frontend: Add "Office" and "Officer" filtering with A-Z sorting <!-- id: 52 -->
-    - [x] Frontend: Add "Status" filtering and "Due Date" sorting <!-- id: 53 -->
-    - [x] Frontend: Refine filter layout (single line, compact) <!-- id: 54 -->
+## 1. Core Infrastructure & Production Readiness
+> **Priority Goal**: Prepare the system for deployment by migrating to a robust database and securing sensitive data.
 
-- [x] Implement Urinalysis History Modal <!-- id: 0 -->
-- [x] Implement Notes Modal <!-- id: 1 -->
-- [x] Implement Risk Assessment Modal <!-- id: 2 -->
-- [x] Implement Next Appointment Modal <!-- id: 3 -->
-- [x] Create Integration Roadmap <!-- id: 4 -->
-- [x] Implement Search/Quick Jump by ID <!-- id: 5 -->
-- [x] Implement Sign Out Feature <!-- id: 6 -->
-- [x] Replace Status Column with Address and Phone Links <!-- id: 7 -->
-- [x] Add Tasks Module to Sidebar <!-- id: 8 -->
-- [x] Replace Parole Conditions with Parole Plan <!-- id: 9 -->
-    - [x] Initialize default tasks (Started Supervision, Orientation, Assessments, Completed Parole)
-    - [x] Implement Task List categorized by status (Completed, Pending, Not Due)
-    - [x] Add functionality to edit dates
-    - [x] Add functionality to add new tasks manually
-- [x] Refine Parole Plan UI <!-- id: 10 -->
-    - [x] Add scrollable container (max height ~4 tasks)
-    - [x] Reorder sections: Pending -> Not Due -> Completed
-    - [x] Ensure section headers always show
-- [x] Implement Full-Width Notes Section <!-- id: 11 -->
-    - [x] Convert notesHistory to state
-    - [x] Add "Add Note" functionality (input + button)
-    - [x] Create full-width UI container below existing grid
-    - [x] Display notes sorted by recent first
-- [x] Implement Notes Pagination <!-- id: 12 -->
-    - [x] Add pagination state (currentPage)
-    - [x] Implement slicing logic for 10 items per page
-    - [x] Add pagination controls (Prev/Next/Page info)
-- [x] Create Database Schema and Data Dictionary <!-- id: 13 -->
-    - [x] Define entities and relationships (ER Diagram)
-    - [x] Document data dictionary for all tables
-- [x] Refine Database Schema <!-- id: 14 -->
-    - [x] Add SupervisionEpisodes table (start/end dates, outcomes)
-    - [x] Add Locations table and link to Officers
-    - [x] Add Supervisor relationship to Officers
-    - [x] Add audit fields (created_by, completed_by) to Tasks and Assessments
-    - [x] Add Residences table (Home Plans) <!-- id: 15 -->
-    - [x] Add CustodyEvents table (Movement/Custody History) <!-- id: 16 -->
-- [x] Define Data Migration Requirements <!-- id: 17 -->
-    - [x] List essential legacy data fields for initial dump
-    - [x] Document export strategy (Supervision History file)
-- [x] Update ERD with Import/Export Flows <!-- id: 18 -->
-- [x] Split ERD into readable sub-sections <!-- id: 19 -->
-- [x] Prepare Local Git Repository <!-- id: 20 -->
-    - [x] Initialize git
-    - [x] Commit all files
-    - [x] Add remote origin
-    - [x] Push to GitHub (User Completed)
-
-## Completed Session (System Settings & Automation)
-- [x] Implement System Settings <!-- id: 27 -->
-    - [x] Add SystemSettings table
-    - [x] Seed onboarding_due_delay
-    - [x] Implement dynamic onboarding task assignment
-- [x] Implement Automated Reporting <!-- id: 28 -->
-    - [x] Add Redis and Celery dependencies
-    - [x] Create docker-compose.yml
-    - [x] Configure Celery Beat schedule
-    - [x] Create daily warrant check task
-- [x] Implement Reports Module <!-- id: 29 -->
-    - [x] Backend: PDF generation with ReportLab and Matplotlib
-    - [x] Frontend: Interactive Dashboard with Recharts
-    - [x] Downloadable PDF reports
-- [x] Fix Blank Caseloads <!-- id: 30 -->
-    - [x] Update seed script to include supervisors in assignment
-    - [x] Guarantee minimum caseload for all officers
-
-## Future Work (Next Session)
-- [x] Database Implementation <!-- id: 21 -->
-    - [x] Set up SQL Server environment (Replaced with PostgreSQL)
-    - [x] Create DDL scripts from Schema
-- [x] Data Generation <!-- id: 22 -->
-    - [x] Generate mock data for all tables (Offenders, Officers, Episodes, etc.)
-    - [x] Populate database for demo purposes
-- [x] Supervisor Dashboard (Office View) <!-- id: 23 -->
-    - [x] Implement Supervisor Task List
-    - [x] Implement Supervisor Calendar
-    - [x] Implement Assessment Oversight
-- [ ] Admin Functions <!-- id: 24 -->
-    - [x] User Management (Add/Remove Users)
-        - [x] Implement Search (Username/Email)
-        - [x] Rename 'User' column to 'Full Name' and display actual name
-    - [ ] Group Automation (Create automatic tasks for groups)
-- [ ] Feedback System <!-- id: 25 -->
-    - [ ] Implement User Suggestions / Error Reporting Box
-- [ ] Security Compliance <!-- id: 26 -->
-    - [ ] **Production Warning**: Before this goes live or connects to real parole data, move passwords/secrets to Environment Variables (.env) and do NOT commit them.
-    - [ ] Review general security requirements
-    - [ ] Review AZ-specific security requirements
-- [ ] Employment Tracking <!-- id: 31 -->
-    - [ ] Track offender employment status and history
-- [ ] Document Management System (DMS) <!-- id: 32 -->
-    - [ ] **Backend**: Create `Documents` table (linked to Offender, Note, or Program)
-    - [ ] **Storage**: Implement file storage service (Local disk for POC, S3 compatible for production)
-    - [ ] **API**: Endpoints for Upload (Multipart), Download, and Delete
-    - [ ] **UI**: "Attach File" button on Case Notes (as requested)
-    - [ ] **UI**: Document Gallery/List in Detail View
-    - [ ] **Security**: Virus scan integration (Optional/Future)
-- [ ] Offender Analytics <!-- id: 33 -->
-    - [ ] Visual stats on offender population and trends
-- [ ] Release Types Management <!-- id: 34 -->
-    - [ ] Configure and track different release types (Parole, Probation, etc.)
-- [x] Case Transfer Automation <!-- id: 35 -->
-    - [x] Backend: Implemented Transfer Request Workflow (Officer -> Supervisors -> New Officer)
-    - [ ] Automate case transfers based on residence/location changes
-- [x] Dynamic Forms & Workflow Engine (New Requirement)
-    - [x] Database: FormTemplate, FormSubmission, WorkflowLog
-    - [x] API: Template management and consolidated Workflow Action endpoint
-    - [x] Logic: State machine for Transfer Requests
-- [ ] Territory Management (Settings) <!-- id: 36 -->
-    - [ ] Configure Office Coverage (ZIP Codes)
-    - [ ] Configure Officer Coverage (ZIP Codes)
-- [ ] Resource Management <!-- id: 37 -->
-    - [ ] Manage Rehabilitation Programs
-    - [ ] **MRC/PRC Logic**: Define as Program + Residence (Dual Entity)
-    - [ ] **Assignment Logic**: Implement Officer Override for MRC/PRC (Facility-based assignment vs ZIP code)
-- [ ] Offender Portal <!-- id: 46 -->
-    - [ ] Secure login for offenders to view status and appointments
-    - [ ] Self-reporting capability
-- [ ] Vendor Portal <!-- id: 47 -->
-    - [ ] Portal for service providers to manage referrals and attendance
-# Tasks
-
-- [ ] **Production Refactor (Immediate Priority)** <!-- id: 39 -->
-    - [ ] Infrastructure: Create `docker-compose.yml` for PostgreSQL <!-- id: 40 -->
-    - [ ] Infrastructure: Update `database.py` and `.env` to connect to PostgreSQL <!-- id: 41 -->
-    - [x] Backend: Refactor `get_offenders` for server-side pagination & filtering <!-- id: 42 -->
-    - [x] Backend: Update `get_offenders` return format to `{ "data": [], "total": int }` schema <!-- id: 43 -->
-    - [x] Frontend: Update `CaseloadDashboard.jsx` to fetch using new pagination API <!-- id: 44 -->
-    - [x] Frontend: Add Search Input and Pagination Controls (Next/Prev) <!-- id: 45 -->
-    - [x] Frontend: Add "Office" and "Officer" filtering with A-Z sorting <!-- id: 52 -->
-    - [x] Frontend: Add "Status" filtering and "Due Date" sorting <!-- id: 53 -->
-    - [x] Frontend: Refine filter layout (single line, compact) <!-- id: 54 -->
-
-- [x] Implement Urinalysis History Modal <!-- id: 0 -->
-- [x] Implement Notes Modal <!-- id: 1 -->
-- [x] Implement Risk Assessment Modal <!-- id: 2 -->
-- [x] Implement Next Appointment Modal <!-- id: 3 -->
-- [x] Create Integration Roadmap <!-- id: 4 -->
-- [x] Implement Search/Quick Jump by ID <!-- id: 5 -->
-- [x] Implement Sign Out Feature <!-- id: 6 -->
-- [x] Replace Status Column with Address and Phone Links <!-- id: 7 -->
-- [x] Add Tasks Module to Sidebar <!-- id: 8 -->
-- [x] Replace Parole Conditions with Parole Plan <!-- id: 9 -->
-    - [x] Initialize default tasks (Started Supervision, Orientation, Assessments, Completed Parole)
-    - [x] Implement Task List categorized by status (Completed, Pending, Not Due)
-    - [x] Add functionality to edit dates
-    - [x] Add functionality to add new tasks manually
-- [x] Refine Parole Plan UI <!-- id: 10 -->
-    - [x] Add scrollable container (max height ~4 tasks)
-    - [x] Reorder sections: Pending -> Not Due -> Completed
-    - [x] Ensure section headers always show
-- [x] Implement Full-Width Notes Section <!-- id: 11 -->
-    - [x] Convert notesHistory to state
-    - [x] Add "Add Note" functionality (input + button)
-    - [x] Create full-width UI container below existing grid
-    - [x] Display notes sorted by recent first
-- [x] Implement Notes Pagination <!-- id: 12 -->
-    - [x] Add pagination state (currentPage)
-    - [x] Implement slicing logic for 10 items per page
-    - [x] Add pagination controls (Prev/Next/Page info)
-- [x] Create Database Schema and Data Dictionary <!-- id: 13 -->
-    - [x] Define entities and relationships (ER Diagram)
-    - [x] Document data dictionary for all tables
-- [x] Refine Database Schema <!-- id: 14 -->
-    - [x] Add SupervisionEpisodes table (start/end dates, outcomes)
-    - [x] Add Locations table and link to Officers
-    - [x] Add Supervisor relationship to Officers
-    - [x] Add audit fields (created_by, completed_by) to Tasks and Assessments
-    - [x] Add Residences table (Home Plans) <!-- id: 15 -->
-    - [x] Add CustodyEvents table (Movement/Custody History) <!-- id: 16 -->
-- [x] Define Data Migration Requirements <!-- id: 17 -->
-    - [x] List essential legacy data fields for initial dump
-    - [x] Document export strategy (Supervision History file)
-- [x] Update ERD with Import/Export Flows <!-- id: 18 -->
-- [x] Split ERD into readable sub-sections <!-- id: 19 -->
-- [x] Prepare Local Git Repository <!-- id: 20 -->
-    - [x] Initialize git
-    - [x] Commit all files
-    - [x] Add remote origin
-    - [x] Push to GitHub (User Completed)
-
-## Completed Session (System Settings & Automation)
-- [x] Implement System Settings <!-- id: 27 -->
-    - [x] Add SystemSettings table
-    - [x] Seed onboarding_due_delay
-    - [x] Implement dynamic onboarding task assignment
-- [x] Implement Automated Reporting <!-- id: 28 -->
-    - [x] Add Redis and Celery dependencies
-    - [x] Create docker-compose.yml
-    - [x] Configure Celery Beat schedule
-    - [x] Create daily warrant check task
-- [x] Implement Reports Module <!-- id: 29 -->
-    - [x] Backend: PDF generation with ReportLab and Matplotlib
-    - [x] Frontend: Interactive Dashboard with Recharts
-    - [x] Downloadable PDF reports
-- [x] Fix Blank Caseloads <!-- id: 30 -->
-    - [x] Update seed script to include supervisors in assignment
-    - [x] Guarantee minimum caseload for all officers
-
-## Future Work (Next Session)
-- [x] Database Implementation <!-- id: 21 -->
-    - [x] Set up SQL Server environment (Replaced with PostgreSQL)
-    - [x] Create DDL scripts from Schema
-- [x] Data Generation <!-- id: 22 -->
-    - [x] Generate mock data for all tables (Offenders, Officers, Episodes, etc.)
-    - [x] Populate database for demo purposes
-- [x] Supervisor Dashboard (Office View) <!-- id: 23 -->
-    - [x] Implement Supervisor Task List
-    - [x] Implement Supervisor Calendar
-    - [x] Implement Assessment Oversight
-- [ ] Admin Functions <!-- id: 24 -->
-    - [x] User Management (Add/Remove Users)
-        - [x] Implement Search (Username/Email)
-        - [x] Rename 'User' column to 'Full Name' and display actual name
-    - [ ] Group Automation (Create automatic tasks for groups)
-- [ ] Feedback System <!-- id: 25 -->
-    - [ ] Implement User Suggestions / Error Reporting Box
-- [ ] Security Compliance <!-- id: 26 -->
-    - [ ] **Production Warning**: Before this goes live or connects to real parole data, move passwords/secrets to Environment Variables (.env) and do NOT commit them.
-    - [ ] Review general security requirements
-    - [ ] Review AZ-specific security requirements
-- [ ] Employment Tracking <!-- id: 31 -->
-    - [ ] Track offender employment status and history
-- [ ] Document Management <!-- id: 32 -->
-    - [ ] Upload and manage offender documents (PDFs, Images)
-- [ ] Offender Analytics <!-- id: 33 -->
-    - [ ] Visual stats on offender population and trends
-- [ ] Release Types Management <!-- id: 34 -->
-    - [ ] Configure and track different release types (Parole, Probation, etc.)
-- [x] Case Transfer Automation <!-- id: 35 -->
-    - [x] Backend: Implemented Transfer Request Workflow (Officer -> Supervisors -> New Officer)
-    - [ ] Automate case transfers based on residence/location changes
-- [x] Dynamic Forms & Workflow Engine (New Requirement)
-    - [x] Database: FormTemplate, FormSubmission, WorkflowLog
-    - [x] API: Template management and consolidated Workflow Action endpoint
-    - [x] Logic: State machine for Transfer Requests
-- [ ] Territory Management (Settings) <!-- id: 36 -->
-    - [ ] Configure Office Coverage (ZIP Codes)
-    - [ ] Configure Officer Coverage (ZIP Codes)
-- [ ] Resource Management <!-- id: 37 -->
-    - [ ] Manage Rehabilitation Programs
-    - [ ] **Re-entry Center 1 & 2 Logic**: Define as Program + Residence (Dual Entity)
-    - [ ] **Assignment Logic**: Implement Officer Override for Re-entry Centers (Facility-based assignment vs ZIP code)
-- [ ] Offender Portal <!-- id: 46 -->
-    - [ ] Secure login for offenders to view status and appointments
-    - [ ] Self-reporting capability
-- [ ] Vendor Portal <!-- id: 47 -->
-    - [ ] Portal for service providers to manage referrals and attendance
-- [ ] Notification & Messaging System (Event-Driven) <!-- id: 48 -->
-    - [ ] **Architecture**: Implement decoupled message queue (RabbitMQ/Celery) for delivery
-    - [ ] **Channels & Providers**:
-        - [ ] **SMS** (Twilio): Urgent reminders (Overdue assessments, Deadlines)
-        - [ ] **Email** (SendGrid/SES): Detailed summaries (New Case Notes, Document Lifecycle)
-        - [ ] **In-App**: Real-time notifications for active sessions
-    - [ ] **Preferences & Compliance**:
-        - [ ] DB Schema for User Channel Preferences (Email vs SMS)
-        - [ ] UI Controls for Opt-in/Opt-out management
-        - [ ] Compliance logic for "Reply STOP" / Anti-spam regulations
-- [ ] Community Reentry Daily Count Report <!-- id: 49 -->
-    - [ ] Implement query to aggregate Daily Counts (Parole, ISC, TIS, MRC, PRC, etc.)
-    - [ ] Add Stats for Sex Offenders, Absconders, Detainers
-    - [ ] Create Breakdown Tables for Re-entry Centers 1 & 2 (Capacity, Total, SO, Non-SO)
-    - [ ] Generate PDF/View matching the "Community Reentry Memorandum" format
-- [ ] Auto Statewide Condensed Count Sheet Report <!-- id: 55 -->
-    - [ ] Implement Matrix Query: Rows (Status/Type) x Columns (Offices/Units)
-    - [ ] Track Population Types: Parole, Home Arrest, TIS, ISC
-    - [ ] Track Sub-stats: Sex Offenders, Homelessness (by County: Maricopa/Pima & SO Status)
-    - [ ] Track Inactive Custody Counts (DOC vs Other)
-    - [ ] Replicate Excel-style layout (Yellow/Blue headers)
-- [ ] Program Stats Report <!-- id: 50 -->
-    - [ ] Analytics on program enrollment and success rates
-### Calendar & Scheduling
-- [x] **CalendarModule.jsx**: Connect `events` list to `Appointment` model.
-- [x] **CalendarModule.jsx**: Implement real calendar grid logic (currently mock 35-day grid).
-- [x] **CalendarModule.jsx**: Add "Office" and "Officer" filtering (similar to Tasks).
-- [x] **Global Filter Persistence** <!-- id: 56 -->
-    - [x] **UserContext**: Lift `office` and `officer` filter state to global context
-    - [x] **Integration**: Connect Caseload, Tasks, and Calendar views to use shared filter state
-- [x] Supervision Fees (COS) <!-- id: 51 -->
-### Infrastructure & Quality Assurance
+- [x] **Production Refactor (Immediate Priority)** <!-- id: 39 -->
+    - [x] Infrastructure: Create `docker-compose.yml` for PostgreSQL <!-- id: 40 -->
+    - [x] Infrastructure: Update `database.py` and `.env` to connect to PostgreSQL <!-- id: 41 -->
+- [ ] **Security Compliance** <!-- id: 26 -->
+    - [ ] **Production Warning**: Move passwords/secrets to Environment Variables (.env).
+    - [ ] Review general security requirements.
+    - [ ] Review AZ-specific security requirements.
 - [ ] **Backend Test Suite** <!-- id: 57 -->
-    - [ ] Initialize `pytest` environment
-    - [ ] Create test fixtures for DB session and Mock Data
-    - [ ] Write tests for Critical Paths (Seed Data validity, Filter Logic)
+    - [ ] Initialize `pytest` environment.
+    - [ ] Create test fixtures for DB session and Mock Data.
+    - [ ] Write tests for Critical Paths (Seed Data validity, Filter Logic).
+- [ ] **Advanced Error Logging & Debugging**
+    - [ ] **Backend**: Structured JSON logging with levels (DEBUG/INFO/WARN/ERROR).
+    - [ ] **Backend**: Contextual Tracing (traceId correlation).
+    - [ ] **Backend**: Error Reporting integration (e.g., Sentry).
+    - [ ] **Frontend**: Global Error Boundary.
+    - [ ] **Frontend**: Client error reporting with stack traces.
+- [ ] **Auto-Restart & Resilience**
+    - [ ] **Backend**: Configure process manager (Restart=always, backoff).
+    - [ ] **Backend**: Implement `/health` endpoint for liveness checks.
+    - [ ] **Hosting**: Configure resilient static file serving.
 - [ ] **Code Refactoring** <!-- id: 58 -->
-    - [ ] Refactor `CalendarModule.jsx` and `TasksModule.jsx` into smaller sub-components
-    - [ ] Investigate `UserContext.jsx` `availableRoles` state initialization logic
+    - [ ] Refactor `CalendarModule.jsx` and `TasksModule.jsx` into smaller sub-components.
+    - [ ] Investigate `UserContext.jsx` `availableRoles` state initialization logic.
+
+---
+
+## 2. Caseload Dashboard & Search
+> **Priority Goal**: Ensure officers can efficiently manage and filter their specific caseloads.
+
+- [x] **Pagination & Filtering**
+    - [x] Backend: Refactor `get_offenders` for server-side pagination & filtering <!-- id: 42 -->
+    - [x] Frontend: Add Search Input and Pagination Controls (Next/Prev) <!-- id: 45 -->
+    - [x] Frontend: Add "Office", "Officer", and "Status" filtering with sorting <!-- id: 52 -->
+- [x] **Global Filter Persistence** <!-- id: 56 -->
+    - [x] Lift `office` and `officer` filter state to global context (`UserContext`).
+    - [x] Connect Caseload, Tasks, and Calendar views to use shared filter state.
+- [x] **UI Refinements**
+    - [x] Fix Blank Caseloads (Guarantee minimum caseload/supervisors) <!-- id: 30 -->
+    - [x] Replace Status Column with Address/Phone Links <!-- id: 7 -->
+- [ ] **Office Module Enhancements**
+    - [ ] **Status Support**: Add views/filters for "Closed" and "Pending" cases.
+    - [ ] **Data Preservation**: Ensure historical records are accessible for non-active files.
+
+---
+
+## 3. Case Management & Documentation
+> **Priority Goal**: Centralize all offender interactions, notes, and documents.
+
+- [ ] **Document Management System (DMS)** <!-- id: 32 -->
+    - [ ] **Backend**: Create `Documents` table (linked to Offender, Note, or Program).
+    - [ ] **Storage**: Implement file storage service (Local disk POC -> S3).
+    - [ ] **API**: Endpoints for Upload (Multipart), Download, and Delete.
+    - [ ] **UI**: "Attach File" button on Case Notes.
+    - [ ] **UI**: Document Gallery/List in Detail View.
+- [x] **Notes Module**
+    - [x] Implement Full-Width Notes Section with Pagination <!-- id: 11 -->
+    - [x] Implement Notes Modal <!-- id: 1 -->
+- [x] **Core Modals**
+    - [x] Implement Urinalysis History Modal <!-- id: 0 -->
+    - [x] Implement Next Appointment Modal <!-- id: 3 -->
+
+---
+
+## 4. Risk Assessment & Case Planning
+> **Priority Goal**: Dynamic risk evaluation and automated case planning based on results.
+
+- [ ] **Risk Assessment Validation (Priority)**
+    - [ ] Backend: Verify JSON scoring matrix logic.
+    - [ ] End-to-End: Test creating custom assessment -> Scoring offender.
+- [ ] **Case Plan Module**
+    - [ ] Auto-generate tasks based on identified risks.
+    - [ ] Link tasks to specific risk factors (e.g., Risk: Substance Abuse -> Task: Enroll in AA).
+- [x] **Risk Configuration**
+    - [x] Implement Configurable Risk Scoring (JSON Matrix).
+    - [x] Update `RiskSettings.jsx` for editing Assessment Types.
+- [x] **Parole Plan (Tasks)**
+    - [x] Replace Parole Conditions with Parole Plan <!-- id: 9 -->
+    - [x] Implement Task List categorized by status (Completed, Pending, Not Due).
+    - [x] Add functionality to edit dates and add new tasks manually.
+
+---
+
+## 5. Reporting & Analytics
+> **Priority Goal**: Automate required state reports and provide strategic insights.
+
+- [ ] **Community Reentry Daily Count Report** <!-- id: 49 -->
+    - [ ] Implement query to aggregate Daily Counts (Parole, ISC, TIS, MRC, PRC).
+    - [ ] Add Stats for Sex Offenders, Absconders, Detainers.
+    - [ ] Generate PDF matching "Community Reentry Memorandum" format.
+- [ ] **Auto Statewide Condensed Count Sheet** <!-- id: 55 -->
+    - [ ] Implement Matrix Query: Rows (Status) x Columns (Offices).
+    - [ ] Track Population Types (Parole, Home Arrest, TIS) and Custody Counts.
+- [ ] **Program Stats Report** <!-- id: 50 -->
+    - [ ] Analytics on program enrollment and success rates.
+- [ ] **Offender Analytics** <!-- id: 33 -->
+    - [ ] Visual stats on offender population and trends.
+- [x] **Automated Reporting** <!-- id: 28 -->
+    - [x] Configure Redis/Celery for scheduled tasks.
+    - [x] Create daily warrant check task.
+- [x] **Reports Module** <!-- id: 29 -->
+    - [x] Backend PDF generation (ReportLab) & Frontend Dashboard (Recharts).
+
+---
+
+## 6. Admin & System Settings
+> **Priority Goal**: maintain system integrity, user management, and territory configurations.
+
+- [ ] **Admin Functions** <!-- id: 24 -->
+    - [ ] Group Automation (Create automatic tasks for groups).
+- [ ] **Territory Management (Settings)** <!-- id: 36 -->
+    - [ ] Configure Office Coverage (ZIP Codes).
+    - [ ] Configure Officer Coverage (ZIP Codes).
+- [x] **User Management**
+    - [x] Add/Remove Users with Search.
+    - [x] Rename 'User' to 'Full Name'.
+- [x] **System Settings** <!-- id: 27 -->
+    - [x] Implement `SystemSettings` table (onboarding delays, etc.).
+
+---
+
+## 7. Future Modules & Roadmap
+> **Priority Goal**: Advanced features for strategic oversight and external integration.
+
+- [ ] **Advanced Mapping**
+    - [ ] **Toggle Interface**: Switch between "Dot Map" (Operational) and "Heatmap" (Strategic).
+    - [ ] **Mode A (Dot Map)**: Pins, Clustering, Mini-Profiles.
+    - [ ] **Mode B (Heatmap)**: Density Gradients, Privacy Mode.
+- [ ] **Provider Module**
+    - [ ] Track external service providers.
+    - [ ] Monitor task completion status.
+    - [ ] Provider Interface for status updates.
+- [ ] **Offender Portal** <!-- id: 46 -->
+    - [ ] Secure login for offenders.
+    - [ ] Self-reporting capability.
+- [ ] **Notification System** <!-- id: 48 -->
+    - [ ] Decoupled message queue (RabbitMQ/Celery).
+    - [ ] SMS/Email/In-App Channels.
+
+---
+
+## Completed Foundations (Reference)
+- [x] **Database Implementation**: Schema, DDL, Migration Requirements, Data Dictionary.
+- [x] **Data Generation**: Mock data for all major entities.
+- [x] **Supervisor Dashboard**: Task List, Calendar, Assessment Oversight.
+- [x] **Dynamic Forms Engine**: FormTemplate, FormSubmission, Transfer Requests.

@@ -1,0 +1,21 @@
+universal_tag,question_text,input_type,source_type,assessments,category,scoring_note
+dob,Date of Birth,date,static,ORAS|Static-99R|VRAG-R,Personal Info,Calculates 'Age at Release' and 'Age at First Arrest'
+gender,Gender,select,static,Static-99R|VRAG-R|ORAS,Personal Info,Male=High Risk in most tools
+age_first_arrest,Age at first arrest/charge?,integer,static,ORAS|VRAG-R,Criminal History,Under 16 = High Risk
+prior_felony_convictions,Number of prior felony convictions?,integer,static,ORAS|VRAG-R,Criminal History,Count distinct sentencing dates
+prior_sex_offenses,Number of prior sex offense charges?,integer,static,Static-99R,Criminal History,Any prior = High Risk
+prior_dv_assault,Prior domestic assault in police record?,boolean,static,ODARA,Criminal History,Yes = +1
+victim_stranger,Was any victim a stranger?,boolean,static,Static-99R,Victimology,Yes = +1
+victim_relationship,Relationship to victim?,select,static,Static-99R|ODARA,Victimology,Partner vs Stranger vs Relative
+victim_age_group,Age of victim?,select,static,Static-99R,Victimology,Child vs Adult
+employment_status,Are you currently employed?,boolean,dynamic,ORAS|Acute-2007,Social & Lifestyle,No = Risk Factor
+residential_stability,Lived at current address for 6+ months?,boolean,dynamic,ORAS|Acute-2007,Social & Lifestyle,Unstable = Risk Factor
+substance_use_alcohol,Evidence of alcohol problem?,boolean,dynamic,ORAS|VRAG-R|ODARA|TCU,Substance Abuse,If TCU > 3 -> Auto-fill Yes
+substance_use_drugs,Evidence of drug problem?,boolean,dynamic,ORAS|Acute-2007|TCU,Substance Abuse,If TCU > 3 -> Auto-fill Yes
+substance_severity,Severity of substance abuse (0-5),integer,dynamic,TCU|ORAS,Substance Abuse,Mapped from TCU Score
+social_support_criminal,Do friends have criminal records?,boolean,dynamic,ORAS,Social & Lifestyle,Yes = Risk Factor
+emotional_collapse,Evidence of emotional collapse/suicidality?,boolean,dynamic,Acute-2007,Mental Health,Yes = Immediate Intervention
+violation_supervision,Failure on prior conditional release?,boolean,static,ODARA|VRAG-R|ORAS,Criminal History,Revoked probation/parole = +1
+access_to_victim,Does offender have access to victim?,boolean,dynamic,Acute-2007,Victimology,Yes = Immediate Risk
+hostility_level,Current level of hostility/anger?,scale_0_3,dynamic,Acute-2007,Mental Health,High = Risk
+confinement_during_crime,Was victim confined/held captive?,boolean,static,ODARA,Victimology,Yes = +1

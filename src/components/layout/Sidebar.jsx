@@ -5,6 +5,28 @@ import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar = () => {
     const location = useLocation();
+    const [systemStatus, setSystemStatus] = React.useState('checking'); // checking, online, offline
+
+    // Check health every 30 seconds
+    React.useEffect(() => {
+        const checkHealth = async () => {
+            try {
+                const res = await fetch('http://localhost:8000/health');
+                if (res.ok) {
+                    setSystemStatus('online');
+                } else {
+                    setSystemStatus('offline');
+                }
+            } catch (e) {
+                setSystemStatus('offline');
+            }
+        };
+
+        checkHealth();
+        const interval = setInterval(checkHealth, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
     const navItems = [
         { id: 'caseload', label: 'My Caseload', path: '/caseload', icon: Users },
         { id: 'tasks', label: 'Tasks', path: '/tasks', icon: CheckSquare },
@@ -50,8 +72,13 @@ const Sidebar = () => {
                 <div className="bg-navy-800 rounded-lg p-4">
                     <p className="text-xs text-navy-400 uppercase font-bold mb-2">System Status</p>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-xs text-navy-200">Online & Synced</span>
+                        <div className={`w-2 h-2 rounded-full animate-pulse ${systemStatus === 'online' ? 'bg-green-500' :
+                                systemStatus === 'offline' ? 'bg-red-500' : 'bg-yellow-500'
+                            }`}></div>
+                        <span className="text-xs text-navy-200">
+                            {systemStatus === 'online' ? 'Online & Synced' :
+                                systemStatus === 'offline' ? 'System Offline' : 'Checking...'}
+                        </span>
                     </div>
                 </div>
             </div>

@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../../core/context/UserContext';
 import axios from 'axios';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink, MoreHorizontal, ChevronRight, ChevronLeft, X, Flag, Briefcase } from 'lucide-react';
 import Modal from '../common/Modal';
 import RiskAssessmentModal from '../modals/RiskAssessmentModal';
-
 import { useParams, useNavigate } from 'react-router-dom';
 
 const OffenderProfile = () => {
     const { offenderId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, caseNoteSettings } = useContext(UserContext);
+    const { currentUser, caseNoteSettings, offenderFlagSettings } = useContext(UserContext);
     const [offender, setOffender] = useState(null);
     const noteTypes = caseNoteSettings?.types || [];
 
@@ -24,6 +23,17 @@ const OffenderProfile = () => {
     const [showUAModal, setShowUAModal] = useState(false);
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [showRiskModal, setShowRiskModal] = useState(false);
+    const [showEmploymentModal, setShowEmploymentModal] = useState(false); // New
+    const [employmentStatus, setEmploymentStatus] = useState('Unemployed'); // New
+    const [unemployableReason, setUnemployableReason] = useState(''); // New
+    const [newEmployment, setNewEmployment] = useState({
+        employer_name: '',
+        address_line_1: '',
+        supervisor: '',
+        phone: '',
+        pay_rate: '',
+        is_current: true
+    });
     const [showAppointmentModal, setShowAppointmentModal] = useState(false);
 
     const [parolePlan, setParolePlan] = useState([
@@ -55,36 +65,46 @@ const OffenderProfile = () => {
         const activity = [];
 
         // Add Notes
-        notes?.forEach(n => activity.push({
-            id: `note-${n.note_id}`,
-            type: 'Note',
-            title: n.type || 'Case Note',
-            date: n.date,
-            desc: n.content,
-            color: 'bg-blue-500'
-        }));
+        if (Array.isArray(notes)) {
+            notes.forEach(n => activity.push({
+                id: `note-${n.note_id}`,
+                type: 'Note',
+                title: n.type || 'Case Note',
+                date: n.date,
+                desc: n.content,
+                color: 'bg-blue-500'
+            }));
+        }
 
         // Add UA
-        uaHistory?.forEach(u => activity.push({
-            id: `ua-${u.test_id}`,
-            type: 'UA',
-            title: `UA Test: ${u.result || 'Pending'}`,
-            date: u.date,
-            desc: u.test_type,
-            color: u.result === 'Positive' ? 'bg-red-500' : 'bg-green-500'
-        }));
+        if (Array.isArray(uaHistory)) {
+            uaHistory.forEach(u => activity.push({
+                id: `ua-${u.test_id}`,
+                type: 'UA',
+                title: `UA Test: ${u.result || 'Pending'}`,
+                date: u.date,
+                desc: u.test_type,
+                color: u.result === 'Positive' ? 'bg-red-500' : 'bg-green-500'
+            }));
+        }
 
         // Add Appointments
-        appointments?.forEach(a => activity.push({
-            id: `appt-${a.appointment_id}`,
-            type: 'Appt',
-            title: a.type || 'Appointment',
-            date: a.date_time,
-            desc: a.status,
-            color: 'bg-purple-500'
-        }));
+        if (Array.isArray(appointments)) {
+            appointments.forEach(a => activity.push({
+                id: `appt-${a.appointment_id}`,
+                type: 'Appt',
+                title: a.type || 'Appointment',
+                date: a.date_time,
+                desc: a.status,
+                color: 'bg-purple-500'
+            }));
+        }
 
-        return activity.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+        return activity.sort((a, b) => {
+            const dateA = new Date(a.date).getTime() || 0;
+            const dateB = new Date(b.date).getTime() || 0;
+            return dateB - dateA;
+        }).slice(0, 5);
     }, [notes, uaHistory, appointments]);
 
     const [newNoteContent, setNewNoteContent] = useState('');
@@ -122,45 +142,87 @@ const OffenderProfile = () => {
         return type ? type.color : 'bg-slate-100 text-slate-700';
     };
 
+    const handleUpdateEmploymentStatus = async (status, reason = '') => {
+        try {
+            await axios.put(`http://localhost:8000/offenders/${offenderId}/employment-status`, { status, reason });
+            setEmploymentStatus(status);
+            setUnemployableReason(reason);
+            // Updating local offender object reference
+            setOffender(prev => ({ ...prev, employment_status: status, unemployable_reason: reason }));
+        } catch (error) {
+            console.error("Error updating employment status:", error);
+        }
+    };
+
+    const handleAddEmployment = async () => {
+        try {
+            await axios.post(`http://localhost:8000/offenders/${offenderId}/employment`, newEmployment);
+            setShowEmploymentModal(false);
+            fetchData();
+            setNewEmployment({
+                employer_name: '',
+                address_line_1: '',
+                city: '',
+                state: '',
+                zip_code: '',
+                supervisor: '',
+                phone: '',
+                pay_rate: '',
+                is_current: true
+            });
+        } catch (error) {
+            console.error("Error adding employment:", error);
+        }
+    };
+
+    const [error, setError] = useState(null);
+
     const fetchData = async () => {
         try {
-            const [offenderRes, uaRes, notesRes, riskRes, apptRes, programsRes, feesRes] = await Promise.all([
-                axios.get(`http://localhost:8000/offenders/${offenderId}`),
+            setError(null);
+            // Fetch core offender data first (Critical)
+            const offenderRes = await axios.get(`http://localhost:8000/offenders/${offenderId}`);
+            setOffender(offenderRes.data);
+
+            // Fetch related data in parallel (Non-critical)
+            const results = await Promise.allSettled([
                 axios.get(`http://localhost:8000/offenders/${offenderId}/urinalysis`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/notes`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/risk`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/appointments`),
-
                 axios.get(`http://localhost:8000/offenders/${offenderId}/programs`),
                 axios.get(`http://localhost:8000/fees/${offenderId}`)
             ]);
 
-            setOffender(offenderRes.data);
-            setUaHistory(uaRes.data);
-            setNotes(notesRes.data);
+            const [uaRes, notesRes, riskRes, apptRes, programsRes, feesRes] = results;
 
-            // Process Risk Data
-            setRiskHistory(riskRes.data);
-            if (riskRes.data.length > 0) {
-                const latestRisk = riskRes.data[0];
-                const factors = Object.entries(latestRisk.details || {}).map(([category, score]) => ({
-                    category,
-                    score,
-                    details: `${score} risk factor identified.`
-                }));
-                setRiskFactors(factors);
+            if (uaRes.status === 'fulfilled') setUaHistory(uaRes.value.data);
+            if (notesRes.status === 'fulfilled') setNotes(notesRes.value.data);
+
+            if (riskRes.status === 'fulfilled') {
+                setRiskHistory(riskRes.value.data);
+                if (riskRes.value.data.length > 0) {
+                    const latestRisk = riskRes.value.data[0];
+                    const factors = Object.entries(latestRisk.details || {}).map(([category, score]) => ({
+                        category,
+                        score,
+                        details: `${score} risk factor identified.`
+                    }));
+                    setRiskFactors(factors);
+                }
             }
 
-            setAppointments(apptRes.data);
-            setPrograms(programsRes.data);
-
-            if (feesRes && feesRes.data) {
-                setFeeSummary(feesRes.data);
-            }
-
+            if (apptRes.status === 'fulfilled') setAppointments(apptRes.value.data);
+            if (programsRes.status === 'fulfilled') setPrograms(programsRes.value.data);
+            if (feesRes.status === 'fulfilled') setFeeSummary(feesRes.value.data);
 
         } catch (error) {
             console.error("Error fetching offender data:", error);
+            if (error.response && error.response.status === 404) {
+                setError("Offender not found. The database may have been reset. Please return to the Caseload.");
+            } else {
+                setError("Failed to load offender profile. Please try again.");
+            }
         }
     };
 
@@ -172,8 +234,32 @@ const OffenderProfile = () => {
     }, [offenderId]);
 
     useEffect(() => {
+        if (offender) {
+            setEmploymentStatus(offender.employment_status || 'Unemployed');
+            setUnemployableReason(offender.unemployable_reason || '');
+        }
+    }, [offender]);
+
+    useEffect(() => {
         // Note types validation or fallback if needed
     }, []);
+
+    if (error) {
+        return (
+            <div className="p-8 text-center">
+                <div className="bg-red-50 text-red-600 p-4 rounded-lg inline-block">
+                    <p className="font-bold">Error Loading Profile</p>
+                    <p className="text-sm">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-3 text-sm underline hover:text-red-800"
+                    >
+                        Reload Page
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (!offender) {
         return <div className="p-8 text-center text-slate-500">Loading offender profile...</div>;
@@ -465,38 +551,7 @@ const OffenderProfile = () => {
                         <div className="mt-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                             <h3 className="font-bold text-slate-800 mb-4">Case Notes</h3>
 
-                            <div className="mb-6">
-                                <div className="flex gap-3 mb-3">
-                                    <select
-                                        value={newNoteType}
-                                        onChange={(e) => setNewNoteType(e.target.value)}
-                                        className="p-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    >
-                                        {noteTypes
-                                            .filter(type => type.name !== 'System')
-                                            .map(type => (
-                                                <option key={type.name} value={type.name}>{type.name}</option>
-                                            ))}
-                                    </select>
-                                </div>
-                                <div className="flex gap-3">
-                                    <textarea
-                                        value={newNoteContent}
-                                        onChange={(e) => setNewNoteContent(e.target.value)}
-                                        placeholder="Add a new note..."
-                                        className="flex-1 p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[80px] text-sm"
-                                    />
-                                </div>
-                                <div className="flex justify-end mt-2">
-                                    <button
-                                        onClick={handleAddNote}
-                                        disabled={!newNoteContent.trim()}
-                                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-all text-sm"
-                                    >
-                                        Add Note
-                                    </button>
-                                </div>
-                            </div>
+
 
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-sm font-bold text-slate-800">Recent Notes</h4>
@@ -589,7 +644,7 @@ const OffenderProfile = () => {
                             </button>
                         </div>
 
-                        {riskHistory.length > 0 ? (
+                        {Array.isArray(riskHistory) && riskHistory.length > 0 ? (
                             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                                 <table className="w-full text-left text-sm text-slate-600">
                                     <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
@@ -621,7 +676,7 @@ const OffenderProfile = () => {
                                                 </td>
                                                 <td className="px-6 py-4 font-medium">{risk.total_score}</td>
                                                 <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate">
-                                                    {risk.details ? Object.keys(risk.details).length + " Factors Identified" : "No details"}
+                                                    {risk.details && typeof risk.details === 'object' ? Object.keys(risk.details).length + " Factors Identified" : "No details"}
                                                     {risk.override_reason && (
                                                         <div className="text-[10px] text-slate-400 italic mt-0.5 truncate w-48">
                                                             Reason: {risk.override_reason}
@@ -748,7 +803,7 @@ const OffenderProfile = () => {
                                     <h4 className="font-bold text-slate-800">Recent Transactions</h4>
                                     <span className="text-xs text-slate-500">Last 5 records</span>
                                 </div>
-                                {feeSummary.history && feeSummary.history.length > 0 ? (
+                                {feeSummary?.history && feeSummary.history.length > 0 ? (
                                     <table className="w-full text-left text-sm text-slate-600">
                                         <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
                                             <tr>
@@ -993,6 +1048,73 @@ const OffenderProfile = () => {
                                         )}
 
                                         <div className="mt-4">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="text-xs text-slate-500">Employment Status</p>
+                                                <button
+                                                    onClick={() => setShowEmploymentModal(true)}
+                                                    className="text-[10px] text-blue-600 font-medium hover:text-blue-700"
+                                                >
+                                                    Manage
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className={`p-1.5 rounded-full ${employmentStatus === 'Employed' ? 'bg-green-100 text-green-700' :
+                                                    employmentStatus === 'Unemployed' ? 'bg-orange-100 text-orange-700' :
+                                                        'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                    <Briefcase size={14} />
+                                                </div>
+                                                <select
+                                                    value={employmentStatus}
+                                                    onChange={(e) => handleUpdateEmploymentStatus(e.target.value, unemployableReason)}
+                                                    className="text-sm font-semibold text-slate-800 bg-transparent border-none focus:ring-0 p-0 cursor-pointer outline-none"
+                                                >
+                                                    <option value="Employed">Employed</option>
+                                                    <option value="Unemployed">Unemployed</option>
+                                                    <option value="Unemployable">Unemployable</option>
+                                                </select>
+                                            </div>
+
+                                            {employmentStatus === 'Unemployable' && (
+                                                <select
+                                                    value={unemployableReason}
+                                                    onChange={(e) => handleUpdateEmploymentStatus('Unemployable', e.target.value)}
+                                                    className="w-full text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-1 mb-2 outline-none"
+                                                >
+                                                    <option value="">Select Reason...</option>
+                                                    <option value="SSI">SSI (Disability)</option>
+                                                    <option value="SMI">SMI (Mental Health)</option>
+                                                    <option value="Retired">Retired</option>
+                                                    <option value="Treatment">In Treatment</option>
+                                                    <option value="Student">Student</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            )}
+
+                                            {employmentStatus === 'Employed' && offender.employments && offender.employments.filter(e => e.is_current).map(emp => (
+                                                <div key={emp.employment_id} className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg space-y-1 mb-2">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm font-bold text-slate-800">{emp.employer_name}</span>
+                                                        <span className="text-xs text-slate-500">{emp.pay_rate}</span>
+                                                    </div>
+                                                    <div className="text-xs text-slate-600 flex items-center gap-1">
+                                                        <MapPin size={10} /> {emp.address_line_1}, {emp.city}
+                                                    </div>
+                                                    <div className="text-xs text-slate-600 flex items-center gap-1">
+                                                        <Phone size={10} /> {emp.phone}
+                                                    </div>
+                                                    {emp.supervisor && <div className="text-xs text-slate-500">Sup: {emp.supervisor}</div>}
+                                                </div>
+                                            ))}
+
+                                            {employmentStatus === 'Employed' && (!offender.employments || !offender.employments.some(e => e.is_current)) && (
+                                                <div className="p-2 border border-dashed border-slate-300 rounded text-center">
+                                                    <button onClick={() => setShowEmploymentModal(true)} className="text-xs text-blue-600 font-medium">+ Add Employer Details</button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-4">
                                             <p className="text-xs text-slate-500 mb-1">Risk Assessment (ORAS)</p>
                                             {isEditing ? (
                                                 <select
@@ -1133,6 +1255,12 @@ const OffenderProfile = () => {
                             </div>
                             <div className="flex items-center gap-3 text-slate-500 text-xs justify-center md:justify-start">
                                 <span>ID: {offender.badgeId}</span>
+                                {offender.csed_date && (
+                                    <>
+                                        <span>•</span>
+                                        <span>CSED: {safeDate(offender.csed_date)}</span>
+                                    </>
+                                )}
                                 <span>•</span>
                                 <span>Status: {offender.status}</span>
                                 <span>•</span>
@@ -1143,13 +1271,36 @@ const OffenderProfile = () => {
                                     Next: {nextAppointment ? safeDate(nextAppointment.date_time) : 'None'}
                                 </button>
                             </div>
+
+                            {/* Special Flags Row */}
+                            <div className="flex flex-wrap items-center gap-2 mt-1.5 justify-center md:justify-start">
+                                {/* Dynamic Flags */}
+                                {offender.special_flags && offender.special_flags.map((flagName, idx) => {
+                                    const config = offenderFlagSettings?.types?.find(t => t.name === flagName);
+                                    const colorClass = config ? config.color : 'bg-slate-100 text-slate-700';
+                                    return (
+                                        <span key={idx} className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border border-current bg-opacity-50 ${colorClass} flex items-center`}>
+                                            {flagName === 'GPS' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>}
+                                            {flagName}
+                                        </span>
+                                    );
+                                })}
+
+                                {/* Static Statuses (if not covered by flags) */}
+                                {offender.housing_status === 'Home Arrest' && (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-red-50 text-red-700 border border-red-200">Home Arrest</span>
+                                )}
+                                {offender.icots_number && (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">ICOTS: {offender.icots_number}</span>
+                                )}
+                            </div>
                         </div>
                         <div className="mb-1 flex gap-2">
                             <button
                                 onClick={() => setShowNotesModal(true)}
                                 className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all"
                             >
-                                Add Note
+                                Add Case Note
                             </button>
                             <button
                                 className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all flex items-center gap-1"
@@ -1255,6 +1406,19 @@ const OffenderProfile = () => {
                 <div className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Add New Note</label>
+                        <div className="mb-3">
+                            <select
+                                value={newNoteType}
+                                onChange={(e) => setNewNoteType(e.target.value)}
+                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white text-sm"
+                            >
+                                {noteTypes
+                                    .filter(type => type.name !== 'System')
+                                    .map(type => (
+                                        <option key={type.name} value={type.name}>{type.name}</option>
+                                    ))}
+                            </select>
+                        </div>
                         <textarea
                             value={newNoteContent}
                             onChange={(e) => setNewNoteContent(e.target.value)}
@@ -1299,6 +1463,83 @@ const OffenderProfile = () => {
                     fetchData(); // Refresh risk history
                 }}
             />
+
+            <Modal
+                isOpen={showEmploymentModal}
+                onClose={() => setShowEmploymentModal(false)}
+                title="Add Employment Details"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Employer Name</label>
+                        <input
+                            value={newEmployment.employer_name}
+                            onChange={e => setNewEmployment({ ...newEmployment, employer_name: e.target.value })}
+                            className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
+                            placeholder="e.g. Acme Corp"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                            <input
+                                value={newEmployment.address_line_1}
+                                onChange={e => setNewEmployment({ ...newEmployment, address_line_1: e.target.value })}
+                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                            <input
+                                value={newEmployment.city}
+                                onChange={e => setNewEmployment({ ...newEmployment, city: e.target.value })}
+                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                            <input
+                                value={newEmployment.phone}
+                                onChange={e => setNewEmployment({ ...newEmployment, phone: e.target.value })}
+                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Supervisor</label>
+                            <input
+                                value={newEmployment.supervisor}
+                                onChange={e => setNewEmployment({ ...newEmployment, supervisor: e.target.value })}
+                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Pay Rate (e.g. $15/hr)</label>
+                        <input
+                            value={newEmployment.pay_rate}
+                            onChange={e => setNewEmployment({ ...newEmployment, pay_rate: e.target.value })}
+                            className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-6">
+                        <button
+                            onClick={() => setShowEmploymentModal(false)}
+                            className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleAddEmployment}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                        >
+                            Save Employment
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal
                 isOpen={showAppointmentModal}
