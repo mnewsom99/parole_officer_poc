@@ -49,7 +49,9 @@ export const UserProvider = ({ children }) => {
 
                     // Init Settings
                     fetchNoteSettings();
+                    fetchNoteSettings();
                     fetchOffenderFlagSettings();
+                    fetchTaskSettings();
                 } catch (error) {
                     console.error("Failed to restore session:", error);
                     logout();
@@ -260,6 +262,29 @@ export const UserProvider = ({ children }) => {
         updateOffenderFlagType(newTypes);
     };
 
+    // Task Settings
+    const [taskSettings, setTaskSettings] = useState({ categories: [] });
+
+    const fetchTaskSettings = async () => {
+        try {
+            const res = await axios.get('http://localhost:8000/settings/task-categories');
+            setTaskSettings({ categories: res.data });
+        } catch (error) {
+            console.error("Error fetching task settings:", error);
+        }
+    };
+
+    const updateTaskSettings = async (categories) => {
+        // Optimistic update
+        setTaskSettings({ categories });
+        try {
+            await axios.put('http://localhost:8000/settings/task-categories', { categories });
+        } catch (error) {
+            console.error("Error saving task settings:", error);
+            fetchTaskSettings(); // Revert on error
+        }
+    };
+
 
     // eslint-disable-next-line react-refresh/only-export-components
     return (
@@ -278,13 +303,13 @@ export const UserProvider = ({ children }) => {
             caseNoteSettings,
             updateCaseNoteType,
             addCaseNoteType,
-            updateCaseNoteType,
-            addCaseNoteType,
             removeCaseNoteType,
             offenderFlagSettings,
             updateOffenderFlagType,
             addOffenderFlagType,
             removeOffenderFlagType,
+            taskSettings,
+            updateTaskSettings,
         }}>
             {children}
         </UserContext.Provider>

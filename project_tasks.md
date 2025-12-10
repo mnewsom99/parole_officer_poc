@@ -64,6 +64,9 @@
 - [x] **Core Modals**
     - [x] Implement Urinalysis History Modal <!-- id: 0 -->
     - [x] Implement Next Appointment Modal <!-- id: 3 -->
+- [ ] **Offender Task Tab** (Phase 3)
+    - [ ] Create 'Tasks' tab in `OffenderProfile` view.
+    - [ ] List tasks specific to the offender.
 
 ---
 
@@ -74,7 +77,7 @@
     - [ ] Backend: Verify JSON scoring matrix logic.
     - [ ] End-to-End: Test creating custom assessment -> Scoring offender.
 - [ ] **Case Plan Module**
-    - [ ] Auto-generate tasks based on identified risks.
+    - [x] Auto-generate tasks based on identified risks (via Automation Engine).
     - [ ] Link tasks to specific risk factors (e.g., Risk: Substance Abuse -> Task: Enroll in AA).
 - [x] **Risk Configuration**
     - [x] Implement Configurable Risk Scoring (JSON Matrix).
@@ -112,7 +115,9 @@
 > **Priority Goal**: maintain system integrity, user management, and territory configurations.
 
 - [ ] **Admin Functions** <!-- id: 24 -->
-    - [ ] Group Automation (Create automatic tasks for groups).
+    - [x] **Group Automation (Dynamic Rules Engine)** <!-- id: 24 -->
+    - [x] Backend: Automation Engine with Trigger/Condition logic.
+    - [x] Frontend: Automation Builder & Dashboard.
 - [ ] **Territory Management (Settings)** <!-- id: 36 -->
     - [ ] Configure Office Coverage (ZIP Codes).
     - [ ] Configure Officer Coverage (ZIP Codes).
@@ -121,6 +126,7 @@
     - [x] Rename 'User' to 'Full Name'.
 - [x] **System Settings** <!-- id: 27 -->
     - [x] Implement `SystemSettings` table (onboarding delays, etc.).
+    - [x] Implement Configurable Task Categories (Categories & Subcategories).
 
 ---
 
@@ -148,4 +154,25 @@
 - [x] **Database Implementation**: Schema, DDL, Migration Requirements, Data Dictionary.
 - [x] **Data Generation**: Mock data for all major entities.
 - [x] **Supervisor Dashboard**: Task List, Calendar, Assessment Oversight.
+
 - [x] **Dynamic Forms Engine**: FormTemplate, FormSubmission, Transfer Requests.
+
+---
+
+## 8. Mock Data & Audit Findings (To Be Addressed)
+> **Priority Goal**: Replace placeholder/static elements with real functionality or database connections.
+
+- [ ] **Offender Profile - Housing**
+    - [ ] **Detail View**: "Housing Details" shows static/hardcoded status ("Approved") and description.
+    - [ ] **History**: No view for previous housing addresses (Housing History).
+- [ ] **Offender Profile - Programs**
+    - [ ] **Action**: "+ Add Program" button is non-functional.
+- [ ] **Offender Profile - Header Actions**
+    - [ ] **Communication**: "Email" and "Phone" buttons are non-functional placeholders.
+- [ ] **Offender Profile - General Comments**
+    - [ ] **Edit**: Comments are read-only; need an "Edit" interface.
+- [ ] **Dashboard**
+    - [ ] **Reports**: "Download PDF Report" hardcodes month to "June". Needs a selector.
+- [ ] **External Portals**
+    - [ ] **Links**: Lab Portal (UA) and Vendor Portal (Fees) point to `example.com`.
+

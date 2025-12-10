@@ -149,6 +149,33 @@ def update_offender_flags(update: schemas.OffenderFlagUpdate, db: Session = Depe
     db.commit()
     return update.flags
 
+@router.get("/settings/task-categories", response_model=List[schemas.TaskCategoryConfig])
+def get_task_categories(db: Session = Depends(get_db)):
+    setting = db.query(models.SystemSettings).filter(models.SystemSettings.key == "task_categories").first()
+    if not setting:
+        return [
+            {"name": "Home Visit", "subcategories": ["Initial", "Prehome", "Regular"]},
+            {"name": "Assessment", "subcategories": ["Interview", "Score", "1 Year Review", "Re-assessment"]},
+            {"name": "Court", "subcategories": ["Hearing", "Filing", "Review"]},
+            {"name": "Generic", "subcategories": []}
+        ]
+    data = json.loads(setting.value)
+    return data
+
+@router.put("/settings/task-categories", response_model=List[schemas.TaskCategoryConfig])
+def update_task_categories(update: schemas.TaskCategoryUpdate, db: Session = Depends(get_db)):
+    categories_data = [t.dict() for t in update.categories]
+    
+    setting = db.query(models.SystemSettings).filter(models.SystemSettings.key == "task_categories").first()
+    if not setting:
+        setting = models.SystemSettings(key="task_categories", value=json.dumps(categories_data))
+        db.add(setting)
+    else:
+        setting.value = json.dumps(categories_data)
+    
+    db.commit()
+    return update.categories
+
 @router.get("/locations", response_model=List[schemas.Location])
 def get_locations(db: Session = Depends(get_db)):
     return db.query(models.Location).all()

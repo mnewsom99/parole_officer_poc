@@ -344,12 +344,26 @@ class SupervisionEpisode(SupervisionEpisodeBase):
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
+    category: Optional[str] = None
+    sub_category: Optional[str] = None
     due_date: Optional[date] = None
     priority: Optional[str] = 'Normal'
     assigned_officer_id: UUID
+    offender_id: Optional[UUID] = None # Added
 
 class TaskCreate(TaskBase):
     pass
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    sub_category: Optional[str] = None
+    due_date: Optional[date] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    assigned_officer_id: Optional[UUID] = None
+    offender_id: Optional[UUID] = None # Added
 
 class Task(TaskBase):
     task_id: UUID
@@ -358,6 +372,8 @@ class Task(TaskBase):
     status: Optional[str] = 'Pending'
     created_at: datetime
     updated_at: datetime
+    
+    offender: Optional[Offender] = None # Added
 
     class Config:
         from_attributes = True
@@ -410,6 +426,13 @@ class NoteTypeConfig(BaseModel):
 
 class NoteTypeUpdate(BaseModel):
     types: List[NoteTypeConfig]
+
+class TaskCategoryConfig(BaseModel):
+    name: str
+    subcategories: List[str] = []
+
+class TaskCategoryUpdate(BaseModel):
+    categories: List[TaskCategoryConfig]
 
 class AppointmentTypeConfig(BaseModel):
     name: str
@@ -588,5 +611,29 @@ class AutomationRule(AutomationRuleBase):
     rule_id: int
     created_at: datetime
     
+    class Config:
+        from_attributes = True
+
+# --- Documents ---
+class DocumentBase(BaseModel):
+    file_name: str
+    file_type: Optional[str] = None
+    category: Optional[str] = "General"
+
+class DocumentCreate(DocumentBase):
+    pass
+
+class Document(DocumentBase):
+    document_id: UUID
+    offender_id: UUID
+    uploaded_by_id: UUID
+    note_id: Optional[UUID] = None
+    task_id: Optional[UUID] = None
+    file_path: str
+    uploaded_at: datetime
+    
+    # Optional nested objects for display
+    # uploader: Optional[Officer] = None
+
     class Config:
         from_attributes = True

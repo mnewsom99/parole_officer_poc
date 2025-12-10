@@ -108,7 +108,7 @@ def generate_seed_data():
             sup = models.Officer(
                 user_id=user.user_id,
                 location_id=loc.location_id,
-                badge_number=f"SUP-{name[0]}-{random.randint(10,99)}",
+                badge_number=f"SUP-{name[:3].upper()}-{random.randint(10,99)}",
                 first_name=fake.first_name(),
                 last_name=fake.last_name(),
                 phone_number=fake.phone_number()

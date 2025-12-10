@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { createPortal } from 'react-dom';
 import { UserContext } from '../../core/context/UserContext';
 import axios from 'axios';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink, MoreHorizontal, ChevronRight, ChevronLeft, X, Flag, Briefcase } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink, MoreHorizontal, ChevronRight, ChevronLeft, X, Flag, Briefcase, Paperclip, Clipboard } from 'lucide-react';
 import Modal from '../common/Modal';
-import RiskAssessmentModal from '../modals/RiskAssessmentModal';
+
+import TaskModal from '../modals/TaskModal'; // Import
+import DocumentsTab from '../../modules/documents/DocumentsTab';
+import UATab from '../../modules/urinalysis/UATab';
+import RiskTab from '../../modules/assessments/RiskTab';
+import FeesTab from '../../modules/finance/FeesTab';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const OffenderProfile = () => {
@@ -20,9 +26,7 @@ const OffenderProfile = () => {
     };
 
     const [activeTab, setActiveTab] = useState('overview');
-    const [showUAModal, setShowUAModal] = useState(false);
     const [showNotesModal, setShowNotesModal] = useState(false);
-    const [showRiskModal, setShowRiskModal] = useState(false);
     const [showEmploymentModal, setShowEmploymentModal] = useState(false); // New
     const [employmentStatus, setEmploymentStatus] = useState('Unemployed'); // New
     const [unemployableReason, setUnemployableReason] = useState(''); // New
@@ -36,29 +40,22 @@ const OffenderProfile = () => {
     });
     const [showAppointmentModal, setShowAppointmentModal] = useState(false);
 
-    const [parolePlan, setParolePlan] = useState([
-        { id: 1, title: 'Started Supervision', date: '2023-10-15', status: 'Completed' },
-        { id: 2, title: 'Attend Orientation', date: '2023-10-20', status: 'Completed' },
-        { id: 3, title: 'Complete Assessments', date: '2023-11-01', status: 'Pending' },
-        { id: 4, title: 'Completed Parole', date: '2024-10-15', status: 'Not Due' },
-    ]);
+    // --- Task / Parole Plan State ---
+    const [parolePlanTasks, setParolePlanTasks] = useState([]);
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [selectedTaskFile, setSelectedTaskFile] = useState(null);
+
     // Editing State
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
 
-    const [isAddingTask, setIsAddingTask] = useState(false);
-    const [newTask, setNewTask] = useState({ title: '', date: '', status: 'Pending' });
-
     // Data States
-    const [uaHistory, setUaHistory] = useState([]);
     const [notes, setNotes] = useState([]);
-    const [riskFactors, setRiskFactors] = useState([]);
-    const [riskHistory, setRiskHistory] = useState([]);
 
     const [appointments, setAppointments] = useState([]);
 
     const [programs, setPrograms] = useState([]);
-    const [feeSummary, setFeeSummary] = useState({ balance: 0, history: [] });
 
     // Derived State: Recent Activity
     const recentActivity = React.useMemo(() => {
@@ -76,17 +73,8 @@ const OffenderProfile = () => {
             }));
         }
 
-        // Add UA
-        if (Array.isArray(uaHistory)) {
-            uaHistory.forEach(u => activity.push({
-                id: `ua-${u.test_id}`,
-                type: 'UA',
-                title: `UA Test: ${u.result || 'Pending'}`,
-                date: u.date,
-                desc: u.test_type,
-                color: u.result === 'Positive' ? 'bg-red-500' : 'bg-green-500'
-            }));
-        }
+        // UA Logic Removed for Modularity
+
 
         // Add Appointments
         if (Array.isArray(appointments)) {
@@ -105,9 +93,10 @@ const OffenderProfile = () => {
             const dateB = new Date(b.date).getTime() || 0;
             return dateB - dateA;
         }).slice(0, 5);
-    }, [notes, uaHistory, appointments]);
+    }, [notes, appointments]);
 
     const [newNoteContent, setNewNoteContent] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null); // New State
     const [currentPage, setCurrentPage] = useState(1);
     // noteTypes derived from context now
     const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
@@ -186,35 +175,20 @@ const OffenderProfile = () => {
 
             // Fetch related data in parallel (Non-critical)
             const results = await Promise.allSettled([
-                axios.get(`http://localhost:8000/offenders/${offenderId}/urinalysis`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/notes`),
-                axios.get(`http://localhost:8000/offenders/${offenderId}/risk`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/appointments`),
                 axios.get(`http://localhost:8000/offenders/${offenderId}/programs`),
-                axios.get(`http://localhost:8000/fees/${offenderId}`)
+                // NEW: Fetch Tasks for this offender
+                axios.get(`http://localhost:8000/tasks?offender_id=${offenderId}`)
             ]);
 
-            const [uaRes, notesRes, riskRes, apptRes, programsRes, feesRes] = results;
+            const [notesRes, apptRes, programsRes, tasksRes] = results;
 
-            if (uaRes.status === 'fulfilled') setUaHistory(uaRes.value.data);
             if (notesRes.status === 'fulfilled') setNotes(notesRes.value.data);
-
-            if (riskRes.status === 'fulfilled') {
-                setRiskHistory(riskRes.value.data);
-                if (riskRes.value.data.length > 0) {
-                    const latestRisk = riskRes.value.data[0];
-                    const factors = Object.entries(latestRisk.details || {}).map(([category, score]) => ({
-                        category,
-                        score,
-                        details: `${score} risk factor identified.`
-                    }));
-                    setRiskFactors(factors);
-                }
-            }
 
             if (apptRes.status === 'fulfilled') setAppointments(apptRes.value.data);
             if (programsRes.status === 'fulfilled') setPrograms(programsRes.value.data);
-            if (feesRes.status === 'fulfilled') setFeeSummary(feesRes.value.data);
+            if (tasksRes.status === 'fulfilled') setParolePlanTasks(tasksRes.value.data);
 
         } catch (error) {
             console.error("Error fetching offender data:", error);
@@ -266,24 +240,19 @@ const OffenderProfile = () => {
     }
 
     const handleUpdateTask = (id, field, value) => {
-        setParolePlan(parolePlan.map(task =>
-            task.id === id ? { ...task, [field]: value } : task
+        setParolePlanTasks(parolePlanTasks.map(task =>
+            task.task_id === id ? { ...task, [field]: value } : task
         ));
     };
 
     const handleAddTask = () => {
-        if (newTask.title && newTask.date) {
-            setParolePlan([
-                ...parolePlan,
-                { id: Date.now(), ...newTask }
-            ]);
-            setNewTask({ title: '', date: '', status: 'Pending' });
-            setIsAddingTask(false);
-        }
+        // This function is no longer directly used for adding tasks via inline form.
+        // TaskModal handles adding/editing.
     };
 
     const handleDeleteTask = (id) => {
-        setParolePlan(parolePlan.filter(task => task.id !== id));
+        // This function is no longer directly used for deleting tasks via inline button.
+        // TaskModal handles deleting.
     };
 
 
@@ -338,14 +307,33 @@ const OffenderProfile = () => {
         if (!newNoteContent.trim()) return;
 
         try {
+            // 1. Create Note
             const response = await axios.post(`http://localhost:8000/offenders/${offender.id}/notes`, {
                 content: newNoteContent,
                 type: newNoteType
             });
 
-            setNotes([response.data, ...notes]);
+            const createdNote = response.data;
+
+            // 2. Upload Attachment if present
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                formData.append("offender_id", offenderId);
+                formData.append("uploaded_by_id", currentUser?.officerId || 'unknown');
+                formData.append("note_id", createdNote.note_id);
+                formData.append("category", "Note Attachment");
+
+                await axios.post('http://localhost:8000/documents/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            setNotes([createdNote, ...notes]);
             setNewNoteContent('');
+            setSelectedFile(null); // Reset file
             setCurrentPage(1);
+            setShowNotesModal(false); // Close modal
         } catch (error) {
             console.error("Error adding note:", error);
         }
@@ -396,6 +384,7 @@ const OffenderProfile = () => {
         { id: 'risk', label: 'Risk Assessment', icon: AlertTriangle },
         { id: 'ua', label: 'Urine Analysis', icon: Activity },
         { id: 'fees', label: 'Costs & Fees', icon: DollarSign },
+        { id: 'documents', label: 'Documents', icon: FileText },
         { id: 'detail', label: 'Detail View', icon: Phone },
     ];
 
@@ -405,11 +394,15 @@ const OffenderProfile = () => {
                 return (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Parole Plan / Tasks */}
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-slate-800">Parole Plan</h3>
                                     <button
-                                        onClick={() => setIsAddingTask(true)}
+                                        onClick={() => {
+                                            setSelectedTask(null);
+                                            setShowTaskModal(true);
+                                        }}
                                         className="text-sm text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1"
                                     >
                                         <Plus size={16} />
@@ -417,142 +410,86 @@ const OffenderProfile = () => {
                                     </button>
                                 </div>
 
-                                {isAddingTask && (
-                                    <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200 animate-in fade-in slide-in-from-top-2">
-                                        <div className="grid grid-cols-1 gap-3 mb-3">
-                                            <input
-                                                type="text"
-                                                placeholder="Task Title"
-                                                className="w-full p-2 border border-slate-200 rounded text-sm"
-                                                value={newTask.title}
-                                                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                                            />
-                                            <div className="flex gap-3">
-                                                <input
-                                                    type="date"
-                                                    className="flex-1 p-2 border border-slate-200 rounded text-sm"
-                                                    value={newTask.date}
-                                                    onChange={(e) => setNewTask({ ...newTask, date: e.target.value })}
-                                                />
-                                                <select
-                                                    className="flex-1 p-2 border border-slate-200 rounded text-sm"
-                                                    value={newTask.status}
-                                                    onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
-                                                >
-                                                    <option value="Pending">Pending</option>
-                                                    <option value="Completed">Completed</option>
-                                                    <option value="Not Due">Not Due</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                onClick={() => setIsAddingTask(false)}
-                                                className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={handleAddTask}
-                                                className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded"
-                                            >
-                                                Save Task
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
                                 <div className="space-y-6 max-h-64 overflow-y-auto pr-2">
                                     <div className="space-y-3">
-                                        {parolePlan.length === 0 && (
-                                            <p className="text-xs text-slate-400 italic">No tasks</p>
+                                        {parolePlanTasks.length === 0 && (
+                                            <p className="text-xs text-slate-400 italic">No tasks found for this offender.</p>
                                         )}
-                                        {parolePlan
+                                        {parolePlanTasks
                                             .sort((a, b) => {
-                                                // Sort by completion status first (Completed at bottom)
                                                 if (a.status === 'Completed' && b.status !== 'Completed') return 1;
                                                 if (a.status !== 'Completed' && b.status === 'Completed') return -1;
-
-                                                // Then sort by date
-                                                return new Date(a.date) - new Date(b.date);
+                                                return new Date(a.due_date || a.created_at) - new Date(b.due_date || b.created_at);
                                             })
                                             .map(task => {
-                                                const isPastDue = task.status === 'Pending' && new Date(task.date) < new Date();
+                                                const taskDate = task.due_date ? new Date(task.due_date) : null;
+                                                const isPastDue = task.status === 'Pending' && taskDate && taskDate < new Date();
                                                 const dotColor = task.status === 'Completed' ? 'bg-green-500' :
                                                     isPastDue ? 'bg-red-500' :
                                                         task.status === 'Pending' ? 'bg-yellow-500' :
                                                             'bg-slate-300';
 
                                                 return (
-                                                    <div key={task.id} className="flex items-center gap-3 group hover:bg-slate-50 p-1 rounded -mx-1 transition-colors">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`}></div>
+                                                    <div
+                                                        key={task.task_id}
+                                                        onClick={() => {
+                                                            setSelectedTask(task);
+                                                            setShowTaskModal(true);
+                                                        }}
+                                                        className="flex items-center gap-3 group hover:bg-slate-50 p-2 rounded -mx-2 transition-colors cursor-pointer"
+                                                    >
+                                                        <div className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></div>
 
-                                                        <div className="flex-1 min-w-0 flex items-center gap-2">
-                                                            <span className={`text-xs font-medium truncate ${task.status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                                                                {task.title}
-                                                            </span>
-                                                            <span className="text-xs text-slate-400">-</span>
-                                                            <input
-                                                                type="date"
-                                                                value={task.date}
-                                                                onChange={(e) => handleUpdateTask(task.id, 'date', e.target.value)}
-                                                                className="text-[10px] text-slate-500 bg-transparent border-none p-0 focus:ring-0 h-auto w-auto"
-                                                            />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-sm font-medium truncate ${task.status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                                                                    {task.title}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                                                                <Calendar size={10} />
+                                                                <span>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Date'}</span>
+                                                                {task.status === 'Completed' && <span className="text-green-600 font-medium ml-2">Done</span>}
+                                                            </div>
                                                         </div>
 
-                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                                            <select
-                                                                value={task.status}
-                                                                onChange={(e) => handleUpdateTask(task.id, 'status', e.target.value)}
-                                                                className="text-[10px] border border-slate-200 rounded py-0.5 px-1 bg-white"
-                                                            >
-                                                                <option value="Completed">Done</option>
-                                                                <option value="Pending">Pending</option>
-                                                                <option value="Not Due">Later</option>
-                                                            </select>
-                                                            <button
-                                                                onClick={() => handleDeleteTask(task.id)}
-                                                                className="text-slate-400 hover:text-red-500 p-0.5"
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </div>
+                                                        <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400" />
                                                     </div>
                                                 );
-                                            })}
+                                            })
+                                        }
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Recent Activity Column */}
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <h3 className="font-bold text-slate-800 mb-4">Recent Activity</h3>
-                                <div className="space-y-3">
-                                    {recentActivity.length > 0 ? (
-                                        recentActivity.map(item => (
-                                            <div key={item.id} className="flex items-center gap-3">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${item.color} shrink-0`}></div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-center">
-                                                        <p className="text-xs font-medium text-slate-800 truncate">{item.title}</p>
-                                                        <p className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
-                                                            {safeDate(item.date)}
-                                                        </p>
-                                                    </div>
-                                                    <p className="text-[10px] text-slate-500 truncate">{item.desc}</p>
+                                <div className="space-y-4 relative pl-2">
+                                    <div className="absolute top-2 bottom-2 left-[19px] w-0.5 bg-slate-100"></div>
+                                    {recentActivity.map(item => (
+                                        <div key={item.id} className="relative flex gap-4">
+                                            <div className={`w-2.5 h-2.5 rounded-full ${item.color} mt-1.5 shrink-0 z-10 border-2 border-white box-content`}></div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <p className="font-medium text-sm text-slate-800">{item.title}</p>
+                                                    <span className="text-xs text-slate-400 whitespace-nowrap ml-2">
+                                                        {item.date ? new Date(item.date).toLocaleDateString() : ''}
+                                                    </span>
                                                 </div>
+                                                <p className="text-xs text-slate-500 truncate mt-0.5">{item.desc}</p>
                                             </div>
-                                        ))
-                                    ) : (
+                                        </div>
+                                    ))}
+                                    {recentActivity.length === 0 && (
                                         <p className="text-xs text-slate-400 italic">No recent activity.</p>
                                     )}
                                 </div>
                             </div>
                         </div>
 
+                        {/* Case Notes Section (Reused) */}
                         <div className="mt-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-4">Case Notes</h3>
-
-
-
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-sm font-bold text-slate-800">Recent Notes</h4>
                                 <div className="flex items-center gap-2">
@@ -629,215 +566,16 @@ const OffenderProfile = () => {
                                 </div>
                             )}
                         </div>
-                    </div >
+                    </div>
                 );
             case 'risk':
-                return (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-slate-800">Risk Assessment History</h3>
-                            <button
-                                onClick={() => setShowRiskModal(true)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm"
-                            >
-                                Start New Assessment
-                            </button>
-                        </div>
-
-                        {Array.isArray(riskHistory) && riskHistory.length > 0 ? (
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                                <table className="w-full text-left text-sm text-slate-600">
-                                    <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
-                                        <tr>
-                                            <th className="px-6 py-3">Date</th>
-                                            <th className="px-6 py-3">Risk Level</th>
-                                            <th className="px-6 py-3">Total Score</th>
-                                            <th className="px-6 py-3">Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {riskHistory.map((risk) => (
-                                            <tr key={risk.assessment_id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4">{safeDate(risk.date)}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col items-start gap-1">
-                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${(risk.final_risk_level || risk.risk_level) === 'High' ? 'bg-red-100 text-red-700' :
-                                                            (risk.final_risk_level || risk.risk_level) === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-green-100 text-green-700'
-                                                            }`}>
-                                                            {risk.final_risk_level || risk.risk_level}
-                                                        </span>
-                                                        {risk.final_risk_level && risk.final_risk_level !== risk.risk_level && (
-                                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded border border-slate-200" title={risk.override_reason}>
-                                                                Overridden (Calc: {risk.risk_level})
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 font-medium">{risk.total_score}</td>
-                                                <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate">
-                                                    {risk.details && typeof risk.details === 'object' ? Object.keys(risk.details).length + " Factors Identified" : "No details"}
-                                                    {risk.override_reason && (
-                                                        <div className="text-[10px] text-slate-400 italic mt-0.5 truncate w-48">
-                                                            Reason: {risk.override_reason}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
-                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Shield className="w-8 h-8 text-slate-400" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-800 mb-2">No Assessments Found</h3>
-                                <p className="text-slate-500 mb-6">No risk assessments have been recorded for this offender.</p>
-                            </div>
-                        )}
-                    </div>
-                );
+                return <RiskTab offenderId={offenderId} />;
             case 'ua':
-                return (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-slate-800">Urine Analysis History</h3>
-                            <div className="flex gap-2">
-                                <a
-                                    href="https://example-lab-portal.com" // Placeholder
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
-                                >
-                                    <ExternalLink size={16} />
-                                    Lab Portal
-                                </a>
-                                <button className="bg-navy-800 hover:bg-navy-900 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm">
-                                    Request New Test
-                                </button>
-                            </div>
-                        </div>
-
-                        {uaHistory.length > 0 ? (
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                                <table className="w-full text-left text-sm text-slate-600">
-                                    <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
-                                        <tr>
-                                            <th className="px-6 py-3">Date</th>
-                                            <th className="px-6 py-3">Test Type</th>
-                                            <th className="px-6 py-3">Result</th>
-                                            <th className="px-6 py-3">Collected By</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {uaHistory.map((ua) => (
-                                            <tr key={ua.test_id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4">{safeDate(ua.date)}</td>
-                                                <td className="px-6 py-4 font-medium text-slate-800">{ua.test_type}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${ua.result === 'Positive' ? 'bg-red-100 text-red-700' :
-                                                        ua.result === 'Negative' ? 'bg-green-100 text-green-700' :
-                                                            'bg-slate-100 text-slate-600'
-                                                        }`}>
-                                                        {ua.result}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-xs text-slate-500">
-                                                    {ua.collected_by ? `${ua.collected_by.last_name}, ${ua.collected_by.first_name}` : 'Unknown'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
-                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Activity className="w-8 h-8 text-slate-400" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-800 mb-2">No Test History</h3>
-                                <p className="text-slate-500 mb-6">No urinalysis records found for this offender.</p>
-                            </div>
-                        )}
-                    </div>
-                );
+                return <UATab offenderId={offenderId} />;
             case 'fees':
-                return (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-slate-800">Cost of Supervision & Fees</h3>
-                            <a
-                                href="https://example-vendor-portal.com" // Placeholder link
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
-                            >
-                                <ExternalLink size={16} />
-                                Vendor Portal
-                            </a>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Balance Card */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 col-span-1">
-                                <h4 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wide">Current Balance</h4>
-                                <div className={`text-4xl font-bold ${feeSummary.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    ${Number(feeSummary.balance).toFixed(2)}
-                                </div>
-                                <p className="text-xs text-slate-400 mt-2">
-                                    Last Updated: {safeDate(feeSummary.last_updated)}
-                                </p>
-                                <div className="mt-4 pt-4 border-t border-slate-100">
-                                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <DollarSign size={16} className="text-slate-400" />
-                                        <span>Status: {feeSummary.balance > 0 ? 'Payment Due' : 'In Good Standing'}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Transaction History */}
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden col-span-1 md:col-span-2">
-                                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                                    <h4 className="font-bold text-slate-800">Recent Transactions</h4>
-                                    <span className="text-xs text-slate-500">Last 5 records</span>
-                                </div>
-                                {feeSummary?.history && feeSummary.history.length > 0 ? (
-                                    <table className="w-full text-left text-sm text-slate-600">
-                                        <thead className="bg-slate-50 border-b border-slate-200 font-medium text-slate-700">
-                                            <tr>
-                                                <th className="px-6 py-3">Date</th>
-                                                <th className="px-6 py-3">Description</th>
-                                                <th className="px-6 py-3">Amount</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {feeSummary.history.map((tx) => (
-                                                <tr key={tx.transaction_id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-6 py-4 whitespace-nowrap">{safeDate(tx.transaction_date)}</td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium text-slate-800">{tx.description}</span>
-                                                            <span className="text-xs text-slate-400">{tx.type}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className={`px-6 py-4 font-bold ${tx.type === 'Payment' ? 'text-green-600' : 'text-slate-800'}`}>
-                                                        {tx.type === 'Payment' ? '-' : '+'}${Number(tx.amount).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="p-8 text-center text-slate-500 italic">
-                                        No recent transactions available.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
+                return <FeesTab offenderId={offenderId} />;
+            case 'documents':
+                return <DocumentsTab offenderId={offenderId} />;
             case 'detail':
                 return (
                     <div className="space-y-6">
@@ -1349,59 +1087,6 @@ const OffenderProfile = () => {
             </div>
 
 
-            <Modal
-                isOpen={showUAModal}
-                onClose={() => setShowUAModal(false)}
-                title="Urinalysis History"
-            >
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <div className="text-sm text-slate-500">
-                            Showing recent test results for <span className="font-semibold text-slate-900">{offender.name}</span>
-                        </div>
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors">
-                            + Record New Test
-                        </button>
-                    </div>
-
-                    <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-700">Type</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-700">Result</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-700">Lab</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-700">Collected By</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {uaHistory?.map((test) => (
-                                    <tr key={test.test_id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3 text-slate-600">{test.date}</td>
-                                        <td className="px-4 py-3 text-slate-600">{test.test_type}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${test.result.includes('Positive')
-                                                ? 'bg-red-100 text-red-800'
-                                                : 'bg-green-100 text-green-800'
-                                                }`}>
-                                                {test.result}
-                                            </span>
-                                            {test.notes && (
-                                                <div className="text-xs text-slate-400 mt-1">{test.notes}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-600">{test.lab_name}</td>
-                                        <td className="px-4 py-3 text-slate-600">
-                                            {test.collected_by ? `${test.collected_by.last_name}, ${test.collected_by.first_name}` : 'Unknown'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </Modal>
 
             <Modal
                 isOpen={showNotesModal}
@@ -1430,6 +1115,33 @@ const OffenderProfile = () => {
                             className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[100px]"
                             placeholder="Type note content here..."
                         ></textarea>
+
+                        {/* File Attachment */}
+                        <div className="mt-3">
+                            <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer hover:text-blue-600 transition-colors w-fit">
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => setSelectedFile(e.target.files[0])}
+                                />
+                                <div className="p-1.5 bg-slate-100 rounded-lg">
+                                    <Paperclip size={16} />
+                                </div>
+                                <span>{selectedFile ? selectedFile.name : "Attach a file (optional)"}</span>
+                                {selectedFile && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setSelectedFile(null);
+                                        }}
+                                        className="text-red-500 hover:text-red-700 ml-2"
+                                        title="Remove attachment"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </label>
+                        </div>
                         <div className="flex justify-end mt-2">
                             <button
                                 onClick={handleAddNote}
@@ -1460,14 +1172,7 @@ const OffenderProfile = () => {
                 </div>
             </Modal>
 
-            <RiskAssessmentModal
-                isOpen={showRiskModal}
-                onClose={() => setShowRiskModal(false)}
-                offenderId={offenderId}
-                onSuccess={() => {
-                    fetchData(); // Refresh risk history
-                }}
-            />
+
 
             <Modal
                 isOpen={showEmploymentModal}

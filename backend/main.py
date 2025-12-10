@@ -1,23 +1,64 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from . import models, database, auth
 from .database import engine, get_db
-from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees, assessments, automations
+from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees, assessments, automations, documents
+from fastapi.staticfiles import StaticFiles
 
 models.Base.metadata.create_all(bind=engine)
 
-# Configure Logging
+# Configure Structured Logging
+from contextvars import ContextVar
+import uuid
+
+request_id_ref = ContextVar("request_id", default=None)
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "line": record.lineno,
+            "trace_id": request_id_ref.get()
+        }
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return import_json().dumps(log_record)
+
+def import_json():
+    import json
+    return json
+
+handler = logging.StreamHandler()
+handler.setFormatter(JsonFormatter())
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]
+    handlers=[handler],
+    force=True  # Ensure we override any existing config
 )
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Parole Officer Dashboard API")
+
+# Mount Media (Static Files)
+import os
+os.makedirs("backend/media", exist_ok=True)
+app.mount("/media", StaticFiles(directory="backend/media"), name="media")
+
+# Middleware for Request IDs
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request_id_ref.set(request_id)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 # Configure CORS
 app.add_middleware(
@@ -27,6 +68,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_msg = str(exc)
+    tb = traceback.format_exc()
+    
+    # Log to file
+    with open("global_error.txt", "w") as f:
+        f.write(f"Error: {error_msg}\n")
+        f.write(tb)
+        
+    logger.error(f"Global Exception: {error_msg}\n{tb}")
+    
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={"detail": error_msg, "traceback": tb},
+    )
 
 # Include Routers
 app.include_router(auth_router.router)
@@ -40,10 +101,7 @@ app.include_router(appointments.router)
 app.include_router(fees.router)
 app.include_router(assessments.router)
 app.include_router(automations.router)
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Parole Officer Dashboard API"}
+app.include_router(documents.router)
 
 @app.get("/health")
 def health_check():

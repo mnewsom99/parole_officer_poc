@@ -1,0 +1,49 @@
+================================================================
+   HOW TO START THE PAROLE OFFICER APP (NO INTERNET NEEDED)
+================================================================
+
+OPTION 1: THE EASY WAY (Double-Click)
+--------------------------------------
+1. Find the file named "Start_Parole_App.bat" in this folder.
+   (It might just look like a gear icon or say "Batch File").
+2. Right-click "Start_Parole_App.bat" -> Send to -> Desktop (create shortcut).
+   (Now you have an icon on your desktop for next time!)
+3. Double-click that file.
+4. A black window will open. Wait for green text saying "Ready".
+5. Your web browser should open automatically to the app.
+
+
+OPTION 2: THE MANUAL WAY (If the easy way fails)
+------------------------------------------------
+If you need to start it yourself using the "Computer Terminal" (Command Prompt):
+
+1. OPEN THE TERMINAL
+   - Press the "Windows Key" on your keyboard (bottom left, looks like a flag).
+   - Type the letters: c m d
+   - You will see "Command Prompt". Click it or press Enter.
+   - A black box/window will appear.
+
+2. GO TO THE PROJECT FOLDER
+   - Copy this specific line of text (highlight it and press Ctrl+C):
+     cd /d "c:\Users\mnews\OneDrive\Documents\AI_Projects\parole-officer-poc"
+   
+   - Go back to the black window.
+   - Right-click anywhere inside the window to Paste it.
+   - Press the [Enter] key.
+
+3. START THE APP
+   - Type this command exactly:
+     python manage.py
+   
+   - Press the [Enter] key.
+
+4. SUCCESS
+   - You should see text scrolling and eventually "Backend (API)" and "Frontend (Vite)" starting.
+   - Open Chrome or Edge and go to: http://localhost:5173
+
+================================================================
+TROUBLESHOOTING
+================================================================
+- If you see red text or errors, close the black window and try again.
+- If it says "python is not recognized", you might need to install Python.
+- If the internet is down, this still works! The app runs entirely on your machine.

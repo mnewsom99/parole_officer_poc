@@ -120,16 +120,20 @@ class Task(Base):
     __tablename__ = 'tasks'
     task_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     episode_id = Column(UUID(as_uuid=True), ForeignKey('supervision_episodes.episode_id'), index=True)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), nullable=True, index=True) # Added for direct link
     created_by = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     assigned_officer_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
     title = Column(String(100), nullable=False)
     description = Column(Text)
+    category = Column(String(50))
+    sub_category = Column(String(50))
     due_date = Column(Date)
     status = Column(String(20), default='Pending', index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     episode = relationship("SupervisionEpisode")
+    offender = relationship("Offender") # Added relationship
     creator = relationship("Officer", foreign_keys=[created_by])
     assigned_officer = relationship("Officer", foreign_keys=[assigned_officer_id])
 
@@ -220,6 +224,27 @@ class CaseNote(Base):
 
     offender = relationship("Offender")
     author = relationship("Officer")
+
+class Document(Base):
+    __tablename__ = 'documents'
+    document_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), nullable=True, index=True)
+    uploaded_by_id = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), nullable=True, index=True)
+    note_id = Column(UUID(as_uuid=True), ForeignKey('case_notes.note_id'), nullable=True, index=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey('tasks.task_id'), nullable=True, index=True)
+    
+    file_name = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False) # Parameters relative to media root
+    file_type = Column(String(100)) # MIME type
+    category = Column(String(50), default='General') # General, Court, Note Attachment, Task Attachment
+    file_size = Column(Integer) # Bytes
+    
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    offender = relationship("Offender")
+    uploaded_by = relationship("Officer")
+    note = relationship("CaseNote", backref="documents")
+    task = relationship("Task", backref="documents")
 
 class RiskAssessmentType(Base):
     __tablename__ = 'risk_assessment_types'
@@ -380,3 +405,5 @@ class AutomationRule(Base):
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+

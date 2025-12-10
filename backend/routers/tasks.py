@@ -9,39 +9,42 @@ router = APIRouter(
     tags=["tasks"]
 )
 
-@router.post("", response_model=schemas.Task) # Using schemas.Task if defined, or create a new one
+@router.post("", response_model=schemas.Task)
 def create_task(
-    task: schemas.TaskCreate, # Need to verify TaskCreate exists or define it
+    task: schemas.TaskCreate, 
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Verify assignee exists
-    assigned_officer = db.query(models.Officer).filter(models.Officer.officer_id == task.assigned_officer_id).first()
-    if not assigned_officer:
-        raise HTTPException(status_code=404, detail="Assigned officer not found")
-
-    new_task = models.Task(
-        created_by=current_user.user_id, # Assuming current user is an officer. If User table used, might need lookup.
-        # Actually Task model uses created_by as Officer ID. 
-        # So we need to find the officer profile of the current user.
-        **task.dict()
-    )
+    # Dummy return for debugging
+    # raise HTTPException(status_code=418, detail="I am a teapot - Endpoint reached")
     
-    # Override created_by with the actual officer ID of the creator
-    creator_officer = db.query(models.Officer).filter(models.Officer.user_id == current_user.user_id).first()
-    if creator_officer:
-        new_task.created_by = creator_officer.officer_id
-    else:
-        # If creator isn't an officer (e.g. Admin acting as User), handle gracefully or require Officer profile
-        # For now, let's assume Supervisor ID is needed. 
-        # If created_by is nullable ok, otherwise might error. 
-        # Model says: created_by = Column(UUID(as_uuid=True), ForeignKey('officers.officer_id'), index=True)
-         pass
+    try:
+        # Verify assignee exists
+        assigned_officer = db.query(models.Officer).filter(models.Officer.officer_id == task.assigned_officer_id).first()
+        if not assigned_officer:
+            raise HTTPException(status_code=404, detail="Assigned officer not found")
 
-    db.add(new_task)
-    db.commit()
-    db.refresh(new_task)
-    return new_task
+        creator_officer = db.query(models.Officer).filter(models.Officer.user_id == current_user.user_id).first()
+        
+        task_data = task.dict()
+        task_data.pop('priority', None) # Remove priority if model doesn't support it yet
+        
+        new_task = models.Task(
+            created_by=creator_officer.officer_id if creator_officer else None,
+            **task_data
+        )
+
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+        return new_task
+    except Exception as e:
+        db.rollback()
+        with open("last_error.txt", "w") as f:
+            f.write(str(e))
+            import traceback
+            traceback.print_exc(file=f)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("", response_model=List[schemas.Task])
 def get_tasks(
@@ -49,6 +52,7 @@ def get_tasks(
     assigned_officer_id: Optional[str] = None, # New parameter for direct officer ID
     location_id: Optional[str] = None,
     status: Optional[str] = None,
+    offender_id: Optional[str] = None, # Added
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Task)
@@ -86,5 +90,37 @@ def get_tasks(
 
     if status:
         query = query.filter(models.Task.status == status)
+
+    if offender_id:
+        query = query.filter(models.Task.offender_id == offender_id)
         
     return query.order_by(models.Task.due_date.asc(), models.Task.created_at.desc()).all()
+
+@router.put("/{task_id}", response_model=schemas.Task)
+def update_task(
+    task_id: str,
+    task_update: schemas.TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Find the task
+    task = db.query(models.Task).filter(models.Task.task_id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Permission check (optional: only assignee or supervisor/admin?)
+    # For now, allow any authenticated user to update tasks (e.g. collaborative)
+    
+    # Update fields
+    update_data = task_update.dict(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        setattr(task, key, value)
+        
+    try:
+        db.commit()
+        db.refresh(task)
+        return task
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
