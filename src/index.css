@@ -5,3 +5,40 @@
 body {
   @apply bg-white text-slate-900;
 }
+
+.gradient-bg {
+  /* Rich Purple "ParoleOS" Theme: Violet-300 to Purple-400 */
+  background: linear-gradient(135deg, #c4b5fd, #a78bfa);
+  background-size: 100% 100%;
+  /* Animation removed to "stay" on the purple */
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.page-enter {
+  animation: fadeSlideUp 0.4s ease-out forwards;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -33,22 +33,24 @@ const Sidebar = () => {
         { id: 'calendar', label: 'Calendar', path: '/calendar', icon: Calendar },
         { id: 'office', label: 'Office Module', path: '/office', icon: Briefcase },
         { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { id: 'workflows', label: 'Workflows', path: '/workflows', icon: FileText },
+        { id: 'automations', label: 'Automations', path: '/automations', icon: FileText },
         { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
         { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
     ];
 
     return (
-        <aside className="w-64 bg-navy-900 text-white flex flex-col h-screen fixed left-0 top-0 z-20 shadow-xl">
-            <div className="p-6 flex items-center gap-3 border-b border-navy-800">
-                <Shield className="w-8 h-8 text-blue-400" />
+        <aside className="w-64 bg-white/70 backdrop-blur-xl border-r border-white/50 flex flex-col h-screen fixed left-0 top-0 z-20 shadow-xl transition-all duration-300">
+            <div className="p-6 flex items-center gap-3 border-b border-indigo-100/50">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg shadow-lg shadow-indigo-200">
+                    <Shield className="w-6 h-6 text-white" />
+                </div>
                 <div>
-                    <h1 className="font-bold text-lg tracking-wide">PAROLE<span className="text-blue-400">OS</span></h1>
-                    <p className="text-xs text-navy-300">Field Officer Dashboard</p>
+                    <h1 className="font-bold font-display text-lg tracking-wide text-slate-800">PAROLE<span className="text-indigo-600">OS</span></h1>
+                    <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Field Officer</p>
                 </div>
             </div>
 
-            <nav className="flex-1 p-4 space-y-2">
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                 {navItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname.startsWith(item.path);
@@ -56,26 +58,36 @@ const Sidebar = () => {
                         <Link
                             key={item.id}
                             to={item.path}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                                : 'text-navy-100 hover:bg-navy-800 hover:text-white'
+                            className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 relative overflow-hidden ${isActive
+                                ? 'text-white shadow-lg shadow-indigo-200 scale-[1.02]'
+                                : 'text-slate-500 hover:bg-white/60 hover:text-indigo-600'
                                 }`}
                         >
-                            <Icon size={20} />
-                            <span className="font-medium">{item.label}</span>
+                            {/* Active Gradient Background */}
+                            {isActive && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 z-0"></div>
+                            )}
+
+                            {/* Hover Gradient Border Effect (Optional, simulated with box-shadow or inset) */}
+
+                            <Icon size={20} className={`relative z-10 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : ''}`} />
+                            <span className={`font-medium relative z-10 ${isActive ? 'text-white' : ''}`}>{item.label}</span>
+
+                            {/* Active Indicator Dot */}
+                            {isActive && <div className="absolute right-3 w-1.5 h-1.5 bg-white rounded-full shadow-sm z-10 animate-pulse"></div>}
                         </Link>
                     );
                 })}
             </nav>
 
-            <div className="p-4 border-t border-navy-800">
-                <div className="bg-navy-800 rounded-lg p-4">
-                    <p className="text-xs text-navy-400 uppercase font-bold mb-2">System Status</p>
+            <div className="p-4 border-t border-indigo-100/30">
+                <div className="bg-white/40 rounded-xl p-4 border border-white/40 shadow-sm backdrop-blur-md">
+                    <p className="text-xs text-slate-500 uppercase font-bold mb-2 tracking-wider">System Status</p>
                     <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${systemStatus === 'online' ? 'bg-green-500' :
-                                systemStatus === 'offline' ? 'bg-red-500' : 'bg-yellow-500'
+                        <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm animate-pulse ${systemStatus === 'online' ? 'bg-emerald-500' :
+                            systemStatus === 'offline' ? 'bg-rose-500' : 'bg-amber-500'
                             }`}></div>
-                        <span className="text-xs text-navy-200">
+                        <span className="text-xs font-medium text-slate-600">
                             {systemStatus === 'online' ? 'Online & Synced' :
                                 systemStatus === 'offline' ? 'System Offline' : 'Checking...'}
                         </span>

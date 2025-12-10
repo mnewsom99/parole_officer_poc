@@ -8,7 +8,7 @@ const Header = ({ onLogout }) => {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     return (
-        <header className="h-16 bg-white border-b border-slate-200 fixed top-0 right-0 left-64 z-10 flex items-center justify-between px-6 shadow-sm">
+        <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-white/50 fixed top-0 right-0 left-64 z-10 flex items-center justify-between px-6 shadow-sm transition-all duration-300">
             <div className="flex items-center gap-4 w-96">
                 <div className="relative w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />

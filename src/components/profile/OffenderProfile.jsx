@@ -1232,115 +1232,120 @@ const OffenderProfile = () => {
                 <span className="font-medium">Back to Caseload</span>
             </button>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="h-20 bg-navy-900 relative">
-                    <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                </div>
-                <div className="px-6 pb-4">
-                    <div className="flex flex-col md:flex-row items-center md:items-end -mt-8 gap-4">
-                        <img
-                            src={offender.image}
-                            alt={offender.name}
-                            className="w-20 h-20 rounded-xl border-4 border-white shadow-md object-cover bg-slate-200 relative"
-                        />
-                        <div className="flex-1 mb-1 text-center md:text-left">
-                            <div className="flex items-center gap-2 mb-0.5 justify-center md:justify-start">
-                                <h1 className="text-xl font-bold text-slate-900">{offender.name}</h1>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${offender.risk === 'High' ? 'bg-red-100 text-red-700 border-red-200' :
-                                    offender.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                                        'bg-green-100 text-green-700 border-green-200'
-                                    }`}>
-                                    {offender.risk} Risk
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-slate-500 text-xs justify-center md:justify-start">
-                                <span>ID: {offender.badgeId}</span>
-                                {offender.csed_date && (
-                                    <>
-                                        <span>•</span>
-                                        <span>CSED: {safeDate(offender.csed_date)}</span>
-                                    </>
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl shadow-lg border border-indigo-500/50 overflow-hidden text-white relative">
+                {/* Background Pattern */}
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
+
+                <div className="relative px-6 pt-6">
+                    <div className="flex flex-col md:flex-row gap-6 items-start mb-6">
+                        {/* Avatar */}
+                        <div className="shrink-0 relative">
+                            <img
+                                src={offender.image}
+                                alt={offender.name}
+                                className="w-24 h-24 rounded-xl border-4 border-white/20 shadow-lg object-cover bg-indigo-800"
+                            />
+                            {offender.risk && (
+                                <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-full border-2 border-indigo-600 flex items-center justify-center ${offender.risk === 'High' ? 'bg-red-500' :
+                                    offender.risk === 'Medium' ? 'bg-amber-500' :
+                                        'bg-emerald-500'
+                                    }`} title={`${offender.risk} Risk`}>
+                                    <Activity size={12} className="text-white" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Main Info */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
+                                <h1 className="text-3xl font-bold tracking-tight text-white">{offender.name}</h1>
+                                {offender.housing_status === 'Home Arrest' && (
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-red-400/50 bg-red-500/20 text-red-50 shadow-sm flex items-center gap-1">
+                                        <MapPin size={10} /> Home Arrest
+                                    </span>
                                 )}
-                                <span>•</span>
-                                <span>Status: {offender.status}</span>
-                                <span>•</span>
+                            </div>
+
+                            {/* ID Line */}
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-indigo-100 text-sm font-medium mb-4">
+                                <span className="flex items-center gap-1.5 opacity-90"><Shield size={14} /> ID: {offender.badgeId}</span>
+                                <span className="flex items-center gap-1.5 opacity-90"><Activity size={14} /> Status: {offender.status}</span>
+                                {offender.csed_date && (
+                                    <span className="flex items-center gap-1.5 opacity-90"><Calendar size={14} /> CSED: {safeDate(offender.csed_date)}</span>
+                                )}
                                 <button
                                     onClick={() => setShowAppointmentModal(true)}
-                                    className="hover:text-blue-600 hover:underline transition-colors"
+                                    className="flex items-center gap-1.5 hover:text-white hover:bg-white/10 px-2 py-0.5 -ml-2 rounded transition-all"
                                 >
-                                    Next: {nextAppointment ? safeDate(nextAppointment.date_time) : 'None'}
+                                    <Clock size={14} />
+                                    Next: {nextAppointment ? safeDate(nextAppointment.date_time) : 'Schedule'}
                                 </button>
                             </div>
 
-                            {/* Special Flags Row */}
-                            <div className="flex flex-wrap items-center gap-2 mt-1.5 justify-center md:justify-start">
-                                {/* Dynamic Flags */}
-                                {offender.special_flags && offender.special_flags.map((flagName, idx) => {
-                                    const config = offenderFlagSettings?.types?.find(t => t.name === flagName);
-                                    const colorClass = config ? config.color : 'bg-slate-100 text-slate-700';
-                                    return (
-                                        <span key={idx} className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border border-current bg-opacity-50 ${colorClass} flex items-center`}>
-                                            {flagName === 'GPS' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>}
-                                            {flagName}
-                                        </span>
-                                    );
-                                })}
-
-                                {/* Static Statuses (if not covered by flags) */}
-                                {offender.housing_status === 'Home Arrest' && (
-                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-red-50 text-red-700 border border-red-200">Home Arrest</span>
-                                )}
+                            {/* Flags */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                {offender.special_flags && offender.special_flags.map((flagName, idx) => (
+                                    <span key={idx} className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-white/20 bg-white/10 text-white shadow-sm flex items-center backdrop-blur-sm">
+                                        {flagName === 'GPS' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>}
+                                        {flagName}
+                                    </span>
+                                ))}
                                 {offender.icots_number && (
-                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">ICOTS: {offender.icots_number}</span>
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-white/20 bg-white/10 text-white shadow-sm backdrop-blur-sm">
+                                        ICOTS: {offender.icots_number}
+                                    </span>
                                 )}
                             </div>
                         </div>
-                        <div className="mb-1 flex gap-2">
+
+                        {/* Quick Actions */}
+                        <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto mt-2 md:mt-0">
                             <button
                                 onClick={() => setShowNotesModal(true)}
-                                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all backdrop-blur-sm shadow-sm"
                             >
-                                Add Case Note
+                                <FileText size={16} />
+                                <span className="md:hidden lg:inline">Add Note</span>
                             </button>
-                            <button
-                                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-1.5 px-3 rounded text-xs shadow-sm transition-all flex items-center gap-1"
-                            >
-                                <Mail size={14} />
-                                Email
-                            </button>
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded text-xs shadow-sm shadow-blue-600/20 transition-all">
-                                Text
-                            </button>
+                            <div className="flex gap-2">
+                                <button className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all backdrop-blur-sm shadow-sm" title="Send Email">
+                                    <Mail size={16} />
+                                </button>
+                                <button className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all backdrop-blur-sm shadow-sm" title="Call">
+                                    <Phone size={16} />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-4 border-b border-slate-200">
-                        <nav className="flex gap-6">
-                            {tabs.map((tab) => {
-                                const Icon = tab.icon;
-                                const isActive = activeTab === tab.id;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`pb-2 flex items-center gap-1.5 font-medium text-xs transition-all relative ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-                                            }`}
-                                    >
-                                        <Icon size={14} />
-                                        {tab.label}
-                                        {isActive && (
-                                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </nav>
-                    </div>
-
-                    <div className="mt-4">
-                        {renderTabContent()}
+                    {/* Physical Folder Tabs */}
+                    <div className="flex gap-0.5 overflow-x-auto no-scrollbar pt-6 -mx-6 px-6 relative top-[1px]">
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`
+                                        group flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all rounded-t-xl relative
+                                        ${isActive
+                                            ? 'bg-white text-violet-700 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-10'
+                                            : 'bg-white/10 text-indigo-100 hover:bg-white/20 hover:text-white'
+                                        }
+                                    `}
+                                >
+                                    <Icon size={16} className={isActive ? 'text-violet-600' : 'text-indigo-200 group-hover:text-white transition-colors'} />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
+            </div>
+
+            <div className="mt-0 animation-fade-in-up">
+                {renderTabContent()}
             </div>
 
 

@@ -208,7 +208,7 @@ const CalendarModule = () => {
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[600px] overflow-hidden">
+                    <div className="lg:col-span-3 bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-white/50 flex flex-col h-[600px] overflow-hidden">
                         {(viewMode === 'month' || viewMode === '2week') && (
                             <MonthView
                                 currentMonth={currentMonth}

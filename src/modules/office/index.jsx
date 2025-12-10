@@ -166,323 +166,316 @@ const OfficeModule = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Supervisor Office</h2>
-                    <p className="text-slate-500">Manage team workload and administrative tasks</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <select
-                        value={selectedOffice}
-                        onChange={(e) => setSelectedOffice(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
-                    >
-                        <option value="">All Offices</option>
-                        {offices.map(office => (
-                            <option key={office.location_id} value={office.location_id}>{office.name}</option>
-                        ))}
-                    </select>
+            {/* Banner Section */}
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-t-2xl p-6 shadow-xl relative overflow-hidden text-white">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div className="relative z-10">
+                    {/* Header Row */}
+                    <div className="flex justify-between items-start mb-8">
+                        <div>
+                            <h2 className="text-3xl font-bold mb-2">Supervisor Office</h2>
+                            <p className="text-indigo-100/80">Manage team workload and administrative tasks</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <select
+                                value={selectedOffice}
+                                onChange={(e) => setSelectedOffice(e.target.value)}
+                                className="bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 focus:border-white/50 block p-2.5 backdrop-blur-sm [&>option]:text-slate-800"
+                            >
+                                <option value="">All Offices</option>
+                                {offices.map(office => (
+                                    <option key={office.location_id} value={office.location_id}>{office.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Stats Row (Inside Banner) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                        <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-2 mb-1 text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                                <Users size={12} /> Offenders
+                            </div>
+                            <div className="text-2xl font-bold">{stats.totalOffenders}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-2 mb-1 text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                                <FileText size={12} /> Pending
+                            </div>
+                            <div className="text-2xl font-bold text-yellow-300">{stats.pendingReviews}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-2 mb-1 text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                                <TriangleAlert size={12} /> Overdue
+                            </div>
+                            <div className="text-2xl font-bold text-red-300">{stats.overdueTasks}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-2 mb-1 text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                                <Clock size={12} /> Closeouts
+                            </div>
+                            <div className="text-2xl font-bold">{stats.closeouts}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-2 mb-1 text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                                <Briefcase size={12} /> Employed
+                            </div>
+                            <div className="text-2xl font-bold">{stats.employmentRate}%</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-2 mb-1 text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                                <Shield size={12} /> Audits
+                            </div>
+                            <div className="text-2xl font-bold">8</div>
+                        </div>
+                    </div>
+
+                    {/* Physical Folder Tabs */}
+                    <div className="flex gap-0.5 overflow-x-auto no-scrollbar pt-6 -mx-6 px-6 relative top-[25px]">
+                        {[
+                            { id: 'review', label: 'Review Queue', icon: ClipboardList },
+                            { id: 'transfer', label: 'Case Transfer', icon: ArrowRight },
+                            { id: 'release', label: 'Pending Release', icon: Calendar },
+                            { id: 'warrants', label: 'Warrant Follow-up', icon: TriangleAlert },
+                            { id: 'audits', label: 'Audits', icon: CheckSquare },
+                        ].map(tab => {
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`
+                                        group flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all rounded-t-xl relative
+                                        ${isActive
+                                            ? 'bg-white text-violet-700 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-10'
+                                            : 'bg-white/10 text-indigo-100 hover:bg-white/20 hover:text-white'
+                                        }
+                                    `}
+                                >
+                                    <tab.icon size={16} className={isActive ? 'text-violet-600' : 'text-indigo-200 group-hover:text-white transition-colors'} />
+                                    {tab.label}
+                                    {tab.id === 'review' && pendingReviews.length > 0 &&
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ml-1 ${isActive ? 'bg-red-100 text-red-600' : 'bg-red-500/20 text-white'}`}>
+                                            {pendingReviews.length}
+                                        </span>
+                                    }
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
-            {/* 2x3 Grid Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Row 1 */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                        <Users className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Total Offenders</p>
-                        <p className="text-2xl font-bold text-slate-800">{stats.totalOffenders}</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
-                        <FileText className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Pending Reviews</p>
-                        <p className="text-2xl font-bold text-slate-800">{stats.pendingReviews}</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-red-50 text-red-600 rounded-lg">
-                        <TriangleAlert className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Overdue Tasks</p>
-                        <p className="text-2xl font-bold text-slate-800">{stats.overdueTasks}</p>
-                    </div>
-                </div>
-
-                {/* Row 2 */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
-                        <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Closeouts (30d)</p>
-                        <p className="text-2xl font-bold text-slate-800">{stats.closeouts}</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                        <Briefcase className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Employment Rate</p>
-                        <p className="text-2xl font-bold text-slate-800">{stats.employmentRate}%</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 bg-slate-100 text-slate-500 rounded-lg">
-                        <Shield className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-slate-500">Audits Pending</p>
-                        <p className="text-2xl font-bold text-slate-800">8</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Module Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="flex border-b border-slate-200 overflow-x-auto">
-                    {[
-                        { id: 'review', label: 'Review Queue', icon: ClipboardList },
-                        { id: 'transfer', label: 'Case Transfer', icon: ArrowRight },
-                        { id: 'release', label: 'Pending Release', icon: Calendar },
-                        { id: 'warrants', label: 'Warrant Follow-up', icon: TriangleAlert },
-                        { id: 'audits', label: 'Audits', icon: CheckSquare },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                                    : 'text-slate-600 hover:bg-slate-50'
-                                }`}
-                        >
-                            <tab.icon className="w-4 h-4" />
-                            {tab.label}
-                            {tab.id === 'review' && pendingReviews.length > 0 &&
-                                <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full ml-1">{pendingReviews.length}</span>
-                            }
-                        </button>
-                    ))}
-                </div>
-
-                <div className="p-6">
-                    {/* Review Queue Tab */}
-                    {activeTab === 'review' && (
-                        <div className="space-y-4">
-                            {pendingReviews.length > 0 ? (
-                                pendingReviews.map(task => (
-                                    <div key={task.submission_id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-full">
-                                                <Clock className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800">{task.template?.name || "Request"}</h4>
-                                                <p className="text-sm text-slate-500">
-                                                    Submitted by <span className="font-medium text-slate-700">{task.created_by?.username || 'Officer'}</span>
-                                                    {task.offender && <span> • Re: {task.offender.first_name} {task.offender.last_name}</span>}
-                                                </p>
-                                                <p className="text-xs text-slate-400 mt-1">{format(new Date(task.created_at), 'MMM d, yyyy h:mm a')}</p>
-                                            </div>
+            {/* Content Container - Unified White Card */}
+            <div className="bg-white rounded-b-xl shadow-sm border border-slate-200 p-6 min-h-[500px]">
+                {/* Review Queue Tab */}
+                {activeTab === 'review' && (
+                    <div className="space-y-4">
+                        {pendingReviews.length > 0 ? (
+                            pendingReviews.map(task => (
+                                <div key={task.submission_id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-yellow-50 text-yellow-600 rounded-full">
+                                            <Clock className="w-5 h-5" />
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200">Approve</button>
-                                            <button className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200">Reject</button>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800">{task.template?.name || "Request"}</h4>
+                                            <p className="text-sm text-slate-500">
+                                                Submitted by <span className="font-medium text-slate-700">{task.created_by?.username || 'Officer'}</span>
+                                                {task.offender && <span> • Re: {task.offender.first_name} {task.offender.last_name}</span>}
+                                            </p>
+                                            <p className="text-xs text-slate-400 mt-1">{format(new Date(task.created_at), 'MMM d, yyyy h:mm a')}</p>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <p className="text-center text-slate-500 py-8">No pending reviews found.</p>
-                            )}
-                        </div>
-                    )}
+                                    <div className="flex gap-2">
+                                        <button className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200">Approve</button>
+                                        <button className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200">Reject</button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-center text-slate-500 py-8">No pending reviews found.</p>
+                        )}
+                    </div>
+                )}
 
-                    {/* Case Transfer Tab */}
-                    {activeTab === 'transfer' && (
-                        <div className="space-y-6">
-                            <div className="flex flex-col md:flex-row gap-6 items-end">
-                                <div className="flex-1 w-full">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">From Officer</label>
-                                    <select
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3"
-                                        value={transferFromOfficer}
-                                        onChange={(e) => setTransferFromOfficer(e.target.value)}
-                                    >
-                                        <option value="">Select Officer...</option>
-                                        {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex items-center justify-center pb-3">
-                                    <ArrowRight className="w-6 h-6 text-slate-400" />
-                                </div>
-                                <div className="flex-1 w-full">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">To Officer</label>
-                                    <select
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3"
-                                        value={transferToOfficer}
-                                        onChange={(e) => setTransferToOfficer(e.target.value)}
-                                    >
-                                        <option value="">Select Officer...</option>
-                                        {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="pb-1">
-                                    <button
-                                        onClick={handleTransfer}
-                                        disabled={transferSelection.length === 0 || !transferToOfficer}
-                                        className="bg-blue-600 disabled:bg-slate-300 text-white font-medium py-2 px-6 rounded-lg transition-colors"
-                                    >
-                                        Transfer ({transferSelection.length})
-                                    </button>
-                                </div>
+                {/* Case Transfer Tab */}
+                {activeTab === 'transfer' && (
+                    <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row gap-6 items-end">
+                            <div className="flex-1 w-full">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">From Officer</label>
+                                <select
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3"
+                                    value={transferFromOfficer}
+                                    onChange={(e) => setTransferFromOfficer(e.target.value)}
+                                >
+                                    <option value="">Select Officer...</option>
+                                    {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                </select>
                             </div>
-
-                            <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <table className="w-full text-sm text-left text-slate-500">
-                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
-                                        <tr>
-                                            <th className="p-4 w-4">
-                                                <input type="checkbox" onChange={() => {
-                                                    if (transferSelection.length === transferableList.length) setTransferSelection([]);
-                                                    else setTransferSelection(transferableList.map(o => o.id));
-                                                }} />
-                                            </th>
-                                            <th className="px-6 py-3">Offender</th>
-                                            <th className="px-6 py-3">Badg ID</th>
-                                            <th className="px-6 py-3">Risk</th>
-                                            <th className="px-6 py-3">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {transferableList.length > 0 ? transferableList.map(offender => (
-                                            <tr key={offender.id} className="bg-white border-b hover:bg-slate-50">
-                                                <td className="p-4">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={transferSelection.includes(offender.id)}
-                                                        onChange={() => toggleSelection(offender.id)}
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4 font-medium text-slate-900">{offender.name}</td>
-                                                <td className="px-6 py-4">{offender.badgeId}</td>
-                                                <td className="px-6 py-4">{offender.risk}</td>
-                                                <td className="px-6 py-4">{offender.status}</td>
-                                            </tr>
-                                        )) : (
-                                            <tr><td colSpan="5" className="px-6 py-8 text-center">Select a "From Officer" to view caseload</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                            <div className="flex items-center justify-center pb-3">
+                                <ArrowRight className="w-6 h-6 text-slate-400" />
+                            </div>
+                            <div className="flex-1 w-full">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">To Officer</label>
+                                <select
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3"
+                                    value={transferToOfficer}
+                                    onChange={(e) => setTransferToOfficer(e.target.value)}
+                                >
+                                    <option value="">Select Officer...</option>
+                                    {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="pb-1">
+                                <button
+                                    onClick={handleTransfer}
+                                    disabled={transferSelection.length === 0 || !transferToOfficer}
+                                    className="bg-blue-600 disabled:bg-slate-300 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                                >
+                                    Transfer ({transferSelection.length})
+                                </button>
                             </div>
                         </div>
-                    )}
 
-                    {/* Pending Release Tab */}
-                    {activeTab === 'release' && (
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800 mb-4">Upcoming Releases (Next 90 Days)</h3>
-                            <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <table className="w-full text-sm text-left text-slate-500">
-                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
-                                        <tr>
-                                            <th className="px-6 py-3">Offender</th>
-                                            <th className="px-6 py-3">Release Date</th>
-                                            <th className="px-6 py-3">Release Type</th>
-                                            <th className="px-6 py-3">Initial Placement</th>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm text-left text-slate-500">
+                                <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                                    <tr>
+                                        <th className="p-4 w-4">
+                                            <input type="checkbox" onChange={() => {
+                                                if (transferSelection.length === transferableList.length) setTransferSelection([]);
+                                                else setTransferSelection(transferableList.map(o => o.id));
+                                            }} />
+                                        </th>
+                                        <th className="px-6 py-3">Offender</th>
+                                        <th className="px-6 py-3">Badg ID</th>
+                                        <th className="px-6 py-3">Risk</th>
+                                        <th className="px-6 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {transferableList.length > 0 ? transferableList.map(offender => (
+                                        <tr key={offender.id} className="bg-white border-b hover:bg-slate-50">
+                                            <td className="p-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={transferSelection.includes(offender.id)}
+                                                    onChange={() => toggleSelection(offender.id)}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-slate-900">{offender.name}</td>
+                                            <td className="px-6 py-4">{offender.badgeId}</td>
+                                            <td className="px-6 py-4">{offender.risk}</td>
+                                            <td className="px-6 py-4">{offender.status}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {releasingOffenders.map(o => (
-                                            <tr key={o.id} className="bg-white border-b">
-                                                <td className="px-6 py-4 font-medium text-slate-900">{o.name}</td>
-                                                <td className="px-6 py-4">{o.releaseDate}</td>
-                                                <td className="px-6 py-4">{o.releaseType}</td>
-                                                <td className="px-6 py-4">{o.initialPlacement}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    )) : (
+                                        <tr><td colSpan="5" className="px-6 py-8 text-center">Select a "From Officer" to view caseload</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {/* Warrant Follow-Up Tab */}
-                    {activeTab === 'warrants' && (
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800 mb-4">Active Warrant Management</h3>
-                            <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <table className="w-full text-sm text-left text-slate-500">
-                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
-                                        <tr>
-                                            <th className="px-6 py-3">Offender</th>
-                                            <th className="px-6 py-3">Current Status</th>
-                                            <th className="px-6 py-3">Status Date</th>
-                                            <th className="px-6 py-3">Tasks Generated</th>
-                                            <th className="px-6 py-3">Actions</th>
+                {/* Pending Release Tab */}
+                {activeTab === 'release' && (
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">Upcoming Releases (Next 90 Days)</h3>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm text-left text-slate-500">
+                                <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                                    <tr>
+                                        <th className="px-6 py-3">Offender</th>
+                                        <th className="px-6 py-3">Release Date</th>
+                                        <th className="px-6 py-3">Release Type</th>
+                                        <th className="px-6 py-3">Initial Placement</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {releasingOffenders.map(o => (
+                                        <tr key={o.id} className="bg-white border-b">
+                                            <td className="px-6 py-4 font-medium text-slate-900">{o.name}</td>
+                                            <td className="px-6 py-4">{o.releaseDate}</td>
+                                            <td className="px-6 py-4">{o.releaseType}</td>
+                                            <td className="px-6 py-4">{o.initialPlacement}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {warrantOffenders.map(o => (
-                                            <tr key={o.id} className="bg-white border-b">
-                                                <td className="px-6 py-4 font-medium text-slate-900">{o.name}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Warrant Follow-Up Tab */}
+                {activeTab === 'warrants' && (
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">Active Warrant Management</h3>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm text-left text-slate-500">
+                                <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                                    <tr>
+                                        <th className="px-6 py-3">Offender</th>
+                                        <th className="px-6 py-3">Current Status</th>
+                                        <th className="px-6 py-3">Status Date</th>
+                                        <th className="px-6 py-3">Tasks Generated</th>
+                                        <th className="px-6 py-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {warrantOffenders.map(o => (
+                                        <tr key={o.id} className="bg-white border-b">
+                                            <td className="px-6 py-4 font-medium text-slate-900">{o.name}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold
                                                         ${o.warrantStatus === 'Submitted' ? 'bg-yellow-100 text-yellow-800' : ''}
                                                         ${o.warrantStatus === 'Approved' ? 'bg-blue-100 text-blue-800' : ''}
                                                         ${o.warrantStatus === 'Served' ? 'bg-green-100 text-green-800' : ''}
                                                     `}>{o.warrantStatus}</span>
-                                                </td>
-                                                <td className="px-6 py-4">{o.warrantDate || '-'}</td>
-                                                <td className="px-6 py-4">
-                                                    {o.warrantStatus === 'Submitted' && "Review, Custody Check, Serve"}
-                                                    {o.warrantStatus === 'Approved' && "Active Warrant"}
-                                                </td>
-                                                <td className="px-6 py-4 flex gap-2">
-                                                    {o.warrantStatus === 'Submitted' && (
-                                                        <button
-                                                            onClick={() => handleUpdateWarrant(o.id, 'Approved')}
-                                                            className="text-blue-600 hover:underline"
-                                                        >Approve</button>
-                                                    )}
-                                                    {o.warrantStatus === 'Approved' && (
-                                                        <button
-                                                            onClick={() => handleUpdateWarrant(o.id, 'Served')}
-                                                            className="text-green-600 hover:underline"
-                                                        >Mark Served</button>
-                                                    )}
+                                            </td>
+                                            <td className="px-6 py-4">{o.warrantDate || '-'}</td>
+                                            <td className="px-6 py-4">
+                                                {o.warrantStatus === 'Submitted' && "Review, Custody Check, Serve"}
+                                                {o.warrantStatus === 'Approved' && "Active Warrant"}
+                                            </td>
+                                            <td className="px-6 py-4 flex gap-2">
+                                                {o.warrantStatus === 'Submitted' && (
                                                     <button
-                                                        onClick={() => handleUpdateWarrant(o.id, 'Cleared')}
-                                                        className="text-slate-400 hover:text-slate-600 text-xs"
-                                                    >Clear</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {warrantOffenders.length === 0 && (
-                                            <tr><td colSpan="5" className="p-8 text-center text-slate-400">No active warrants found.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                        onClick={() => handleUpdateWarrant(o.id, 'Approved')}
+                                                        className="text-blue-600 hover:underline"
+                                                    >Approve</button>
+                                                )}
+                                                {o.warrantStatus === 'Approved' && (
+                                                    <button
+                                                        onClick={() => handleUpdateWarrant(o.id, 'Served')}
+                                                        className="text-green-600 hover:underline"
+                                                    >Mark Served</button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleUpdateWarrant(o.id, 'Cleared')}
+                                                    className="text-slate-400 hover:text-slate-600 text-xs"
+                                                >Clear</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {warrantOffenders.length === 0 && (
+                                        <tr><td colSpan="5" className="p-8 text-center text-slate-400">No active warrants found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {/* Audits Tab */}
-                    {activeTab === 'audits' && (
-                        <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                            <Shield className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                            <p className="text-slate-500">Audit logs and compliance checks will appear here.</p>
-                            <p className="text-xs text-slate-400 font-mono mt-2">Feature coming soon.</p>
-                        </div>
-                    )}
-                </div>
+                {/* Audits Tab */}
+                {activeTab === 'audits' && (
+                    <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                        <Shield className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500">Audit logs and compliance checks will appear here.</p>
+                        <p className="text-xs text-slate-400 font-mono mt-2">Feature coming soon.</p>
+                    </div>
+                )}
             </div>
         </div>
     );

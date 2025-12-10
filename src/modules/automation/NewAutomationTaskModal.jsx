@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, FileText, User, ChevronRight } from 'lucide-react';
 
-const NewSubmissionModal = ({ isOpen, onClose, onSuccess }) => {
+const NewAutomationTaskModal = ({ isOpen, onClose, onSuccess }) => {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [offenders, setOffenders] = useState([]);
@@ -92,8 +92,8 @@ const NewSubmissionModal = ({ isOpen, onClose, onSuccess }) => {
                                     key={template.template_id}
                                     onClick={() => setSelectedTemplate(template)}
                                     className={`p-4 border rounded-xl text-left transition-all ${selectedTemplate?.template_id === template.template_id
-                                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                                            : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                                        : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
                                         }`}
                                 >
                                     <div className="font-semibold text-slate-900">{template.name}</div>
@@ -181,4 +181,4 @@ const NewSubmissionModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
-export default NewSubmissionModal;
+export default NewAutomationTaskModal;

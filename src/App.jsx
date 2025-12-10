@@ -9,8 +9,8 @@ import CalendarModule from './modules/calendar';
 import ReportsModule from './modules/reports';
 import SettingsModule from './modules/settings';
 import OfficeModule from './modules/office';
-import WorkflowDashboard from './components/workflow/WorkflowDashboard';
-import Dashboard from './components/Dashboard';
+import AutomationDashboard from './modules/automation/AutomationDashboard';
+import ModernDashboard from './components/dashboard/ModernDashboard';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -42,8 +42,8 @@ const AppContent = () => {
     <AppShell onLogout={logout}>
 
       <Routes>
-        <Route path="/" element={<Navigate to="/caseload" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<ModernDashboard />} />
         <Route path="/caseload" element={<CaseloadDashboard />} />
         <Route path="/offenders/:offenderId" element={<OffenderProfile />} />
         <Route path="/office" element={<OfficeModule />} />
@@ -55,7 +55,7 @@ const AppContent = () => {
             <SettingsModule />
           </ErrorBoundary>
         } />
-        <Route path="/workflows" element={<WorkflowDashboard />} />
+        <Route path="/automations" element={<AutomationDashboard />} />
       </Routes>
     </AppShell>
   );

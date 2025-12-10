@@ -106,10 +106,22 @@ const TasksModule = () => {
                 // Fetch Ad-hoc Tasks AND Workflows in parallel
                 // Note: Workflows endpoint might need update too if it uses similar filtering. 
                 // Assuming it might inspect params.
-                const [adHocRes, workflowRes] = await Promise.all([
-                    axios.get(`http://localhost:8000/tasks?${params.toString()}`),
-                    axios.get(`http://localhost:8000/workflows/tasks?${params.toString()}`)
-                ]);
+                // Fetch Ad-hoc Tasks AND Workflows
+                // We fetch them separately to ensure one failure doesn't block the other (e.g. 401 on workflows)
+                let adHocRes = { data: [] };
+                let workflowRes = { data: [] };
+
+                try {
+                    adHocRes = await axios.get(`http://localhost:8000/tasks?${params.toString()}`);
+                } catch (e) {
+                    console.error("Error fetching tasks:", e);
+                }
+
+                try {
+                    workflowRes = await axios.get(`http://localhost:8000/workflows/tasks?${params.toString()}`);
+                } catch (e) {
+                    console.warn("Error fetching workflow tasks (ignoring):", e);
+                }
 
                 // Normalize Data
                 // Ad-hoc

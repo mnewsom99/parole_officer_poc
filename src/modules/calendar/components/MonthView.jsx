@@ -69,9 +69,9 @@ const MonthView = ({
                 </div>
             )}
 
-            <div className="grid grid-cols-7 border-b border-slate-200">
+            <div className="grid grid-cols-7 border-b border-white/50">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="py-2 text-center text-sm font-medium text-slate-500 uppercase bg-slate-50">
+                    <div key={day} className="py-2 text-center text-sm font-medium text-slate-500 uppercase bg-white/30 backdrop-blur-sm">
                         {day}
                     </div>
                 ))}

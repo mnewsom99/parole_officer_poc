@@ -355,3 +355,28 @@ class WorkflowLog(Base):
 
     submission = relationship("FormSubmission", back_populates="logs")
     actor = relationship("User")
+
+
+class AutomationRule(Base):
+    __tablename__ = 'automation_rules'
+
+    rule_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    
+    # Trigger Definition
+    trigger_field = Column(String(50), nullable=False) # e.g. 'release_date', 'csed_date'
+    trigger_offset = Column(Integer, default=0) # Number of days
+    trigger_direction = Column(String(10), default='after') # 'before' or 'after'
+    
+    # Conditions (Stored as JSON list of objects: {field, operator, value})
+    conditions = Column(JSON, default=list)
+    
+    # Action Definition (Task Template)
+    action_type = Column(String(50), default='create_task')
+    task_title = Column(String(200), nullable=False)
+    task_description = Column(Text)
+    task_priority = Column(String(20), default='Normal')
+    due_offset = Column(Integer, default=7) # Days from trigger date to due date
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

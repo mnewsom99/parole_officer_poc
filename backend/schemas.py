@@ -565,3 +565,28 @@ class WorkflowAction(BaseModel):
     action: str # Submit, Approve, Deny, Return
     comment: Optional[str] = None
     target_user_id: Optional[UUID] = None # For re-assignment logic
+
+
+# --- Automation Rules ---
+class AutomationRuleBase(BaseModel):
+    name: str
+    trigger_field: str
+    trigger_offset: int
+    trigger_direction: str
+    conditions: List[Dict[str, Any]] = []
+    action_type: str = 'create_task'
+    task_title: str
+    task_description: Optional[str] = None
+    task_priority: Optional[str] = 'Normal'
+    due_offset: int = 7
+    is_active: bool = True
+
+class AutomationRuleCreate(AutomationRuleBase):
+    pass
+
+class AutomationRule(AutomationRuleBase):
+    rule_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
