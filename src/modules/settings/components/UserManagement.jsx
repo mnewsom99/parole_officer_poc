@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useUser } from '../../../core/context/UserContext';
 import { User, Shield, Edit, Save, X, Search } from 'lucide-react';
@@ -518,9 +519,9 @@ const UserManagement = () => {
             )}
 
             {/* Invite User Modal */}
-            {isInviteModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+            {isInviteModalOpen && createPortal(
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden relative z-[10000]">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="font-bold text-lg text-slate-800">Invite New User</h3>
                             <button onClick={() => setIsInviteModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -542,16 +543,16 @@ const UserManagement = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <select required className="border p-2 rounded" value={newUser.role_id} onChange={e => setNewUser({ ...newUser, role_id: e.target.value })}>
                                     <option value="">Select Role</option>
-                                    {availableRoles.map(r => <option key={r.role_id} value={r.role_id}>{r.role_name}</option>)}
+                                    {availableRoles?.map(r => <option key={r.role_id} value={r.role_id}>{r.role_name}</option>)}
                                 </select>
                                 <select required className="border p-2 rounded" value={newUser.location_id} onChange={e => setNewUser({ ...newUser, location_id: e.target.value })}>
                                     <option value="">Select Office</option>
-                                    {locations.map(l => <option key={l.location_id} value={l.location_id}>{l.name}</option>)}
+                                    {locations?.map(l => <option key={l.location_id} value={l.location_id}>{l.name}</option>)}
                                 </select>
                             </div>
                             <select className="w-full border p-2 rounded" value={newUser.supervisor_id} onChange={e => setNewUser({ ...newUser, supervisor_id: e.target.value })}>
                                 <option value="">Select Supervisor (Optional)</option>
-                                {supervisors.map(s => <option key={s.officer_id} value={s.officer_id}>{s.first_name} {s.last_name} ({s.badge_number})</option>)}
+                                {supervisors?.map(s => <option key={s.officer_id} value={s.officer_id}>{s.first_name} {s.last_name} ({s.badge_number})</option>)}
                             </select>
 
                             <div className="flex justify-end gap-3 mt-6">
@@ -560,9 +561,10 @@ const UserManagement = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </div >
     );
 };
 

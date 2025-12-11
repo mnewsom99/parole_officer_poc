@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Download, Save, User, MapPin, Phone, Calendar, Shield } from 'lucide-react';
 
 const AddOffenderModal = ({ isOpen, onClose, onSave }) => {
@@ -46,9 +47,9 @@ const AddOffenderModal = ({ isOpen, onClose, onSave }) => {
         onClose();
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                     <h3 className="text-xl font-bold text-slate-800">Add New Offender</h3>
@@ -255,7 +256,8 @@ const AddOffenderModal = ({ isOpen, onClose, onSave }) => {
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

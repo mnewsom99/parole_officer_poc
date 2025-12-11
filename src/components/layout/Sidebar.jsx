@@ -36,6 +36,7 @@ const Sidebar = () => {
         { id: 'automations', label: 'Automations', path: '/automations', icon: FileText },
         { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
         { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
+        { id: 'field-mode', label: 'Field Mode (Mobile)', path: '/field-mode', icon: Briefcase },
     ];
 
     return (

@@ -38,7 +38,7 @@ const UATab = ({ offenderId }) => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">Urine Analysis History</h3>
+                <h3 className="text-lg font-bold text-slate-800">Drug Testing History</h3>
                 <div className="flex gap-2">
                     <a
                         href="https://example-lab-portal.com" // Placeholder

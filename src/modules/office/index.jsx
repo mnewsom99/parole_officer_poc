@@ -311,7 +311,7 @@ const OfficeModule = () => {
                                     onChange={(e) => setTransferFromOfficer(e.target.value)}
                                 >
                                     <option value="">Select Officer...</option>
-                                    {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                    {officers.map(o => <option key={o.officer_id} value={o.officer_id}>{o.first_name} {o.last_name}</option>)}
                                 </select>
                             </div>
                             <div className="flex items-center justify-center pb-3">
@@ -325,7 +325,7 @@ const OfficeModule = () => {
                                     onChange={(e) => setTransferToOfficer(e.target.value)}
                                 >
                                     <option value="">Select Officer...</option>
-                                    {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                    {officers.map(o => <option key={o.officer_id} value={o.officer_id}>{o.first_name} {o.last_name}</option>)}
                                 </select>
                             </div>
                             <div className="pb-1">

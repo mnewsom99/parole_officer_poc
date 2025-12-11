@@ -279,7 +279,10 @@ class ResidenceBase(BaseModel):
     city: str
     state: str
     zip_code: str
-    is_current: bool
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    housing_type: Optional[str] = "Residence"
+    is_current: bool = True
 
 class Residence(ResidenceBase):
     residence_id: UUID
@@ -445,6 +448,22 @@ class AppointmentLocationConfig(BaseModel):
 
 class AppointmentLocationUpdate(BaseModel):
     locations: List[AppointmentLocationConfig]
+
+class HousingTypeConfig(BaseModel):
+    name: str
+    color: str
+
+class HousingTypeUpdate(BaseModel):
+    types: List[HousingTypeConfig]
+
+class MoveRequest(BaseModel):
+    address_line_1: str
+    city: str
+    state: str
+    zip_code: str
+    start_date: date
+    housing_type: str
+    notes: Optional[str] = None
 
 class CaseNote(CaseNoteBase):
     note_id: UUID

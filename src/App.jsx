@@ -10,6 +10,7 @@ import ReportsModule from './modules/reports';
 import SettingsModule from './modules/settings';
 import OfficeModule from './modules/office';
 import AutomationDashboard from './modules/automation/AutomationDashboard';
+import FieldModeModule from './modules/field-mode';
 import ModernDashboard from './components/dashboard/ModernDashboard';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -56,6 +57,7 @@ const AppContent = () => {
           </ErrorBoundary>
         } />
         <Route path="/automations" element={<AutomationDashboard />} />
+        <Route path="/field-mode" element={<FieldModeModule />} />
       </Routes>
     </AppShell>
   );

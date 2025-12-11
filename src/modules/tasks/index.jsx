@@ -166,7 +166,7 @@ const TasksModule = () => {
                     const validDateA = !isNaN(dateA.getTime()) ? dateA : new Date(0);
                     const validDateB = !isNaN(dateB.getTime()) ? dateB : new Date(0);
 
-                    if (sortBy === 'dueDate') {
+                    if (sortBy === 'dueDate' || sortBy === 'pastDue') {
                         // Ascending for dates (soonest first)
                         return validDateA - validDateB;
                     } else if (sortBy === 'priority') {
@@ -312,6 +312,12 @@ const TasksModule = () => {
                 checkCat('closeout') ||
                 checkCat('employ');
             if (isKnown) return false;
+        }
+
+        // 2. Sort-as-Filter (Past Due)
+        if (sortBy === 'pastDue') {
+            const isOverdue = task.date && isAfter(new Date(), parseISO(task.date)) && task.status !== 'Completed';
+            if (!isOverdue) return false;
         }
 
         // 2. Search Filter
@@ -682,6 +688,7 @@ const TasksModule = () => {
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[110px] cursor-pointer"
                         >
                             <option value="dueDate">Due Date</option>
+                            <option value="pastDue">Past Due</option>
                             <option value="priority">Priority</option>
                             <option value="recent">Recently Updated</option>
                         </select>
@@ -712,26 +719,26 @@ const TasksModule = () => {
                 </div>
 
                 {/* Task List */}
-                <div className="grid gap-3">
+                <div className="grid gap-2">
                     {currentTasks.length > 0 ? (
                         currentTasks.map((task) => (
                             <div
                                 key={task.id}
                                 onClick={() => handleEditClick(task)}
-                                className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between hover:shadow-md transition-shadow group cursor-pointer"
+                                className={`${task.date && isAfter(new Date(), parseISO(task.date)) && task.status !== 'Completed' ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'} p-2.5 rounded-xl shadow-sm border flex items-center justify-between hover:shadow-md transition-shadow group cursor-pointer`}
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2 bg-slate-50 text-slate-500 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1.5 bg-slate-50 text-slate-500 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                         {getIcon(task.type)}
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                                        <h3 className="font-semibold text-sm text-slate-800 flex items-center gap-2">
                                             {task.title}
                                             {task.type === 'Workflow' && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">Workflow</span>}
                                         </h3>
-                                        <p className="text-sm text-slate-500 mt-0.5">{task.subtitle}</p>
+                                        {task.subtitle !== 'No description' && <p className="text-xs text-slate-500">{task.subtitle}</p>}
 
-                                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-2">
+                                        <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
                                             <span className="flex items-center gap-1">
                                                 <Clock className="w-3 h-3" />
                                                 {task.date ? format(new Date(task.date), 'MMM d') : 'No Date'}
@@ -745,7 +752,7 @@ const TasksModule = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getPriorityColor(task.priority)}`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getPriorityColor(task.priority)}`}>
                                     {task.priority}
                                 </span>
                             </div>

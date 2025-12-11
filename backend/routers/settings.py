@@ -176,6 +176,33 @@ def update_task_categories(update: schemas.TaskCategoryUpdate, db: Session = Dep
     db.commit()
     return update.categories
 
+@router.get("/settings/housing-types", response_model=List[schemas.HousingTypeConfig])
+def get_housing_types(db: Session = Depends(get_db)):
+    setting = db.query(models.SystemSettings).filter(models.SystemSettings.key == "housing_types").first()
+    if not setting:
+        return [
+            {"name": "Residence", "color": "bg-green-100 text-green-700"},
+            {"name": "Homeless", "color": "bg-red-100 text-red-700"},
+            {"name": "Halfway House", "color": "bg-orange-100 text-orange-800"},
+            {"name": "Treatment Center", "color": "bg-blue-100 text-blue-700"}
+        ]
+    data = json.loads(setting.value)
+    return data
+
+@router.put("/settings/housing-types", response_model=List[schemas.HousingTypeConfig])
+def update_housing_types(update: schemas.HousingTypeUpdate, db: Session = Depends(get_db)):
+    types_data = [t.dict() for t in update.types]
+    
+    setting = db.query(models.SystemSettings).filter(models.SystemSettings.key == "housing_types").first()
+    if not setting:
+        setting = models.SystemSettings(key="housing_types", value=json.dumps(types_data))
+        db.add(setting)
+    else:
+        setting.value = json.dumps(types_data)
+    
+    db.commit()
+    return update.types
+
 @router.get("/locations", response_model=List[schemas.Location])
 def get_locations(db: Session = Depends(get_db)):
     return db.query(models.Location).all()

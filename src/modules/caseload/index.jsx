@@ -392,7 +392,7 @@ const CaseloadDashboard = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <a
                                             href={`tel:${offender.phone}`}
-                                            className="text-sm text-slate-600 hover:text-indigo-600 font-medium bg-slate-50 px-2 py-1 rounded hover:bg-slate-100 transition-colors border border-slate-100"
+                                            className="text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition-colors"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             {offender.phone}

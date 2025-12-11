@@ -51,6 +51,8 @@ export const UserProvider = ({ children }) => {
                     fetchNoteSettings();
                     fetchNoteSettings();
                     fetchOffenderFlagSettings();
+                    fetchOffenderFlagSettings();
+                    fetchHousingTypeSettings();
                     fetchTaskSettings();
                 } catch (error) {
                     console.error("Failed to restore session:", error);
@@ -260,6 +262,41 @@ export const UserProvider = ({ children }) => {
     const removeOffenderFlagType = (name) => {
         const newTypes = offenderFlagSettings.types.filter(t => t.name !== name);
         updateOffenderFlagType(newTypes);
+        updateOffenderFlagType(newTypes);
+    };
+
+    // Housing Type Settings
+    const [housingTypeSettings, setHousingTypeSettings] = useState({ types: [] });
+
+    const fetchHousingTypeSettings = async () => {
+        try {
+            const res = await axios.get('http://localhost:8000/settings/housing-types');
+            setHousingTypeSettings({ types: res.data });
+        } catch (error) {
+            console.error("Error fetching housing type settings:", error);
+        }
+    };
+
+    const updateHousingTypeType = async (types) => {
+        setHousingTypeSettings({ types });
+        try {
+            await axios.put('http://localhost:8000/settings/housing-types', { types });
+        } catch (error) {
+            console.error("Error saving housing type settings:", error);
+            fetchHousingTypeSettings();
+        }
+    };
+
+    const addHousingTypeType = (name, color) => {
+        if (!housingTypeSettings.types.find(t => t.name === name)) {
+            const newTypes = [...housingTypeSettings.types, { name, color }];
+            updateHousingTypeType(newTypes);
+        }
+    };
+
+    const removeHousingTypeType = (name) => {
+        const newTypes = housingTypeSettings.types.filter(t => t.name !== name);
+        updateHousingTypeType(newTypes);
     };
 
     // Task Settings
@@ -308,6 +345,11 @@ export const UserProvider = ({ children }) => {
             updateOffenderFlagType,
             addOffenderFlagType,
             removeOffenderFlagType,
+            removeOffenderFlagType,
+            housingTypeSettings,
+            updateHousingTypeType,
+            addHousingTypeType,
+            removeHousingTypeType,
             taskSettings,
             updateTaskSettings,
         }}>

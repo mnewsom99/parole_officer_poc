@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -14,18 +14,31 @@ router = APIRouter(tags=["Offenders"])
 def get_offenders(
     officer_id: Optional[UUID] = None, 
     location_id: Optional[UUID] = None, 
+    search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=1000),
     db: Session = Depends(get_db)
 ):
+    print(f"DEBUG: get_offenders called. Search='{search}'")
     query = db.query(models.SupervisionEpisode).options(
         joinedload(models.SupervisionEpisode.offender),
-        joinedload(models.SupervisionEpisode.residences).options(
+        selectinload(models.SupervisionEpisode.residences).options(
             joinedload(models.Residence.special_assignment),
             joinedload(models.Residence.contacts)
         )
     )
     
+    if search:
+        search_term = f"%{search.lower()}%"
+        from sqlalchemy import or_, func
+        query = query.join(models.SupervisionEpisode.offender).filter(
+            or_(
+                func.lower(models.Offender.first_name).like(search_term),
+                func.lower(models.Offender.last_name).like(search_term),
+                func.lower(models.Offender.badge_id).like(search_term)
+            )
+        )
+
     if officer_id:
         query = query.filter(models.SupervisionEpisode.assigned_officer_id == officer_id)
     elif location_id:
@@ -129,7 +142,14 @@ def get_offenders(
             "releaseDate": offender.release_date,
             # Missing fields for dashboard stats
             "employment_status": offender.employment_status,
-            "csed_date": offender.csed_date
+            "csed_date": offender.csed_date,
+            # Field Mode specific fields
+            "first_name": offender.first_name,
+            "last_name": offender.last_name,
+            "offender_number": offender.badge_id,
+            "risk_level": current_risk,
+            "program": next((p.name for p in db.query(models.Program).filter(models.Program.offender_id == offender.offender_id, models.Program.status == 'Active').limit(1)), "None Assigned"),
+            "phone": "N/A", # "phone": (contacts[0]["phone"] if contacts else "No Phone Listed"), # Fallback to contacts only for now
         })
         
     return {
@@ -244,6 +264,7 @@ def get_offender_details(offender_id: UUID, db: Session = Depends(get_db)):
 
     return {
         "id": str(offender.offender_id),
+        "debug": "reload_check",
         "name": f"{offender.last_name}, {offender.first_name}",
         "badgeId": offender.badge_id,
         "risk": current_risk,
@@ -284,6 +305,19 @@ def get_offender_details(offender_id: UUID, db: Session = Depends(get_db)):
                 "start_date": emp.start_date,
                 "end_date": emp.end_date
             } for emp in sorted(offender.employments, key=lambda x: x.is_current, reverse=True)
+        ],
+        "residenceHistory": [
+            {
+                "residence_id": str(r.residence_id),
+                "address": r.address_line_1,
+                "city": r.city,
+                "state": r.state,
+                "zip": r.zip_code,
+                "startDate": r.start_date,
+                "endDate": r.end_date,
+                "housingType": r.housing_type,
+                "isCurrent": r.is_current
+            } for r in sorted(episode.residences, key=lambda x: x.start_date if x.start_date else datetime.min.date(), reverse=True)
         ],
         
         # Dynamic Flags
@@ -500,3 +534,91 @@ def update_warrant_status(offender_id: UUID, update: schemas.WarrantStatusUpdate
     db.commit()
     return {"status": "success", "warrant_status": offender.warrant_status}
 
+@router.post("/offenders/{offender_id}/residences/move")
+def move_offender(offender_id: UUID, move: schemas.MoveRequest, db: Session = Depends(get_db)):
+    """
+    Move offender to a new address.
+    Closes current residence and creates a new one.
+    Generates a system note.
+    """
+    # 1. Get Active Episode
+    episode = db.query(models.SupervisionEpisode).filter(
+        models.SupervisionEpisode.offender_id == offender_id,
+        models.SupervisionEpisode.status == 'Active'
+    ).first()
+    
+    if not episode:
+        raise HTTPException(status_code=404, detail="Active supervision episode not found")
+
+    # 2. Find and Close Current Residence
+    current_res = db.query(models.Residence).filter(
+        models.Residence.episode_id == episode.episode_id,
+        models.Residence.is_current == True
+    ).first()
+    
+    old_address = "Unknown"
+    if current_res:
+        old_address = f"{current_res.address_line_1}, {current_res.city}"
+        current_res.is_current = False
+        # Set end date to day before new start date
+        current_res.end_date = move.start_date # Logic: Ended on that date effectively? Or day before?
+        # Usually end date is inclusive or exclusive. Let's say moves on 10th. Old end 10th? New start 10th?
+        # If I lived there UNTIL the 10th. 
+        # Requirement said: "sets End Date = New Start Date - 1 day"
+        from datetime import timedelta
+        current_res.end_date = move.start_date - timedelta(days=1)
+
+    # 3. Create New Residence
+    new_res = models.Residence(
+        episode_id=episode.episode_id,
+        address_line_1=move.address_line_1,
+        city=move.city,
+        state=move.state,
+        zip_code=move.zip_code,
+        start_date=move.start_date,
+        housing_type=move.housing_type,
+        is_current=True
+    )
+    db.add(new_res)
+    
+    # 4. Generate System Note
+    # Need officer name. We don't have auth user object here easily without auth middleware fully populated or passed.
+    # We will assume "System" or try to fetch assigned officer.
+    # Requirement: "{Officer Name} changed address from '{Old Address}' to '{New Address}'"
+    # I'll use the assigned officer of the episode as the "actor" if I can't get the actual user.
+    # ideally we use currentUser from context but this is backend.
+    # For POC, I will use "System" or the Assigned Officer's name.
+    
+    assigned_officer = episode.officer
+    officer_name = f"{assigned_officer.first_name} {assigned_officer.last_name}" if assigned_officer else "Unknown Officer"
+    
+    new_address = f"{move.address_line_1}, {move.city}"
+    
+    note_content = f"{officer_name} changed address from '{old_address}' to '{new_address}'."
+    if move.notes:
+        note_content += f" Note: {move.notes}"
+
+    new_note = models.CaseNote(
+        offender_id=offender_id,
+        author_id=episode.assigned_officer_id, # Fallback to assigned officer
+        content=note_content,
+        type='System',
+        date=datetime.utcnow()
+    )
+    db.add(new_note)
+
+    db.commit()
+    return {"status": "success", "message": "Offender moved and note created."}
+
+@router.put("/offenders/{offender_id}")
+def update_offender(offender_id: UUID, updates: dict, db: Session = Depends(get_db)):
+    offender = db.query(models.Offender).filter(models.Offender.offender_id == offender_id).first()
+    if not offender:
+        raise HTTPException(status_code=404, detail="Offender not found")
+    
+    if 'phone' in updates:
+        offender.phone = updates['phone']
+        
+    db.commit()
+    db.refresh(offender)
+    return offender

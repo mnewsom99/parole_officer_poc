@@ -30,3 +30,18 @@ __pycache__/
 *.db
 venv/
 .env
+
+# Generated Reports & Media
+*.pptx
+backend/media/*.docx
+backend/media/*.html
+backend/media/*.pdf
+
+# Temporary Scripts
+backend/check_officers_db.py
+backend/check_settings_db.py
+backend/debug_appointments.py
+backend/debug_tasks.py
+backend/verify_fields.py
+generate_presentation.py
+reproduce_housing_issue.py

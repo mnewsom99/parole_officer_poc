@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, RefreshCcw, Filter, Briefcase, Clock, CheckCircle } from 'lucide-react';
+import { Plus, RefreshCcw, Filter, Briefcase, Clock, CheckCircle, Trash2 } from 'lucide-react';
 import AutomationTaskList from './AutomationTaskList';
 import NewAutomationTaskModal from './NewAutomationTaskModal';
 import AutomationActionModal from './AutomationActionModal';
@@ -37,6 +37,17 @@ const AutomationDashboard = () => {
             console.error("Error fetching tasks:", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleDeleteRule = async (ruleId) => {
+        if (!window.confirm("Are you sure you want to delete this automation rule?")) return;
+        try {
+            await axios.delete(`http://localhost:8000/automations/rules/${ruleId}`);
+            fetchRules();
+        } catch (error) {
+            console.error("Error deleting rule:", error);
+            alert("Failed to delete rule");
         }
     };
 
@@ -116,12 +127,24 @@ const AutomationDashboard = () => {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {activeRules.map((wf, idx) => (
-                                <div key={idx} className="border border-slate-200 rounded-xl p-5 hover:shadow-lg transition-all group bg-white hover:border-violet-200">
+                                <div key={wf.rule_id || idx} className="border border-slate-200 rounded-xl p-5 hover:shadow-lg transition-all group bg-white hover:border-violet-200">
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="p-2.5 bg-violet-50 text-violet-600 rounded-lg group-hover:bg-violet-600 group-hover:text-white transition-colors">
-                                            <RefreshCcw className="w-5 h-5" />
+                                        <div className="flex gap-2">
+                                            <div className="p-2.5 bg-violet-50 text-violet-600 rounded-lg group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                                                <RefreshCcw className="w-5 h-5" />
+                                            </div>
+                                            <span className="bg-green-100 text-green-700 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold h-fit mt-1">Active</span>
                                         </div>
-                                        <span className="bg-green-100 text-green-700 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold">Active</span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteRule(wf.rule_id);
+                                            }}
+                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                            title="Delete Rule"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                     <h4 className="font-bold text-slate-800 mb-1 text-lg">{wf.name}</h4>
                                     <p className="text-sm text-slate-500 mb-4 h-10 line-clamp-2" title={wf.task_description}>
@@ -153,7 +176,23 @@ const AutomationDashboard = () => {
                         </div>
                     </div>
                 ) : (
-                    <AutomationTaskList tasks={tasks} onAction={setSelectedTask} />
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-800">
+                                {activeTab === 'all' ? 'All Tasks' :
+                                    activeTab === 'pending' ? 'Pending Approval' :
+                                        activeTab === 'completed' ? 'Completed Tasks' : 'Tasks'}
+                            </h3>
+                            <button
+                                onClick={() => setIsNewModalOpen(true)}
+                                className="flex items-center gap-2 text-sm font-bold text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-4 py-2 rounded-lg transition-colors"
+                            >
+                                <Plus size={16} />
+                                New Task
+                            </button>
+                        </div>
+                        <AutomationTaskList tasks={tasks} onAction={setSelectedTask} />
+                    </div>
                 )}
             </div>
 

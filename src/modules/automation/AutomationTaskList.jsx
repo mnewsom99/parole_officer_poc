@@ -7,7 +7,7 @@ const TaskList = ({ tasks, onAction }) => {
         return (
             <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
                 <FileText className="w-12 h-12 mb-3 opacity-50" />
-                <p>No tasks found.</p>
+                <p className="mb-4">No tasks found.</p>
             </div>
         );
     }

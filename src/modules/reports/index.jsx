@@ -1,9 +1,39 @@
 import React from 'react';
 import { BarChart, PieChart, Activity, Users, FileText, TrendingUp } from 'lucide-react';
+import ReportPreviewModal from './ReportPreviewModal';
 
 const ReportsModule = () => {
+    const [selectedReport, setSelectedReport] = React.useState(null);
+
+    const reportCategories = [
+        {
+            title: "Daily Reports",
+            items: [
+                { id: 'd1', title: "Daily Activity Log", type: 'table', icon: FileText },
+                { id: 'd2', title: "Daily Arrests & Warrants", type: 'table', icon: Activity },
+                { id: 'd3', title: "Officer Field Notes", type: 'summary', icon: TrendingUp },
+            ]
+        },
+        {
+            title: "Weekly Reports",
+            items: [
+                { id: 'w1', title: "Weekly Compliance Summary", type: 'summary', icon: PieChart },
+                { id: 'w2', title: "Caseload Movement (Intake/Exit)", type: 'table', icon: Users },
+                { id: 'w3', title: "Urinalysis Results Batch", type: 'table', icon: Activity },
+            ]
+        },
+        {
+            title: "Monthly Reports",
+            items: [
+                { id: 'm1', title: "Monthly Caseload Statistics", type: 'summary', icon: BarChart },
+                { id: 'm2', title: "Recidivism Risk Analysis", type: 'summary', icon: TrendingUp },
+                { id: 'm3', title: "Fiscal Fee Collection", type: 'table', icon: FileText },
+            ]
+        }
+    ];
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">Reports & Analytics</h2>
@@ -42,42 +72,129 @@ const ReportsModule = () => {
                 ))}
             </div>
 
-            {/* Charts (Mock) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="font-bold text-slate-800 mb-4">Risk Level Distribution</h3>
-                    <div className="h-64 flex items-end justify-around gap-4 px-4 border-b border-slate-100 pb-4">
-                        {/* Mock Bar Chart */}
-                        <div className="w-16 bg-green-500 rounded-t-lg relative group" style={{ height: '30%' }}>
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600">Low</div>
+
+
+            {/* Available Reports Section */}
+            <div>
+                <h3 className="text-xl font-bold text-slate-800 mb-6">Available Reports</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {reportCategories.map((category) => (
+                        <div key={category.title} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
+                                <h4 className="font-semibold text-slate-700">{category.title}</h4>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                                {category.items.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setSelectedReport(item)}
+                                        className="w-full text-left px-6 py-4 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center group"
+                                    >
+                                        <div className="bg-slate-100 p-2 rounded-lg text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 mr-4">
+                                            <item.icon className="w-5 h-5" />
+                                        </div>
+                                        <span className="font-medium text-slate-600 group-hover:text-blue-700">{item.title}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="w-16 bg-yellow-500 rounded-t-lg relative group" style={{ height: '50%' }}>
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600">Medium</div>
-                        </div>
-                        <div className="w-16 bg-red-500 rounded-t-lg relative group" style={{ height: '20%' }}>
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600">High</div>
-                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Custom Report Builder */}
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
+                        <FileText className="w-6 h-6" />
                     </div>
-                    <div className="flex justify-around mt-2 text-sm text-slate-500">
-                        <span>Low Risk</span>
-                        <span>Medium Risk</span>
-                        <span>High Risk</span>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-800">Custom Report Builder</h3>
+                        <p className="text-slate-500">Generate a specific report based on custom criteria</p>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="font-bold text-slate-800 mb-4">Monthly Contact Compliance</h3>
-                    <div className="h-64 flex items-center justify-center">
-                        <div className="relative w-48 h-48 rounded-full border-8 border-slate-100 flex items-center justify-center">
-                            <div className="absolute inset-0 rounded-full border-8 border-blue-600 border-t-transparent border-r-transparent rotate-45"></div>
-                            <div className="text-center">
-                                <span className="block text-3xl font-bold text-slate-800">85%</span>
-                                <span className="text-xs text-slate-500">Completed</span>
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {/* Officer Selection */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Officer</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">All Officers</option>
+                            <option value="1">Officer Smith</option>
+                            <option value="2">Officer Jones</option>
+                            <option value="3">Officer Davis</option>
+                        </select>
+                    </div>
+
+                    {/* Offender Type */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Offender Type / Risk</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">All Types</option>
+                            <option value="Sex Offender">Sex Offender</option>
+                            <option value="Gang Member">Gang Member</option>
+                            <option value="High Risk">High Risk</option>
+                            <option value="Medium Risk">Medium Risk</option>
+                        </select>
+                    </div>
+
+                    {/* Program */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Program</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">Any Program</option>
+                            <option value="Anger Management">Anger Management</option>
+                            <option value="Substance Abuse">Substance Abuse Treatment</option>
+                            <option value="Vocational">Vocational Training</option>
+                        </select>
+                    </div>
+
+                    {/* Date Range Start */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Start Date</label>
+                        <input
+                            type="date"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+
+                    {/* Date Range End */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">End Date</label>
+                        <input
+                            type="date"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+
+                    {/* Format */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Export Format</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="pdf">PDF Document</option>
+                            <option value="csv">Excel / CSV</option>
+                            <option value="print">Print View</option>
+                        </select>
                     </div>
                 </div>
+
+                <div className="flex justify-end pt-6 border-t border-slate-100">
+                    <button
+                        onClick={() => setSelectedReport({ title: "Custom Generated Report", type: "table" })}
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                        <FileText className="w-5 h-5" />
+                        Generate Report
+                    </button>
+                </div>
             </div>
+
+            {/* Modal */}
+            <ReportPreviewModal
+                isOpen={!!selectedReport}
+                onClose={() => setSelectedReport(null)}
+                report={selectedReport}
+            />
         </div>
     );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Paperclip, Clipboard, FileText } from 'lucide-react';
 import axios from 'axios';
 
@@ -29,11 +30,11 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
             try {
                 const [offs, settings, user] = await Promise.all([
                     axios.get('http://localhost:8000/officers'),
-                    axios.get('http://localhost:8000/system/settings/tasks'),
+                    axios.get('http://localhost:8000/settings/task-categories'),
                     axios.get('http://localhost:8000/users/me')
                 ]);
                 setOfficers(offs.data);
-                setTaskSettings(settings.data);
+                setTaskSettings({ categories: settings.data });
                 setCurrentUser(user.data); // Mapped to officer info usually
             } catch (e) {
                 console.error("Failed to load modal dependencies", e);
@@ -73,7 +74,7 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                 // Optimization: if provided
             }
         }
-    }, [task, isOpen, context]);
+    }, [task, isOpen]);
 
     const handleSubmit = async () => {
         if (!newTask.title || !newTask.assigned_officer_id) {
@@ -130,14 +131,14 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             ></div>
 
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative flex flex-col max-h-[90vh] overflow-y-auto z-10 animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative flex flex-col max-h-[90vh] overflow-y-auto z-10">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -184,7 +185,7 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                         >
                             <option value="">Select Officer...</option>
                             {Array.isArray(officers) && officers.map(o => (
-                                <option key={o.officer_id} value={o.officer_id}>{o.name}</option>
+                                <option key={o.officer_id} value={o.officer_id}>{`${o.first_name} ${o.last_name}`}</option>
                             ))}
                         </select>
                     </div>
@@ -298,7 +299,8 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

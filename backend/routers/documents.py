@@ -24,7 +24,7 @@ os.makedirs(MEDIA_ROOT, exist_ok=True)
 async def upload_document(
     file: UploadFile = File(...),
     offender_id: UUID = Form(...),
-    uploaded_by_id: UUID = Form(...),
+    uploaded_by_id: Optional[UUID] = Form(None),
     note_id: Optional[UUID] = Form(None),
     task_id: Optional[UUID] = Form(None),
     category: str = Form("General"),

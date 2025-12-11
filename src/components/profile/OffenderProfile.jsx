@@ -15,7 +15,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 const OffenderProfile = () => {
     const { offenderId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, caseNoteSettings, offenderFlagSettings } = useContext(UserContext);
+    const { currentUser, caseNoteSettings, offenderFlagSettings, housingTypeSettings } = useContext(UserContext);
     const [offender, setOffender] = useState(null);
     const noteTypes = caseNoteSettings?.types || [];
 
@@ -39,6 +39,18 @@ const OffenderProfile = () => {
         is_current: true
     });
     const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+
+    // Housing / Move State
+    const [showMoveModal, setShowMoveModal] = useState(false);
+    const [moveForm, setMoveForm] = useState({
+        address_line_1: '',
+        city: '',
+        state: 'AZ',
+        zip_code: '',
+        start_date: new Date().toISOString().split('T')[0],
+        housing_type: 'Residence',
+        notes: ''
+    });
 
     // --- Task / Parole Plan State ---
     const [parolePlanTasks, setParolePlanTasks] = useState([]);
@@ -161,6 +173,27 @@ const OffenderProfile = () => {
             });
         } catch (error) {
             console.error("Error adding employment:", error);
+        }
+    }
+
+
+    const handleMoveOffender = async () => {
+        try {
+            await axios.post(`http://localhost:8000/offenders/${offenderId}/residences/move`, moveForm);
+            setShowMoveModal(false);
+            fetchData(); // Refresh data
+            // Reset form
+            setMoveForm({
+                address_line_1: '',
+                city: '',
+                state: 'AZ',
+                zip_code: '',
+                start_date: new Date().toISOString().split('T')[0],
+                housing_type: 'Residence',
+                notes: ''
+            });
+        } catch (error) {
+            console.error("Error moving offender:", error);
         }
     };
 
@@ -382,7 +415,7 @@ const OffenderProfile = () => {
     const tabs = [
         { id: 'overview', label: 'Overview', icon: FileText },
         { id: 'risk', label: 'Risk Assessment', icon: AlertTriangle },
-        { id: 'ua', label: 'Urine Analysis', icon: Activity },
+        { id: 'ua', label: 'Drug Testing', icon: Activity },
         { id: 'fees', label: 'Costs & Fees', icon: DollarSign },
         { id: 'documents', label: 'Documents', icon: FileText },
         { id: 'detail', label: 'Detail View', icon: Phone },
@@ -737,16 +770,37 @@ const OffenderProfile = () => {
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="text-xs text-slate-500">Current Address</p>
+                                                <div className="flex justify-between items-center">
+                                                    <p className="text-xs text-slate-500">Current Address</p>
+                                                    {!isEditing && (
+                                                        <button
+                                                            onClick={() => setShowMoveModal(true)}
+                                                            className="text-[10px] text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
+                                                        >
+                                                            <MapPin size={10} />
+                                                            Move
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 {isEditing ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editForm.address || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none"
-                                                    />
+                                                    <div className="space-y-1">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Street"
+                                                            value={editForm.address || ''}
+                                                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                                            className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none"
+                                                        />
+                                                    </div>
                                                 ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{offender.address || 'N/A'}</p>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-800">{offender.address || 'N/A'}</p>
+                                                        {offender.housingType && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 mt-1">
+                                                                {offender.housingType}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                             {offender.releaseType === 'Transition' && (
@@ -784,6 +838,31 @@ const OffenderProfile = () => {
                                                 )}
                                             </div>
                                         )}
+
+                                        {/* Housing History */}
+                                        <div className="mt-6 border-t border-slate-100 pt-4">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Housing History</h4>
+                                            <div className="space-y-3">
+                                                {offender.residenceHistory?.map((res, idx) => (
+                                                    <div key={idx} className="flex gap-3 text-sm">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className={`w-2 h-2 rounded-full ${res.isCurrent ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                                                            {idx !== offender.residenceHistory.length - 1 && <div className="w-0.5 flex-1 bg-slate-100 my-1"></div>}
+                                                        </div>
+                                                        <div className="flex-1 pb-2">
+                                                            <p className="text-slate-800 font-medium">{res.address}, {res.city}</p>
+                                                            <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
+                                                                <span>{safeDate(res.startDate)} - {res.endDate ? safeDate(res.endDate) : 'Present'}</span>
+                                                                <span className="px-1.5 rounded bg-slate-100 text-slate-600">{res.housingType}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {(!offender.residenceHistory || offender.residenceHistory.length === 0) && (
+                                                    <p className="text-xs text-slate-400 italic">No history available.</p>
+                                                )}
+                                            </div>
+                                        </div>
 
                                         <div className="mt-4">
                                             <div className="flex justify-between items-center mb-1">
@@ -949,7 +1028,7 @@ const OffenderProfile = () => {
                                 {offender.generalComments || "No general comments recorded for this offender."}
                             </p>
                         </div>
-                    </div>
+                    </div >
                 );
             default:
                 return null;
@@ -1333,6 +1412,131 @@ const OffenderProfile = () => {
                     </div>
                 </div>
             </Modal>
+
+            <TaskModal
+                isOpen={showTaskModal}
+                onClose={() => setShowTaskModal(false)}
+                task={selectedTask}
+                selectedFile={selectedTaskFile}
+                setSelectedFile={setSelectedTaskFile}
+                onSuccess={() => {
+                    fetchData(); // Refresh all data including tasks
+                    setShowTaskModal(false);
+                }}
+                context={{
+                    offender_id: offenderId,
+                    assigned_officer_id: currentUser?.officerId
+                }}
+            />
+            {/* Move Modal */}
+            {showMoveModal && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800">Change Address / Move</h3>
+                            <button onClick={() => setShowMoveModal(false)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">New Address</label>
+                                <input
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                    placeholder="123 New St"
+                                    value={moveForm.address_line_1}
+                                    onChange={e => setMoveForm({ ...moveForm, address_line_1: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">City</label>
+                                    <input
+                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                        placeholder="Phoenix"
+                                        value={moveForm.city}
+                                        onChange={e => setMoveForm({ ...moveForm, city: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">State</label>
+                                    <input
+                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                        placeholder="AZ"
+                                        value={moveForm.state}
+                                        onChange={e => setMoveForm({ ...moveForm, state: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Zip</label>
+                                    <input
+                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                        placeholder="85001"
+                                        value={moveForm.zip_code}
+                                        onChange={e => setMoveForm({ ...moveForm, zip_code: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                        value={moveForm.start_date}
+                                        onChange={e => setMoveForm({ ...moveForm, start_date: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Housing Type</label>
+                                    <select
+                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                        value={moveForm.housing_type}
+                                        onChange={e => setMoveForm({ ...moveForm, housing_type: e.target.value })}
+                                    >
+                                        <option value="">Select Type</option>
+                                        {housingTypeSettings?.types?.map((type, idx) => (
+                                            <option key={idx} value={type.name}>{type.name}</option>
+                                        ))}
+                                        {(!housingTypeSettings?.types || housingTypeSettings.types.length === 0) && (
+                                            <>
+                                                <option value="Residence">Residence</option>
+                                                <option value="Homeless">Homeless</option>
+                                                <option value="Halfway House">Halfway House</option>
+                                                <option value="Treatment Center">Treatment Center</option>
+                                            </>
+                                        )}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notes (Optional)</label>
+                                <textarea
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm h-20"
+                                    placeholder="Reason for move, etc."
+                                    value={moveForm.notes}
+                                    onChange={e => setMoveForm({ ...moveForm, notes: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+                            <button
+                                onClick={() => setShowMoveModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleMoveOffender}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                            >
+                                Confirm Move
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

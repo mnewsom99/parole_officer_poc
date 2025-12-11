@@ -1,11 +1,11 @@
-Error: (psycopg2.errors.UndefinedColumn) column documents.task_id does not exist
-LINE 1: ...ed_by_id, documents.note_id AS documents_note_id, documents....
+Error: (psycopg2.errors.UndefinedColumn) column tasks.offender_id does not exist
+LINE 1: ...ks_task_id, tasks.episode_id AS tasks_episode_id, tasks.offe...
                                                              ^
 
-[SQL: SELECT documents.document_id AS documents_document_id, documents.offender_id AS documents_offender_id, documents.uploaded_by_id AS documents_uploaded_by_id, documents.note_id AS documents_note_id, documents.task_id AS documents_task_id, documents.file_name AS documents_file_name, documents.file_path AS documents_file_path, documents.file_type AS documents_file_type, documents.category AS documents_category, documents.file_size AS documents_file_size, documents.uploaded_at AS documents_uploaded_at 
-FROM documents 
-WHERE documents.offender_id = %(offender_id_1)s::UUID ORDER BY documents.uploaded_at DESC]
-[parameters: {'offender_id_1': 'eed4af99-fd72-41b8-b949-341447c69f30'}]
+[SQL: SELECT tasks.task_id AS tasks_task_id, tasks.episode_id AS tasks_episode_id, tasks.offender_id AS tasks_offender_id, tasks.created_by AS tasks_created_by, tasks.assigned_officer_id AS tasks_assigned_officer_id, tasks.title AS tasks_title, tasks.description AS tasks_description, tasks.category AS tasks_category, tasks.sub_category AS tasks_sub_category, tasks.due_date AS tasks_due_date, tasks.status AS tasks_status, tasks.created_at AS tasks_created_at, tasks.updated_at AS tasks_updated_at 
+FROM tasks JOIN officers ON officers.officer_id = tasks.assigned_officer_id 
+WHERE officers.location_id = %(location_id_1)s::UUID AND tasks.assigned_officer_id = %(assigned_officer_id_1)s::UUID ORDER BY tasks.due_date ASC, tasks.created_at DESC]
+[parameters: {'location_id_1': '0a12117b-2192-4e1e-b322-30741f9fdd34', 'assigned_officer_id_1': '26b44daa-30dd-4d48-89a2-af4692c78a4d'}]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
@@ -18,8 +18,8 @@ Traceback (most recent call last):
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 951, in do_execute
     cursor.execute(statement, parameters)
     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-psycopg2.errors.UndefinedColumn: column documents.task_id does not exist
-LINE 1: ...ed_by_id, documents.note_id AS documents_note_id, documents....
+psycopg2.errors.UndefinedColumn: column tasks.offender_id does not exist
+LINE 1: ...ks_task_id, tasks.episode_id AS tasks_episode_id, tasks.offe...
                                                              ^
 
 
@@ -43,7 +43,7 @@ Traceback (most recent call last):
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\base.py", line 191, in __call__
     response = await self.dispatch_func(request, call_next)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\mnews\OneDrive\Documents\AI_Projects\parole-officer-poc\backend\main.py", line 59, in request_id_middleware
+  File "c:\Users\mnews\OneDrive\Documents\AI_Projects\parole-officer-poc\backend\main.py", line 59, in request_id_middleware
     response = await call_next(request)
                ^^^^^^^^^^^^^^^^^^^^^^^^
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\base.py", line 165, in call_next
@@ -98,9 +98,9 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 986, in run
     result = context.run(func, *args)
-  File "C:\Users\mnews\OneDrive\Documents\AI_Projects\parole-officer-poc\backend\routers\documents.py", line 75, in get_offender_documents
-    .all()
-     ~~~^^
+  File "c:\Users\mnews\OneDrive\Documents\AI_Projects\parole-officer-poc\backend\routers\tasks.py", line 97, in get_tasks
+    return query.order_by(models.Task.due_date.asc(), models.Task.created_at.desc()).all()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2704, in all
     return self._iter().all()  # type: ignore
            ~~~~~~~~~~^^
@@ -184,12 +184,12 @@ Traceback (most recent call last):
   File "C:\Users\mnews\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 951, in do_execute
     cursor.execute(statement, parameters)
     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column documents.task_id does not exist
-LINE 1: ...ed_by_id, documents.note_id AS documents_note_id, documents....
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column tasks.offender_id does not exist
+LINE 1: ...ks_task_id, tasks.episode_id AS tasks_episode_id, tasks.offe...
                                                              ^
 
-[SQL: SELECT documents.document_id AS documents_document_id, documents.offender_id AS documents_offender_id, documents.uploaded_by_id AS documents_uploaded_by_id, documents.note_id AS documents_note_id, documents.task_id AS documents_task_id, documents.file_name AS documents_file_name, documents.file_path AS documents_file_path, documents.file_type AS documents_file_type, documents.category AS documents_category, documents.file_size AS documents_file_size, documents.uploaded_at AS documents_uploaded_at 
-FROM documents 
-WHERE documents.offender_id = %(offender_id_1)s::UUID ORDER BY documents.uploaded_at DESC]
-[parameters: {'offender_id_1': 'eed4af99-fd72-41b8-b949-341447c69f30'}]
+[SQL: SELECT tasks.task_id AS tasks_task_id, tasks.episode_id AS tasks_episode_id, tasks.offender_id AS tasks_offender_id, tasks.created_by AS tasks_created_by, tasks.assigned_officer_id AS tasks_assigned_officer_id, tasks.title AS tasks_title, tasks.description AS tasks_description, tasks.category AS tasks_category, tasks.sub_category AS tasks_sub_category, tasks.due_date AS tasks_due_date, tasks.status AS tasks_status, tasks.created_at AS tasks_created_at, tasks.updated_at AS tasks_updated_at 
+FROM tasks JOIN officers ON officers.officer_id = tasks.assigned_officer_id 
+WHERE officers.location_id = %(location_id_1)s::UUID AND tasks.assigned_officer_id = %(assigned_officer_id_1)s::UUID ORDER BY tasks.due_date ASC, tasks.created_at DESC]
+[parameters: {'location_id_1': '0a12117b-2192-4e1e-b322-30741f9fdd34', 'assigned_officer_id_1': '26b44daa-30dd-4d48-89a2-af4692c78a4d'}]
 (Background on this error at: https://sqlalche.me/e/20/f405)
