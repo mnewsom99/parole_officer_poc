@@ -123,7 +123,8 @@ def get_offenders(
             "city": current_residence.city if current_residence else "",
             "state": current_residence.state if current_residence else "",
             "zip": current_residence.zip_code if current_residence else "",
-            "phone": contacts[0]["phone"] if contacts else f"(602) 555-{random.randint(1000, 9999)}",
+            "zip": current_residence.zip_code if current_residence else "",
+            "phone": offender.phone or (contacts[0]["phone"] if contacts else f"(602) 555-{random.randint(1000, 9999)}"),
             "housingType": housing_type,
             "facility": facility_info,
             "residenceContacts": contacts,
@@ -142,6 +143,19 @@ def get_offenders(
             "releaseDate": offender.release_date,
             # Missing fields for dashboard stats
             "employment_status": offender.employment_status,
+            "employmentHistory": [
+                {
+                    "employment_id": str(emp.employment_id),
+                    "employer": emp.employer_name,
+                    "position": emp.position,
+                    "phone": emp.phone,
+                    "supervisor": emp.supervisor,
+                    "start_date": emp.start_date.isoformat() if emp.start_date else None,
+                    "end_date": emp.end_date.isoformat() if emp.end_date else None,
+                    "is_current": emp.is_current,
+                    "address": f"{emp.address_line_1 or ''}, {emp.city or ''}, {emp.state or ''} {emp.zip_code or ''}".strip(", ")
+                } for emp in offender.employments
+            ],
             "csed_date": offender.csed_date,
             # Field Mode specific fields
             "first_name": offender.first_name,
@@ -149,7 +163,7 @@ def get_offenders(
             "offender_number": offender.badge_id,
             "risk_level": current_risk,
             "program": next((p.name for p in db.query(models.Program).filter(models.Program.offender_id == offender.offender_id, models.Program.status == 'Active').limit(1)), "None Assigned"),
-            "phone": "N/A", # "phone": (contacts[0]["phone"] if contacts else "No Phone Listed"), # Fallback to contacts only for now
+            # Remove duplicate phone override
         })
         
     return {
@@ -335,19 +349,30 @@ def get_offender_details(offender_id: UUID, db: Session = Depends(get_db)):
 # Sub-resources
 @router.post("/offenders/{offender_id}/employment", response_model=schemas.Employment)
 def add_employment(offender_id: UUID, employment: schemas.EmploymentCreate, db: Session = Depends(get_db)):
+    # If the new employment is current, close out any existing current employments
+    if employment.is_current:
+        active_employments = db.query(models.Employment).filter(
+            models.Employment.offender_id == offender_id,
+            models.Employment.is_current == True
+        ).all()
+        
+        for emp in active_employments:
+            emp.is_current = False
+            if not emp.end_date:
+                emp.end_date = datetime.utcnow().date()
+
     new_emp = models.Employment(
         offender_id=offender_id,
         **employment.dict()
     )
     db.add(new_emp)
     
-    # If this is current, verify if we should update stats? 
-    # Logic: If adding 'Current' job, maybe update Offender status to 'Employed'?
+    # Update Status Logic
     if employment.is_current:
         offender = db.query(models.Offender).filter(models.Offender.offender_id == offender_id).first()
         if offender:
             offender.employment_status = "Employed"
-            # Unset other current employments? optional.
+            offender.unemployable_reason = None # Clear reason as they are now employed
             
     db.commit()
     db.refresh(new_emp)
@@ -616,8 +641,33 @@ def update_offender(offender_id: UUID, updates: dict, db: Session = Depends(get_
     if not offender:
         raise HTTPException(status_code=404, detail="Offender not found")
     
-    if 'phone' in updates:
-        offender.phone = updates['phone']
+    allowed_fields = ['first_name', 'last_name', 'phone', 'gender', 'email', 'release_type', 'release_date', 'reversion_date', 'gang_affiliation', 'special_flags', 'employment_status', 'unemployable_reason']
+    
+    for field in allowed_fields:
+        if field in updates:
+            setattr(offender, field, updates[field])
+            
+    # Handle specific field logic if needed
+    if 'employment_status' in updates:
+        new_status = updates['employment_status']
+        if new_status in ['Unemployed', 'Unemployable', 'Retired']:
+            # Close any active employment
+            active_employment = db.query(models.Employment).filter(
+                models.Employment.offender_id == offender_id, 
+                models.Employment.is_current == True
+            ).first()
+            if active_employment:
+                active_employment.is_current = False
+                active_employment.end_date = datetime.utcnow().date()
+
+    if 'isSexOffender' in updates:
+         # Manage the flag in special_flags list
+         flags = offender.special_flags or []
+         if updates['isSexOffender'] and "Sex Offender" not in flags:
+             flags.append("Sex Offender")
+         elif not updates['isSexOffender'] and "Sex Offender" in flags:
+             flags.remove("Sex Offender")
+         offender.special_flags = flags
         
     db.commit()
     db.refresh(offender)

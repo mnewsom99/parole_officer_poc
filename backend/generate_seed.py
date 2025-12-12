@@ -9,6 +9,20 @@ from . import models, database, auth
 fake = Faker()
 
 # Metro Phoenix Zip Codes by Region (Approximate)
+# Custom US Phone Generator
+def generate_us_phone():
+    """Generates a random US phone number in (XXX) XXX-XXXX format."""
+    area_code = random.choice(["602", "480", "520", "623", "928"])
+    prefix = random.randint(200, 999)
+    line = random.randint(1000, 9999)
+    
+    # 10% chance of extension
+    ext = ""
+    if random.random() < 0.10:
+        ext = f" x{random.randint(100, 99999)}"
+        
+    return f"({area_code}) {prefix}-{line}{ext}"
+
 PHOENIX_REGIONS = {
     "North": [
         "85020", "85021", "85022", "85023", "85024", "85027", "85028", "85029", "85032", 
@@ -111,7 +125,7 @@ def generate_seed_data():
                 badge_number=f"SUP-{name[:3].upper()}-{random.randint(10,99)}",
                 first_name=fake.first_name(),
                 last_name=fake.last_name(),
-                phone_number=fake.phone_number()
+                phone_number=generate_us_phone()
             )
             db.add(sup)
             supervisors[name] = sup
@@ -152,7 +166,7 @@ def generate_seed_data():
                     badge_number=f"PO-{1000 + officer_counter}",
                     first_name=fake.first_name(),
                     last_name=fake.last_name(),
-                    phone_number=fake.phone_number()
+                    phone_number=generate_us_phone()
                 )
                 db.add(off)
                 current_officers.append(off)
@@ -214,7 +228,7 @@ def generate_seed_data():
                     badge_number=f"SP-{spec_type}-{100+i}",
                     first_name=fake.first_name(),
                     last_name=fake.last_name(),
-                    phone_number=fake.phone_number()
+                    phone_number=generate_us_phone()
                 )
                 db.add(off)
                 specialty_officers[spec_type].append(off)
@@ -347,6 +361,7 @@ def generate_seed_data():
                 first_name=first,
                 last_name=last,
                 dob=fake.date_of_birth(minimum_age=18, maximum_age=70),
+                phone=generate_us_phone(),
                 image_url=f"https://ui-avatars.com/api/?name={first}+{last}&background=random",
                 gender=random.choice(['Male', 'Female']),
                 # REMOVED: is_sex_offender, is_gang_member
@@ -358,7 +373,7 @@ def generate_seed_data():
                 
                 # Dynamic Flags Generation
                 special_flags = [],
-                housing_status=random.choice(['Stable', 'Transient', 'Home Arrest', 'Homeless']) if random.random() < 0.3 else 'Stable',
+                housing_status=random.choice(['Residence', 'Halfway House', 'Treatment Center', 'Shelter', 'Homeless']) if random.random() < 0.9 else 'Homeless',
                 icots_number=f"ICOTS-{random.randint(10000, 99999)}" if random.random() < 0.10 else None,
                 
                 general_comments=f"Generated as {c_type} case.",

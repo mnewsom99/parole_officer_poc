@@ -1,7 +1,48 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 from uuid import UUID
+import re
+
+# --- Helpers ---
+def format_phone(v: Optional[str]) -> Optional[str]:
+    if not v:
+        return v
+    
+    # Remove all non-numeric characters except 'x' (for extension)
+    # Also handle common international prefixes to strip them if they are +1
+    clean_v = v.strip()
+    
+    # Remove leading +1 or 1 if present (US Country Code)
+    if clean_v.startswith('+1'):
+        clean_v = clean_v[2:]
+    elif clean_v.startswith('1') and len(re.sub(r'\D', '', clean_v)) == 11:
+        clean_v = clean_v[1:]
+        
+    # Extract digits and potential extension
+    # Allow x, ext, extension as separators
+    parts = re.split(r'[xX]|ext', clean_v)
+    digits = re.sub(r'\D', '', parts[0])
+    
+    extension = None
+    if len(parts) > 1:
+        extension = re.sub(r'\D', '', parts[1])
+    
+    if len(digits) != 10:
+        # If it's not a standard 10 digit number, return as is (or could raise error)
+        # For now, let's strictly enforce 10 digits for the main part.
+        # But to be safe with existing bad data that might slip through migration, 
+        # we can just return the cleaned version if it fails match.
+        # However, plan said "Validate length is at least 10 digits".
+        if len(digits) < 10:
+             raise ValueError('Phone number must have at least 10 digits')
+        
+    formatted = f"({digits[:3]}) {digits[3:6]}-{digits[6:10]}"
+    
+    if extension:
+        formatted += f" x{extension}"
+        
+    return formatted
 
 # --- Auth ---
 class Token(BaseModel):
@@ -31,6 +72,11 @@ class LocationBase(BaseModel):
     phone: Optional[str] = None
     fax: Optional[str] = None
 
+    @field_validator('phone', 'fax')
+    @classmethod
+    def validate_phone_numbers(cls, v):
+        return format_phone(v)
+
 class LocationCreate(LocationBase):
     pass
 
@@ -41,6 +87,11 @@ class LocationUpdate(BaseModel):
     zip_code: Optional[str] = None
     phone: Optional[str] = None
     fax: Optional[str] = None
+
+    @field_validator('phone', 'fax')
+    @classmethod
+    def validate_phone_numbers(cls, v):
+        return format_phone(v)
 
 class Location(LocationBase):
     location_id: UUID
@@ -88,6 +139,11 @@ class OfficerBase(BaseModel):
     phone_number: Optional[str] = None
     cell_phone: Optional[str] = None
 
+    @field_validator('phone_number', 'cell_phone')
+    @classmethod
+    def validate_phones(cls, v):
+        return format_phone(v)
+
 class OfficerUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -96,6 +152,11 @@ class OfficerUpdate(BaseModel):
     cell_phone: Optional[str] = None
     location_id: Optional[UUID] = None
     supervisor_id: Optional[UUID] = None
+
+    @field_validator('phone_number', 'cell_phone')
+    @classmethod
+    def validate_phones(cls, v):
+        return format_phone(v)
 
 class Officer(OfficerBase):
     officer_id: UUID
@@ -118,6 +179,7 @@ class OffenderBase(BaseModel):
     last_name: str
     dob: date
     image_url: Optional[str] = None
+    phone: Optional[str] = None
     gender: Optional[str] = None
     is_sex_offender: Optional[bool] = False
     is_gang_member: Optional[bool] = False
@@ -132,6 +194,11 @@ class OffenderBase(BaseModel):
     unemployable_reason: Optional[str] = None
     warrant_status: Optional[str] = 'None'
     warrant_date: Optional[date] = None
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        return format_phone(v)
 
 class Offender(OffenderBase):
     offender_id: UUID
@@ -253,6 +320,11 @@ class FacilityBase(BaseModel):
     address: str
     phone: Optional[str] = None
     services_offered: Optional[str] = None
+    
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        return format_phone(v)
 
 class Facility(FacilityBase):
     facility_id: UUID
@@ -266,6 +338,11 @@ class ResidenceContactBase(BaseModel):
     relation: Optional[str] = None
     phone: Optional[str] = None
     comments: Optional[str] = None
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        return format_phone(v)
 
 class ResidenceContact(ResidenceContactBase):
     contact_id: UUID
@@ -310,6 +387,11 @@ class EmploymentBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        return format_phone(v)
+
 class EmploymentCreate(EmploymentBase):
     pass
 
@@ -325,6 +407,11 @@ class EmploymentUpdate(BaseModel):
     is_current: Optional[bool] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        return format_phone(v)
 
 class Employment(EmploymentBase):
     employment_id: UUID

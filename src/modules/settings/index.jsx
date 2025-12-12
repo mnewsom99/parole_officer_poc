@@ -227,8 +227,6 @@ const SettingsModule = () => {
                 return <RiskSettings />;
             case 'tasks':
                 return <TaskCategorySettings />;
-            case 'tasks':
-                return <TaskCategorySettings />;
             case 'housing':
                 return (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">

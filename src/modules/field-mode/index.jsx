@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Phone, AlertTriangle, ChevronRight, User, Plus, Calendar, Edit2, X, Info, FileText } from 'lucide-react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const FieldModeModule = () => {
     const navigate = useNavigate();
@@ -68,6 +68,18 @@ const FieldModeModule = () => {
             // Update Phone
             if (editForm.phone !== selectedOffender.phone) {
                 await axios.put(`http://localhost:8000/offenders/${selectedOffender.id}`, { phone: editForm.phone });
+
+                // Create System Audit Note
+                try {
+                    await axios.post(`http://localhost:8000/offenders/${selectedOffender.id}/notes`, {
+                        content: `Phone number changed from "${selectedOffender.phone || 'N/A'}" to "${editForm.phone}" via Field Mode.`,
+                        type: 'System'
+                    });
+                    // Refresh notes if modal is open/cached
+                    fetchNotes(selectedOffender.id);
+                } catch (noteError) {
+                    console.error("Failed to create audit note:", noteError);
+                }
             }
 
             // Note: Address update requires the 'Move' endpoint, omitted here for simplicity 
@@ -194,7 +206,7 @@ const FieldModeModule = () => {
                                     {/* Quick Contact Actions */}
                                     <div className="grid grid-cols-2 gap-3 mb-6">
                                         <a
-                                            href={`tel:${selectedOffender.phone}`}
+                                            href={`tel:${selectedOffender.phone || selectedOffender.phone_number || selectedOffender.cell_phone}`}
                                             className="flex items-center justify-center gap-2 py-3 bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 hover:bg-slate-100 active:scale-95 transition-all"
                                         >
                                             <Phone className="w-5 h-5 text-blue-600" />
@@ -219,7 +231,7 @@ const FieldModeModule = () => {
                                         </div>
                                         <div className="pt-2">
                                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone</label>
-                                            <p className="text-base font-medium text-slate-800">{selectedOffender.phone || 'No Phone Listed'}</p>
+                                            <p className="text-base font-medium text-slate-800">{selectedOffender.phone || selectedOffender.phone_number || selectedOffender.cell_phone || 'No Phone Listed'}</p>
                                         </div>
                                         <div className="pt-4">
                                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Program</label>
@@ -257,6 +269,15 @@ const FieldModeModule = () => {
                                         </div>
                                     </div>
 
+
+                                    {/* Full Profile Link */}
+                                    <Link
+                                        to={`/offenders/${selectedOffender.id}`}
+                                        className="block w-full text-center mt-6 py-3 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded-lg transition-colors"
+                                    >
+                                        View Full Profile
+                                    </Link>
+
                                     {/* Recent Notes Preview */}
                                     <div className="mt-4">
                                         <div className="flex items-center justify-between mb-2">
@@ -291,13 +312,7 @@ const FieldModeModule = () => {
                                         </div>
                                     </div>
 
-                                    {/* Full Profile Link */}
-                                    <button
-                                        onClick={() => navigate(`/offenders/${selectedOffender.id}`)}
-                                        className="w-full mt-6 py-3 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded-lg transition-colors"
-                                    >
-                                        View Full Profile
-                                    </button>
+
                                 </div>
                             </div>
                         </div>
@@ -306,17 +321,13 @@ const FieldModeModule = () => {
                         {/* Floating Action Button (FAB) replacement for bottom bar */}
                         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pointer-events-none z-[99]">
                             <div className="flex flex-col gap-3 items-end pointer-events-auto">
-                                <button className="p-4 bg-white text-slate-600 rounded-full shadow-lg border border-slate-200 hover:bg-slate-50">
-                                    <Calendar className="w-6 h-6" />
-                                </button>
                                 <button
                                     onClick={handleOpenNotes}
-                                    className="p-4 bg-white text-blue-600 rounded-full shadow-lg border border-slate-200 hover:bg-slate-50"
+                                    title="Add Case Note"
+                                    className="p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-90 transition-all flex items-center gap-2"
                                 >
                                     <FileText className="w-6 h-6" />
-                                </button>
-                                <button className="p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-90 transition-all">
-                                    <Plus className="w-6 h-6" />
+                                    <span className="font-bold pr-2">Add Note</span>
                                 </button>
                             </div>
                         </div>

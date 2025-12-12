@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Search, ChevronDown, User, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, User, LogOut } from 'lucide-react';
 import { useUser } from '../../core/context/UserContext';
 
 const Header = ({ onLogout }) => {
@@ -8,17 +8,7 @@ const Header = ({ onLogout }) => {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     return (
-        <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-white/50 fixed top-0 right-0 left-64 z-10 flex items-center justify-between px-6 shadow-sm transition-all duration-300">
-            <div className="flex items-center gap-4 w-96">
-                <div className="relative w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input
-                        type="text"
-                        placeholder="Search offenders, case numbers..."
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                </div>
-            </div>
+        <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-white/50 fixed top-0 right-0 left-64 z-10 flex items-center justify-end px-6 shadow-sm transition-all duration-300">
 
             <div className="flex items-center gap-6">
                 <div className="relative">

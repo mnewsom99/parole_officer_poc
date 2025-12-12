@@ -8,10 +8,9 @@
     - [ ] Review general security requirements.
     - [ ] Review AZ-specific security requirements.
 - [ ] **Mock Data Cleanup** (Audit Findings)
-    - [ ] **Offender Profile**: Implement "Housing History" logic (Backend + Frontend).
+    - [x] **Offender Profile**: Implement "Housing History" logic (Backend + Frontend).
     - [ ] **Offender Profile**: Connect "Add Program" button to backend.
     - [ ] **Offender Profile**: Implement "Email" and "Phone" quick actions (even if just `mailto:`).
-    - [ ] **Offender Profile**: Add "Edit" interface for General Comments.
     - [ ] **Dashboard**: Add Month Selector for Report Download (fix hardcoded "June").
     - [ ] **External Portals**: Update/Remove placeholder links for Lab/Vendor portals.
 - [ ] **Code Refactoring & Reliability**
@@ -66,6 +65,8 @@
     - [ ] **Offender Analytics**: Visual trends.
 - [ ] **Territory Management**
     - [ ] Configure Office/Officer Coverage by ZIP Codes.
+- [ ] **Role-Based Navigation Registry**
+    - [ ] Implement registry structure in Core/Shell for role-based navigation.
 
 ---
 

@@ -391,11 +391,11 @@ const CaseloadDashboard = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <a
-                                            href={`tel:${offender.phone}`}
+                                            href={`tel:${(offender.phone || offender.phone_number || offender.cell_phone || '').replace(/[^0-9]/g, '')}`}
                                             className="text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition-colors"
                                             onClick={(e) => e.stopPropagation()}
                                         >
-                                            {offender.phone}
+                                            {offender.phone || offender.phone_number || offender.cell_phone || 'N/A'}
                                         </a>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

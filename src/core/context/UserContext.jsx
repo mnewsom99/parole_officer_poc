@@ -49,8 +49,6 @@ export const UserProvider = ({ children }) => {
 
                     // Init Settings
                     fetchNoteSettings();
-                    fetchNoteSettings();
-                    fetchOffenderFlagSettings();
                     fetchOffenderFlagSettings();
                     fetchHousingTypeSettings();
                     fetchTaskSettings();
@@ -262,7 +260,6 @@ export const UserProvider = ({ children }) => {
     const removeOffenderFlagType = (name) => {
         const newTypes = offenderFlagSettings.types.filter(t => t.name !== name);
         updateOffenderFlagType(newTypes);
-        updateOffenderFlagType(newTypes);
     };
 
     // Housing Type Settings
@@ -344,7 +341,6 @@ export const UserProvider = ({ children }) => {
             offenderFlagSettings,
             updateOffenderFlagType,
             addOffenderFlagType,
-            removeOffenderFlagType,
             removeOffenderFlagType,
             housingTypeSettings,
             updateHousingTypeType,

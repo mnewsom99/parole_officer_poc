@@ -6,10 +6,7 @@ import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Acti
 import Modal from '../common/Modal';
 
 import TaskModal from '../modals/TaskModal'; // Import
-import DocumentsTab from '../../modules/documents/DocumentsTab';
-import UATab from '../../modules/urinalysis/UATab';
-import RiskTab from '../../modules/assessments/RiskTab';
-import FeesTab from '../../modules/finance/FeesTab';
+import ModuleRegistry from '../../core/ModuleRegistry';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const OffenderProfile = () => {
@@ -143,17 +140,7 @@ const OffenderProfile = () => {
         return type ? type.color : 'bg-slate-100 text-slate-700';
     };
 
-    const handleUpdateEmploymentStatus = async (status, reason = '') => {
-        try {
-            await axios.put(`http://localhost:8000/offenders/${offenderId}/employment-status`, { status, reason });
-            setEmploymentStatus(status);
-            setUnemployableReason(reason);
-            // Updating local offender object reference
-            setOffender(prev => ({ ...prev, employment_status: status, unemployable_reason: reason }));
-        } catch (error) {
-            console.error("Error updating employment status:", error);
-        }
-    };
+
 
     const handleAddEmployment = async () => {
         try {
@@ -290,50 +277,103 @@ const OffenderProfile = () => {
 
 
 
-    const handleSaveChanges = () => {
-        const changes = [];
-        const fieldLabels = {
-            phone: 'Phone Number',
-            email: 'Email Address',
-            gender: 'Gender',
-            releaseType: 'Release Type',
-            releaseDate: 'Start Date',
-            address: 'Current Address',
-            reversionDate: 'Reversion Date',
-            gangAffiliation: 'Gang Affiliation',
-            risk: 'Risk Level'
-        };
+    const handleSaveChanges = async () => {
+        try {
+            const changes = [];
+            const fieldLabels = {
+                phone: 'Phone Number',
+                email: 'Email Address',
+                gender: 'Gender',
+                releaseType: 'Release Type',
+                releaseDate: 'Start Date',
+                address: 'Current Address',
+                reversionDate: 'Reversion Date',
+                gangAffiliation: 'Gang Affiliation',
+                risk: 'Risk Level'
+            };
 
-        const officerName = currentUser?.name || 'Officer';
+            const officerName = currentUser?.name || 'Officer';
+            let addressChanged = false;
 
-        Object.keys(editForm).forEach(key => {
-            if (offender[key] !== editForm[key] && fieldLabels[key]) {
-                const oldVal = offender[key] || 'empty';
-                const newVal = editForm[key] || 'empty';
+            // 1. Identify Changes
+            Object.keys(editForm).forEach(key => {
+                if (offender[key] !== editForm[key] && fieldLabels[key]) {
+                    const oldVal = offender[key] || 'empty';
+                    const newVal = editForm[key] || 'empty';
 
-                changes.push({
-                    field: fieldLabels[key],
-                    oldVal,
-                    newVal
+                    if (key === 'address' || key === 'city' || key === 'state' || key === 'zip') {
+                        addressChanged = true;
+                    }
+
+                    changes.push({
+                        field: fieldLabels[key],
+                        oldVal,
+                        newVal
+                    });
+                }
+            });
+
+            // 2. Handle Address Change (Move)
+            if (addressChanged) {
+                // Trigger Move Logic
+                // We need to parse address components or assume they are in editForm
+                // The edit form for address was a single text input in some places or composite?
+                // In the render: <input value={editForm.address} ... />
+                // But move expects line_1, city, etc.
+                // For now, if "address" string changed, we treat it as address_line_1, and reuse existing city/state/zip if not changed
+
+                const movePayload = {
+                    address_line_1: editForm.address,
+                    city: editForm.city || offender.city || 'Phoenix', // Fallbacks
+                    state: editForm.state || offender.state || 'AZ',
+                    zip_code: editForm.zip_code || editForm.zip || offender.zip || '85000',
+                    start_date: new Date().toISOString().split('T')[0], // Today
+                    housing_type: offender.housingType || 'Private', // Keep existing type
+                    notes: 'Address corrected via profile edit.'
+                };
+
+                await axios.post(`http://localhost:8000/offenders/${offenderId}/residences/move`, movePayload);
+            }
+
+            // 3. Handle General Updates
+            const generalUpdates = {};
+            // Map frontend fields to backend fields
+            if (editForm.phone !== offender.phone) generalUpdates.phone = editForm.phone;
+            if (editForm.email !== offender.email) generalUpdates.email = editForm.email;
+            if (editForm.gender !== offender.gender) generalUpdates.gender = editForm.gender;
+            if (editForm.releaseType !== offender.releaseType) generalUpdates.release_type = editForm.releaseType;
+            if (editForm.releaseType !== offender.releaseType) generalUpdates.release_type = editForm.releaseType;
+            // Add date handling if formats align (YYYY-MM-DD usually works)
+            if (editForm.gangAffiliation !== offender.gangAffiliation) generalUpdates.gang_affiliation = editForm.gangAffiliation;
+            if (editForm.employment_status !== offender.employment_status) generalUpdates.employment_status = editForm.employment_status;
+            if (editForm.unemployable_reason !== offender.unemployable_reason) generalUpdates.unemployable_reason = editForm.unemployable_reason;
+
+            if (Object.keys(generalUpdates).length > 0) {
+                await axios.put(`http://localhost:8000/offenders/${offenderId}`, generalUpdates);
+            }
+
+            // 4. Create System Audit Note (Frontend optimistic or let backend handle?)
+            // Backend move handles its note.
+            // We should add note for NON-address changes manually if backend doesnt.
+            // backend update_offender DOES NOT add note. So we do it here.
+
+            const nonAddressChanges = changes.filter(c => c.field !== 'Current Address');
+            if (nonAddressChanges.length > 0) {
+                const noteContent = nonAddressChanges.map(c => `${c.field}: "${c.oldVal}" -> "${c.newVal}"`).join(', ');
+                await axios.post(`http://localhost:8000/offenders/${offenderId}/notes`, {
+                    content: `Profile Updated by ${officerName}: ${noteContent}`,
+                    type: 'System'
                 });
             }
-        });
 
-        if (changes.length > 0) {
-            const newSystemNotes = changes.map((change, index) => ({
-                note_id: Date.now() + index,
-                type: 'System',
-                content: `${officerName} changed ${change.field} from "${change.oldVal}" to "${change.newVal}" today.`,
-                author: { first_name: 'System', last_name: 'Audit', id: 0 },
-                date: new Date().toISOString().split('T')[0],
-                isPinned: false
-            }));
+            // 5. Refresh
+            await fetchData();
+            setIsEditing(false);
 
-            setNotes(prevNotes => [...newSystemNotes, ...prevNotes]);
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            alert("Failed to save changes. Please try again.");
         }
-
-        setOffender(editForm);
-        setIsEditing(false);
     };
 
     const handleAddNote = async () => {
@@ -414,14 +454,20 @@ const OffenderProfile = () => {
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: FileText },
-        { id: 'risk', label: 'Risk Assessment', icon: AlertTriangle },
-        { id: 'ua', label: 'Drug Testing', icon: Activity },
-        { id: 'fees', label: 'Costs & Fees', icon: DollarSign },
-        { id: 'documents', label: 'Documents', icon: FileText },
+        ...ModuleRegistry.getTabs(),
         { id: 'detail', label: 'Detail View', icon: Phone },
     ];
 
+
+
     const renderTabContent = () => {
+        // Dynamic Module Rendering from Registry
+        const registeredModule = ModuleRegistry.getTabs().find(t => t.id === activeTab);
+        if (registeredModule) {
+            const Component = registeredModule.component;
+            return <Component offenderId={offenderId} />;
+        }
+
         switch (activeTab) {
             case 'overview':
                 return (
@@ -601,14 +647,7 @@ const OffenderProfile = () => {
                         </div>
                     </div>
                 );
-            case 'risk':
-                return <RiskTab offenderId={offenderId} />;
-            case 'ua':
-                return <UATab offenderId={offenderId} />;
-            case 'fees':
-                return <FeesTab offenderId={offenderId} />;
-            case 'documents':
-                return <DocumentsTab offenderId={offenderId} />;
+            // Modules are handled dynamically above
             case 'detail':
                 return (
                     <div className="space-y-6">
@@ -839,94 +878,77 @@ const OffenderProfile = () => {
                                             </div>
                                         )}
 
-                                        {/* Housing History */}
-                                        <div className="mt-6 border-t border-slate-100 pt-4">
-                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Housing History</h4>
-                                            <div className="space-y-3">
-                                                {offender.residenceHistory?.map((res, idx) => (
-                                                    <div key={idx} className="flex gap-3 text-sm">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className={`w-2 h-2 rounded-full ${res.isCurrent ? 'bg-green-500' : 'bg-slate-300'}`}></div>
-                                                            {idx !== offender.residenceHistory.length - 1 && <div className="w-0.5 flex-1 bg-slate-100 my-1"></div>}
-                                                        </div>
-                                                        <div className="flex-1 pb-2">
-                                                            <p className="text-slate-800 font-medium">{res.address}, {res.city}</p>
-                                                            <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
-                                                                <span>{safeDate(res.startDate)} - {res.endDate ? safeDate(res.endDate) : 'Present'}</span>
-                                                                <span className="px-1.5 rounded bg-slate-100 text-slate-600">{res.housingType}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {(!offender.residenceHistory || offender.residenceHistory.length === 0) && (
-                                                    <p className="text-xs text-slate-400 italic">No history available.</p>
-                                                )}
-                                            </div>
-                                        </div>
+
 
                                         <div className="mt-4">
                                             <div className="flex justify-between items-center mb-1">
-                                                <p className="text-xs text-slate-500">Employment Status</p>
-                                                <button
-                                                    onClick={() => setShowEmploymentModal(true)}
-                                                    className="text-[10px] text-blue-600 font-medium hover:text-blue-700"
-                                                >
-                                                    Manage
-                                                </button>
-                                            </div>
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className={`p-1.5 rounded-full ${employmentStatus === 'Employed' ? 'bg-green-100 text-green-700' :
-                                                    employmentStatus === 'Unemployed' ? 'bg-orange-100 text-orange-700' :
-                                                        'bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    <Briefcase size={14} />
-                                                </div>
-                                                <select
-                                                    value={employmentStatus}
-                                                    onChange={(e) => handleUpdateEmploymentStatus(e.target.value, unemployableReason)}
-                                                    className="text-sm font-semibold text-slate-800 bg-transparent border-none focus:ring-0 p-0 cursor-pointer outline-none"
-                                                >
-                                                    <option value="Employed">Employed</option>
-                                                    <option value="Unemployed">Unemployed</option>
-                                                    <option value="Unemployable">Unemployable</option>
-                                                </select>
+                                                <p className="text-xs text-slate-500">Employment</p>
+                                                {!isEditing && (
+                                                    <button
+                                                        onClick={() => setShowEmploymentModal(true)}
+                                                        className="text-[10px] text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
+                                                    >
+                                                        <Briefcase size={10} />
+                                                        Manage
+                                                    </button>
+                                                )}
                                             </div>
 
-                                            {employmentStatus === 'Unemployable' && (
-                                                <select
-                                                    value={unemployableReason}
-                                                    onChange={(e) => handleUpdateEmploymentStatus('Unemployable', e.target.value)}
-                                                    className="w-full text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-1 mb-2 outline-none"
-                                                >
-                                                    <option value="">Select Reason...</option>
-                                                    <option value="SSI">SSI (Disability)</option>
-                                                    <option value="SMI">SMI (Mental Health)</option>
-                                                    <option value="Retired">Retired</option>
-                                                    <option value="Treatment">In Treatment</option>
-                                                    <option value="Student">Student</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                            )}
+                                            {isEditing ? (
+                                                <div className="space-y-2">
+                                                    <select
+                                                        value={editForm.employment_status || 'Unemployed'}
+                                                        onChange={(e) => setEditForm({ ...editForm, employment_status: e.target.value })}
+                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
+                                                    >
+                                                        <option value="Employed">Employed</option>
+                                                        <option value="Unemployed">Unemployed</option>
+                                                        <option value="Unemployable">Unemployable</option>
+                                                    </select>
 
-                                            {employmentStatus === 'Employed' && offender.employments && offender.employments.filter(e => e.is_current).map(emp => (
-                                                <div key={emp.employment_id} className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg space-y-1 mb-2">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm font-bold text-slate-800">{emp.employer_name}</span>
-                                                        <span className="text-xs text-slate-500">{emp.pay_rate}</span>
-                                                    </div>
-                                                    <div className="text-xs text-slate-600 flex items-center gap-1">
-                                                        <MapPin size={10} /> {emp.address_line_1}, {emp.city}
-                                                    </div>
-                                                    <div className="text-xs text-slate-600 flex items-center gap-1">
-                                                        <Phone size={10} /> {emp.phone}
-                                                    </div>
-                                                    {emp.supervisor && <div className="text-xs text-slate-500">Sup: {emp.supervisor}</div>}
+                                                    {editForm.employment_status === 'Unemployable' && (
+                                                        <select
+                                                            value={editForm.unemployable_reason || ''}
+                                                            onChange={(e) => setEditForm({ ...editForm, unemployable_reason: e.target.value })}
+                                                            className="w-full text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-1 outline-none"
+                                                        >
+                                                            <option value="">Select Reason...</option>
+                                                            <option value="SSI">SSI (Disability)</option>
+                                                            <option value="SMI">SMI (Mental Health)</option>
+                                                            <option value="Retired">Retired</option>
+                                                            <option value="Treatment">In Treatment</option>
+                                                            <option value="Student">Student</option>
+                                                            <option value="Other">Other</option>
+                                                        </select>
+                                                    )}
                                                 </div>
-                                            ))}
+                                            ) : (
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${offender.employment_status === 'Employed' ? 'bg-green-500' :
+                                                            offender.employment_status === 'Unemployed' ? 'bg-orange-500' :
+                                                                'bg-slate-400'
+                                                            }`}></div>
+                                                        <p className="text-sm font-medium text-slate-800">
+                                                            {offender.employment_status || 'Unemployed'}
+                                                        </p>
+                                                    </div>
 
-                                            {employmentStatus === 'Employed' && (!offender.employments || !offender.employments.some(e => e.is_current)) && (
-                                                <div className="p-2 border border-dashed border-slate-300 rounded text-center">
-                                                    <button onClick={() => setShowEmploymentModal(true)} className="text-xs text-blue-600 font-medium">+ Add Employer Details</button>
+                                                    {offender.employment_status === 'Employed' && offender.employments?.some(e => e.is_current) ? (
+                                                        (() => {
+                                                            const activeEmp = offender.employments.find(e => e.is_current);
+                                                            return (
+                                                                <div className="mt-1 pl-4 border-l-2 border-slate-100">
+                                                                    <p className="text-sm font-bold text-slate-800">{activeEmp.employer_name}</p>
+                                                                    <p className="text-xs text-slate-500">{activeEmp.position}</p>
+                                                                </div>
+                                                            );
+                                                        })()
+                                                    ) : offender.employment_status === 'Unemployable' ? (
+                                                        <p className="text-xs text-slate-500 italic mt-1 pl-4">
+                                                            Reason: {offender.unemployable_reason || 'Not Specified'}
+                                                        </p>
+                                                    ) : null}
                                                 </div>
                                             )}
                                         </div>
@@ -1006,7 +1028,7 @@ const OffenderProfile = () => {
                                 <MapPin size={18} className="text-blue-600" />
                                 Housing Details
                             </h3>
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
                                 <div className="flex justify-between items-start mb-2">
                                     <span className="font-semibold text-slate-800">
                                         {offender.housingType} Residence
@@ -1019,16 +1041,190 @@ const OffenderProfile = () => {
                                 {offender.city && <p className="text-sm text-slate-600">{offender.city}, {offender.state} {offender.zip}</p>}
                                 <p className="text-xs text-slate-400 mt-2">Standard private residence. No facility services provided.</p>
                             </div>
+
+                            {/* HOUSING HISTORY TABLE */}
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Housing History</h4>
+                                <div className="overflow-x-auto border rounded-t-lg rounded-b-lg border-slate-200">
+                                    <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Address</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Dates</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-200">
+                                            {offender.residenceHistory && offender.residenceHistory
+                                                .sort((a, b) => {
+                                                    // Sort DESCENDING (Newest first)
+                                                    // Treat null/undefined start_date as "Oldest" (Time 0)
+                                                    const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+                                                    const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+                                                    return dateB - dateA;
+                                                })
+                                                .map((res, index, arr) => {
+                                                    // Logic for Status: Current, Initial, Prior
+
+                                                    // 1. Identify "Initial" (The record with the oldest start date)
+                                                    // Since we sorted DESC, the oldest record(s) are at the end. 
+                                                    // However, multiple records could have same oldest date (e.g. 0).
+                                                    // We'll find the absolute minimum timestamp in the array.
+                                                    const minTimestamp = arr.reduce((min, p) => {
+                                                        const t = p.startDate ? new Date(p.startDate).getTime() : 0;
+                                                        return t < min ? t : min;
+                                                    }, Infinity);
+
+                                                    const thisTimestamp = res.startDate ? new Date(res.startDate).getTime() : 0;
+                                                    const isInitial = thisTimestamp === minTimestamp;
+
+                                                    let statusBadge;
+                                                    if (res.isCurrent) {
+                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">Current</span>;
+                                                    } else if (isInitial) {
+                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Initial</span>;
+                                                    } else {
+                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">Prior</span>;
+                                                    }
+
+                                                    return (
+                                                        <tr key={res.residence_id || index} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                {statusBadge}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                                                                {res.housingType || 'Residence'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-slate-600">
+                                                                <div className="font-medium text-slate-900">{res.address}</div>
+                                                                <div className="text-xs text-slate-500">{res.city}, {res.state} {res.zip}</div>
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs font-semibold text-slate-700">Start: {safeDate(res.startDate)}</span>
+                                                                    {res.endDate && <span className="text-xs text-slate-400">End: {safeDate(res.endDate)}</span>}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            {(!offender.residenceHistory || offender.residenceHistory.length === 0) && (
+                                                <tr>
+                                                    <td colSpan="4" className="px-4 py-8 text-center text-sm text-slate-500 italic">
+                                                        No housing history available.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* General Comments */}
+
+
+
+                        {/* EMPLOYMENT DETAILS */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">General Comments</h3>
-                            <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
-                                {offender.generalComments || "No general comments recorded for this offender."}
-                            </p>
+                            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <Briefcase size={18} className="text-blue-600" />
+                                Employment Details
+                            </h3>
+
+                            {/* Current Employment Card */}
+                            {offender.employments && offender.employments.find(e => e.is_current) ? (
+                                (() => {
+                                    const currentEmp = offender.employments.find(e => e.is_current);
+                                    return (
+                                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="font-semibold text-slate-800">
+                                                    {currentEmp.employer_name}
+                                                </span>
+                                                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full border border-green-200">
+                                                    Active
+                                                </span>
+                                            </div>
+                                            <div className="font-medium text-slate-700 text-sm mb-1">{currentEmp.position}</div>
+                                            <p className="text-sm text-slate-600 mb-1">
+                                                {currentEmp.address_line_1}, {currentEmp.city}, {currentEmp.state}
+                                            </p>
+                                            {currentEmp.supervisor && <p className="text-xs text-slate-500 mt-2">Supervisor: {currentEmp.supervisor} • {currentEmp.phone}</p>}
+                                        </div>
+                                    );
+                                })()
+                            ) : (
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6 text-center">
+                                    <p className="text-sm text-slate-500 italic">No current employment record.</p>
+                                </div>
+                            )}
+
+                            {/* EMPLOYMENT HISTORY TABLE */}
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Employment History</h4>
+                                <div className="overflow-x-auto border rounded-t-lg rounded-b-lg border-slate-200">
+                                    <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Employer</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Position</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Dates</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-200">
+                                            {offender.employments && offender.employments
+                                                .sort((a, b) => {
+                                                    const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+                                                    const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+                                                    return dateB - dateA;
+                                                })
+                                                .map((emp, index, arr) => {
+                                                    const isLast = index === arr.length - 1;
+
+                                                    let statusBadge;
+                                                    if (emp.is_current) {
+                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">Current</span>;
+                                                    } else if (isLast) {
+                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Initial</span>;
+                                                    } else {
+                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">Prior</span>;
+                                                    }
+
+                                                    return (
+                                                        <tr key={emp.employment_id || index} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                {statusBadge}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900 font-medium">
+                                                                {emp.employer_name}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                                                                {emp.position}
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs font-semibold text-slate-700">Start: {safeDate(emp.start_date)}</span>
+                                                                    {emp.end_date && <span className="text-xs text-slate-400">End: {safeDate(emp.end_date)}</span>}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            {(!offender.employments || offender.employments.length === 0) && (
+                                                <tr>
+                                                    <td colSpan="4" className="px-4 py-8 text-center text-sm text-slate-500 italic">
+                                                        No employment history available.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
-                    </div >
+                    </div>
                 );
             default:
                 return null;
