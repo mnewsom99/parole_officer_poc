@@ -35,13 +35,26 @@ const FieldModeModule = () => {
         }
     }, [selectedOffender]);
 
+    const [error, setError] = useState(null);
+
     const searchOffenders = async (term) => {
         setIsLoading(true);
+        setError(null);
         try {
+            console.log(`Searching: ${term}`); // Debug log
             const response = await axios.get(`http://localhost:8000/offenders?search=${term}&limit=50`);
-            setOffenders(response.data.data || []);
-        } catch (error) {
-            console.error("Search failed:", error);
+            console.log('Search Response:', response.data); // Debug log
+            if (response.data && Array.isArray(response.data.data)) {
+                setOffenders(response.data.data);
+            } else {
+                console.error("Unexpected API response format:", response.data);
+                setError("Invalid server response format");
+                setOffenders([]);
+            }
+        } catch (err) {
+            console.error("Search failed:", err);
+            setError(err.message || "Failed to load offenders");
+            setOffenders([]);
         } finally {
             setIsLoading(false);
         }
@@ -335,9 +348,16 @@ const FieldModeModule = () => {
                 ) : (
                     // --- Search List View ---
                     <div className="space-y-3">
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
+                                <p className="font-bold">Error loading data</p>
+                                <p className="text-sm">{error}</p>
+                                <button onClick={() => searchOffenders(searchTerm)} className="mt-2 text-sm underline">Retry</button>
+                            </div>
+                        )}
                         {isLoading && <p className="text-center text-slate-400 py-4">Searching database...</p>}
 
-                        {!isLoading && offenders.map(offender => (
+                        {!isLoading && !error && offenders.map(offender => (
                             <div
                                 key={offender.id}
                                 onClick={() => setSelectedOffender(offender)}
@@ -358,7 +378,7 @@ const FieldModeModule = () => {
                             </div>
                         ))}
 
-                        {!isLoading && offenders.length === 0 && (
+                        {!isLoading && !error && offenders.length === 0 && (
                             <div className="text-center py-10 text-slate-400">
                                 <User className="w-12 h-12 mx-auto mb-2 opacity-50" />
                                 <p>No offenders found</p>

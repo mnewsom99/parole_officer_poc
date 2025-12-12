@@ -147,7 +147,8 @@ def get_offenders(
                 {
                     "employment_id": str(emp.employment_id),
                     "employer": emp.employer_name,
-                    "position": emp.position,
+                    # "position": emp.position, # Field does not exist in model
+                    "position": "Employee", # Placeholder until DB migration
                     "phone": emp.phone,
                     "supervisor": emp.supervisor,
                     "start_date": emp.start_date.isoformat() if emp.start_date else None,
