@@ -130,6 +130,7 @@ class Task(Base):
     sub_category = Column(String(50))
     due_date = Column(Date)
     status = Column(String(20), default='Pending', index=True)
+    is_parole_plan = Column(Boolean, default=False) # New field
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -406,8 +407,73 @@ class AutomationRule(Base):
     task_description = Column(Text)
     task_priority = Column(String(20), default='Normal')
     due_offset = Column(Integer, default=7) # Days from trigger date to due date
+    action_is_parole_plan = Column(Boolean, default=False) # New field
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+
+
+# --- Generic Assessment Engine Models ---
+
+class AssessmentInstrument(Base):
+    __tablename__ = 'assessment_instruments'
+    instrument_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False) # e.g. "ORAS-CST"
+    version = Column(String(50)) # e.g. "v1.0"
+    target_populations = Column(JSON) # e.g. ["Male", "Female"]
+    scoring_method = Column(String(50), default='Additive') # Additive, Weighted
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    domains = relationship("AssessmentDomain", back_populates="instrument", cascade="all, delete-orphan")
+    scoring_tables = relationship("ScoringTable", back_populates="instrument", cascade="all, delete-orphan")
+
+class AssessmentDomain(Base):
+    __tablename__ = 'assessment_domains'
+    domain_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    instrument_id = Column(UUID(as_uuid=True), ForeignKey('assessment_instruments.instrument_id'), index=True)
+    name = Column(String(100), nullable=False) # e.g. "Criminal History"
+    order_index = Column(Integer, default=0)
+    max_score = Column(Integer) # For visual gauges
+    
+    instrument = relationship("AssessmentInstrument", back_populates="domains")
+    items = relationship("AssessmentItem", back_populates="domain", cascade="all, delete-orphan")
+
+class AssessmentItem(Base):
+    __tablename__ = 'assessment_items'
+    item_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    domain_id = Column(UUID(as_uuid=True), ForeignKey('assessment_domains.domain_id'), index=True)
+    text = Column(String(500), nullable=False) # The Question
+    control_type = Column(String(50), default='Radio') # Radio, Checkbox, NumberInput
+    order_index = Column(Integer, default=0)
+    custom_tags = Column(JSON) # e.g. ["Employment", "Needs"]
+    
+    domain = relationship("AssessmentDomain", back_populates="items")
+    options = relationship("AssessmentOption", back_populates="item", cascade="all, delete-orphan")
+
+class AssessmentOption(Base):
+    __tablename__ = 'assessment_options'
+    option_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    item_id = Column(UUID(as_uuid=True), ForeignKey('assessment_items.item_id'), index=True)
+    label = Column(String(255), nullable=False) # Display text
+    value = Column(String(50)) # Backend value (e.g. "0", "1", "yes")
+    points = Column(Integer, default=0) # Score contribution
+    order_index = Column(Integer, default=0)
+
+    item = relationship("AssessmentItem", back_populates="options")
+
+class ScoringTable(Base):
+    __tablename__ = 'scoring_tables'
+    table_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    instrument_id = Column(UUID(as_uuid=True), ForeignKey('assessment_instruments.instrument_id'), index=True)
+    domain_id = Column(UUID(as_uuid=True), ForeignKey('assessment_domains.domain_id'), nullable=True) # If null, applies to Total Score
+    population_filter = Column(String(50)) # e.g. "Male", "Female", or "All"
+    min_score = Column(Integer, nullable=False)
+    max_score = Column(Integer, nullable=False)
+    result_level = Column(String(50), nullable=False) # e.g. "High", "Moderate"
+    recommendation = Column(Text) # Actionable output
+
+    instrument = relationship("AssessmentInstrument", back_populates="scoring_tables")
+    domain = relationship("AssessmentDomain")

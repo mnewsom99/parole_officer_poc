@@ -395,6 +395,32 @@ def update_employment_status(offender_id: UUID, status_data: dict, db: Session =
 def get_urinalysis(offender_id: UUID, db: Session = Depends(get_db)):
     return db.query(models.Urinalysis).filter(models.Urinalysis.offender_id == offender_id).options(joinedload(models.Urinalysis.collected_by)).order_by(models.Urinalysis.date.desc()).all()
 
+@router.post("/offenders/{offender_id}/urinalysis", response_model=schemas.Urinalysis)
+def create_urinalysis(offender_id: UUID, ua: schemas.UrinalysisCreate, db: Session = Depends(get_db)):
+    # Mock collector for now
+    collector = db.query(models.Officer).first()
+    
+    new_ua = models.Urinalysis(
+        offender_id=offender_id,
+        collected_by_id=collector.officer_id if collector else None,
+        date=ua.date,
+        test_type=ua.test_type,
+        result=ua.result,
+        lab_name=ua.lab_name,
+        notes=ua.notes
+    )
+    db.add(new_ua)
+    db.commit()
+    db.refresh(new_ua)
+
+    # Trigger Automation Check
+    if new_ua.result == "Positive":
+       from . import automations
+       offender = db.query(models.Offender).filter(models.Offender.offender_id == offender_id).first()
+       automations.check_event_triggers("positive_ua", offender, db)
+
+    return new_ua
+
 @router.get("/offenders/{offender_id}/notes", response_model=List[schemas.CaseNote])
 def get_case_notes(offender_id: UUID, db: Session = Depends(get_db)):
     return db.query(models.CaseNote).filter(models.CaseNote.offender_id == offender_id).options(joinedload(models.CaseNote.author)).order_by(models.CaseNote.is_pinned.desc(), models.CaseNote.date.desc()).all()

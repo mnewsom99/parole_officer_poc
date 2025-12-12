@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { createPortal } from 'react-dom';
+
 import { UserContext } from '../../core/context/UserContext';
 import axios from 'axios';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, AlertTriangle, FileText, Activity, Shield, Beaker, Plus, CheckCircle, Clock, Trash2, Pin, PinOff, DollarSign, ExternalLink, MoreHorizontal, ChevronRight, ChevronLeft, X, Flag, Briefcase, Paperclip, Clipboard } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Activity, Shield, Plus, Clock, Pin, PinOff, ChevronRight, X, Paperclip, CheckSquare } from 'lucide-react';
 import Modal from '../common/Modal';
 
-import TaskModal from '../modals/TaskModal'; // Import
+import TaskModal from '../modals/TaskModal';
 import ModuleRegistry from '../../core/ModuleRegistry';
+import PersonalDetailsTab from './tabs/PersonalDetailsTab';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const OffenderProfile = () => {
@@ -24,30 +25,10 @@ const OffenderProfile = () => {
 
     const [activeTab, setActiveTab] = useState('overview');
     const [showNotesModal, setShowNotesModal] = useState(false);
-    const [showEmploymentModal, setShowEmploymentModal] = useState(false); // New
-    const [employmentStatus, setEmploymentStatus] = useState('Unemployed'); // New
-    const [unemployableReason, setUnemployableReason] = useState(''); // New
-    const [newEmployment, setNewEmployment] = useState({
-        employer_name: '',
-        address_line_1: '',
-        supervisor: '',
-        phone: '',
-        pay_rate: '',
-        is_current: true
-    });
+    // Employment State moved to PersonalDetailsTab
     const [showAppointmentModal, setShowAppointmentModal] = useState(false);
 
-    // Housing / Move State
-    const [showMoveModal, setShowMoveModal] = useState(false);
-    const [moveForm, setMoveForm] = useState({
-        address_line_1: '',
-        city: '',
-        state: 'AZ',
-        zip_code: '',
-        start_date: new Date().toISOString().split('T')[0],
-        housing_type: 'Residence',
-        notes: ''
-    });
+    // Housing State moved to PersonalDetailsTab
 
     // --- Task / Parole Plan State ---
     const [parolePlanTasks, setParolePlanTasks] = useState([]);
@@ -55,9 +36,7 @@ const OffenderProfile = () => {
     const [selectedTask, setSelectedTask] = useState(null);
     const [selectedTaskFile, setSelectedTaskFile] = useState(null);
 
-    // Editing State
-    const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState({});
+    // Editing State moved to PersonalDetailsTab
 
     // Data States
     const [notes, setNotes] = useState([]);
@@ -142,47 +121,7 @@ const OffenderProfile = () => {
 
 
 
-    const handleAddEmployment = async () => {
-        try {
-            await axios.post(`http://localhost:8000/offenders/${offenderId}/employment`, newEmployment);
-            setShowEmploymentModal(false);
-            fetchData();
-            setNewEmployment({
-                employer_name: '',
-                address_line_1: '',
-                city: '',
-                state: '',
-                zip_code: '',
-                supervisor: '',
-                phone: '',
-                pay_rate: '',
-                is_current: true
-            });
-        } catch (error) {
-            console.error("Error adding employment:", error);
-        }
-    }
-
-
-    const handleMoveOffender = async () => {
-        try {
-            await axios.post(`http://localhost:8000/offenders/${offenderId}/residences/move`, moveForm);
-            setShowMoveModal(false);
-            fetchData(); // Refresh data
-            // Reset form
-            setMoveForm({
-                address_line_1: '',
-                city: '',
-                state: 'AZ',
-                zip_code: '',
-                start_date: new Date().toISOString().split('T')[0],
-                housing_type: 'Residence',
-                notes: ''
-            });
-        } catch (error) {
-            console.error("Error moving offender:", error);
-        }
-    };
+    // Employment & Move handlers moved to PersonalDetailsTab
 
     const [error, setError] = useState(null);
 
@@ -227,12 +166,7 @@ const OffenderProfile = () => {
         }
     }, [offenderId]);
 
-    useEffect(() => {
-        if (offender) {
-            setEmploymentStatus(offender.employment_status || 'Unemployed');
-            setUnemployableReason(offender.unemployable_reason || '');
-        }
-    }, [offender]);
+    // useEffect for employment status moved to PersonalDetailsTab
 
     useEffect(() => {
         // Note types validation or fallback if needed
@@ -265,116 +199,11 @@ const OffenderProfile = () => {
         ));
     };
 
-    const handleAddTask = () => {
-        // This function is no longer directly used for adding tasks via inline form.
-        // TaskModal handles adding/editing.
-    };
-
-    const handleDeleteTask = (id) => {
-        // This function is no longer directly used for deleting tasks via inline button.
-        // TaskModal handles deleting.
-    };
 
 
 
-    const handleSaveChanges = async () => {
-        try {
-            const changes = [];
-            const fieldLabels = {
-                phone: 'Phone Number',
-                email: 'Email Address',
-                gender: 'Gender',
-                releaseType: 'Release Type',
-                releaseDate: 'Start Date',
-                address: 'Current Address',
-                reversionDate: 'Reversion Date',
-                gangAffiliation: 'Gang Affiliation',
-                risk: 'Risk Level'
-            };
 
-            const officerName = currentUser?.name || 'Officer';
-            let addressChanged = false;
-
-            // 1. Identify Changes
-            Object.keys(editForm).forEach(key => {
-                if (offender[key] !== editForm[key] && fieldLabels[key]) {
-                    const oldVal = offender[key] || 'empty';
-                    const newVal = editForm[key] || 'empty';
-
-                    if (key === 'address' || key === 'city' || key === 'state' || key === 'zip') {
-                        addressChanged = true;
-                    }
-
-                    changes.push({
-                        field: fieldLabels[key],
-                        oldVal,
-                        newVal
-                    });
-                }
-            });
-
-            // 2. Handle Address Change (Move)
-            if (addressChanged) {
-                // Trigger Move Logic
-                // We need to parse address components or assume they are in editForm
-                // The edit form for address was a single text input in some places or composite?
-                // In the render: <input value={editForm.address} ... />
-                // But move expects line_1, city, etc.
-                // For now, if "address" string changed, we treat it as address_line_1, and reuse existing city/state/zip if not changed
-
-                const movePayload = {
-                    address_line_1: editForm.address,
-                    city: editForm.city || offender.city || 'Phoenix', // Fallbacks
-                    state: editForm.state || offender.state || 'AZ',
-                    zip_code: editForm.zip_code || editForm.zip || offender.zip || '85000',
-                    start_date: new Date().toISOString().split('T')[0], // Today
-                    housing_type: offender.housingType || 'Private', // Keep existing type
-                    notes: 'Address corrected via profile edit.'
-                };
-
-                await axios.post(`http://localhost:8000/offenders/${offenderId}/residences/move`, movePayload);
-            }
-
-            // 3. Handle General Updates
-            const generalUpdates = {};
-            // Map frontend fields to backend fields
-            if (editForm.phone !== offender.phone) generalUpdates.phone = editForm.phone;
-            if (editForm.email !== offender.email) generalUpdates.email = editForm.email;
-            if (editForm.gender !== offender.gender) generalUpdates.gender = editForm.gender;
-            if (editForm.releaseType !== offender.releaseType) generalUpdates.release_type = editForm.releaseType;
-            if (editForm.releaseType !== offender.releaseType) generalUpdates.release_type = editForm.releaseType;
-            // Add date handling if formats align (YYYY-MM-DD usually works)
-            if (editForm.gangAffiliation !== offender.gangAffiliation) generalUpdates.gang_affiliation = editForm.gangAffiliation;
-            if (editForm.employment_status !== offender.employment_status) generalUpdates.employment_status = editForm.employment_status;
-            if (editForm.unemployable_reason !== offender.unemployable_reason) generalUpdates.unemployable_reason = editForm.unemployable_reason;
-
-            if (Object.keys(generalUpdates).length > 0) {
-                await axios.put(`http://localhost:8000/offenders/${offenderId}`, generalUpdates);
-            }
-
-            // 4. Create System Audit Note (Frontend optimistic or let backend handle?)
-            // Backend move handles its note.
-            // We should add note for NON-address changes manually if backend doesnt.
-            // backend update_offender DOES NOT add note. So we do it here.
-
-            const nonAddressChanges = changes.filter(c => c.field !== 'Current Address');
-            if (nonAddressChanges.length > 0) {
-                const noteContent = nonAddressChanges.map(c => `${c.field}: "${c.oldVal}" -> "${c.newVal}"`).join(', ');
-                await axios.post(`http://localhost:8000/offenders/${offenderId}/notes`, {
-                    content: `Profile Updated by ${officerName}: ${noteContent}`,
-                    type: 'System'
-                });
-            }
-
-            // 5. Refresh
-            await fetchData();
-            setIsEditing(false);
-
-        } catch (error) {
-            console.error("Error saving profile:", error);
-            alert("Failed to save changes. Please try again.");
-        }
-    };
+    // handleSaveChanges moved to PersonalDetailsTab
 
     const handleAddNote = async () => {
         if (!newNoteContent.trim()) return;
@@ -454,8 +283,8 @@ const OffenderProfile = () => {
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: FileText },
-        ...ModuleRegistry.getTabs(),
         { id: 'detail', label: 'Detail View', icon: Phone },
+        ...ModuleRegistry.getTabs(),
     ];
 
 
@@ -476,7 +305,7 @@ const OffenderProfile = () => {
                             {/* Parole Plan / Tasks */}
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-slate-800">Parole Plan</h3>
+                                    <h3 className="font-bold text-slate-800">Parole Plan Objectives</h3>
                                     <button
                                         onClick={() => {
                                             setSelectedTask(null);
@@ -489,54 +318,83 @@ const OffenderProfile = () => {
                                     </button>
                                 </div>
 
-                                <div className="space-y-6 max-h-64 overflow-y-auto pr-2">
+                                <div className="space-y-6 max-h-96 overflow-y-auto pr-2">
+                                    {/* Objectives Section */}
                                     <div className="space-y-3">
-                                        {parolePlanTasks.length === 0 && (
-                                            <p className="text-xs text-slate-400 italic">No tasks found for this offender.</p>
+                                        {parolePlanTasks.filter(t => t.is_parole_plan).length === 0 && (
+                                            <p className="text-xs text-slate-400 italic">No objectives set.</p>
                                         )}
                                         {parolePlanTasks
-                                            .sort((a, b) => {
-                                                if (a.status === 'Completed' && b.status !== 'Completed') return 1;
-                                                if (a.status !== 'Completed' && b.status === 'Completed') return -1;
-                                                return new Date(a.due_date || a.created_at) - new Date(b.due_date || b.created_at);
-                                            })
-                                            .map(task => {
-                                                const taskDate = task.due_date ? new Date(task.due_date) : null;
-                                                const isPastDue = task.status === 'Pending' && taskDate && taskDate < new Date();
-                                                const dotColor = task.status === 'Completed' ? 'bg-green-500' :
-                                                    isPastDue ? 'bg-red-500' :
-                                                        task.status === 'Pending' ? 'bg-yellow-500' :
-                                                            'bg-slate-300';
-
-                                                return (
-                                                    <div
-                                                        key={task.task_id}
-                                                        onClick={() => {
-                                                            setSelectedTask(task);
-                                                            setShowTaskModal(true);
-                                                        }}
-                                                        className="flex items-center gap-3 group hover:bg-slate-50 p-2 rounded -mx-2 transition-colors cursor-pointer"
-                                                    >
-                                                        <div className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></div>
-
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-sm font-medium truncate ${task.status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                                                                    {task.title}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                                                                <Calendar size={10} />
-                                                                <span>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Date'}</span>
-                                                                {task.status === 'Completed' && <span className="text-green-600 font-medium ml-2">Done</span>}
-                                                            </div>
-                                                        </div>
-
-                                                        <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400" />
+                                            .filter(t => t.is_parole_plan)
+                                            .sort((a, b) => new Date(a.due_date || a.created_at) - new Date(b.due_date || b.created_at))
+                                            .map(task => (
+                                                <div
+                                                    key={task.task_id}
+                                                    onClick={() => { setSelectedTask(task); setShowTaskModal(true); }}
+                                                    className="flex items-center gap-3 bg-violet-50 border border-violet-100 p-3 rounded-lg cursor-pointer hover:bg-violet-100 transition-colors"
+                                                >
+                                                    <div className={`w-3 h-3 rounded-full ${task.status === 'Completed' ? 'bg-green-500' : 'bg-violet-500'} shrink-0`}></div>
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-bold text-slate-800">{task.title}</p>
+                                                        <p className="text-xs text-slate-500">{task.description}</p>
                                                     </div>
-                                                );
-                                            })
+                                                    {task.status === 'Completed' && <CheckSquare size={16} className="text-green-600" />}
+                                                </div>
+                                            ))
                                         }
+                                    </div>
+
+                                    <div className="border-t border-slate-100 pt-4">
+                                        <h4 className="text-sm font-bold text-slate-700 mb-3">Tasks & To-Dos</h4>
+                                        <div className="space-y-3">
+                                            {parolePlanTasks.filter(t => !t.is_parole_plan).length === 0 && (
+                                                <p className="text-xs text-slate-400 italic">No pending tasks.</p>
+                                            )}
+                                            {parolePlanTasks
+                                                .filter(t => !t.is_parole_plan)
+                                                .sort((a, b) => {
+                                                    if (a.status === 'Completed' && b.status !== 'Completed') return 1;
+                                                    if (a.status !== 'Completed' && b.status === 'Completed') return -1;
+                                                    return new Date(a.due_date || a.created_at) - new Date(b.due_date || b.created_at);
+                                                })
+                                                .map(task => {
+                                                    const taskDate = task.due_date ? new Date(task.due_date) : null;
+                                                    const isPastDue = task.status === 'Pending' && taskDate && taskDate < new Date();
+                                                    const dotColor = task.status === 'Completed' ? 'bg-green-500' :
+                                                        isPastDue ? 'bg-red-500' :
+                                                            task.status === 'Pending' ? 'bg-yellow-500' :
+                                                                'bg-slate-300';
+
+                                                    return (
+                                                        <div
+                                                            key={task.task_id}
+                                                            onClick={() => {
+                                                                setSelectedTask(task);
+                                                                setShowTaskModal(true);
+                                                            }}
+                                                            className="flex items-center gap-3 group hover:bg-slate-50 p-2 rounded -mx-2 transition-colors cursor-pointer"
+                                                        >
+                                                            <div className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></div>
+
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`text-sm font-medium truncate ${task.status === 'Completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                                                                        {task.title}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                                                                    <Calendar size={10} />
+                                                                    <span>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Date'}</span>
+                                                                    {task.status === 'Completed' && <span className="text-green-600 font-medium ml-2">Done</span>}
+                                                                </div>
+                                                            </div>
+
+                                                            <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400" />
+                                                        </div>
+                                                    );
+                                                })
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -649,583 +507,7 @@ const OffenderProfile = () => {
                 );
             // Modules are handled dynamically above
             case 'detail':
-                return (
-                    <div className="space-y-6">
-                        {/* Personal & Supervision Info */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                    <FileText size={18} className="text-blue-600" />
-                                    Personal & Supervision Details
-                                </h3>
-                                {!isEditing ? (
-                                    <button
-                                        onClick={() => {
-                                            setEditForm(JSON.parse(JSON.stringify(offender)));
-                                            setIsEditing(true);
-                                        }}
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        Edit Profile
-                                    </button>
-                                ) : (
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setIsEditing(false)}
-                                            className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleSaveChanges}
-                                            className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded font-medium"
-                                        >
-                                            Save Changes
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Demographics & Contact</h4>
-                                    <div className="space-y-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
-                                                <Phone size={18} />
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-xs text-slate-500 font-medium">Primary Phone</p>
-                                                {isEditing ? (
-                                                    <input
-                                                        type="tel"
-                                                        value={editForm.phone || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                                        className="w-full text-sm font-semibold text-slate-800 border-b border-blue-500 focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-semibold text-slate-800">{offender.phone}</p>
-                                                )}
-                                                <p className="text-xs text-slate-400">Mobile</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
-                                                <Mail size={18} />
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-xs text-slate-500 font-medium">Email Address</p>
-                                                {isEditing ? (
-                                                    <input
-                                                        type="email"
-                                                        value={editForm.email || `${editForm.name?.toLowerCase().replace(', ', '.')}@email.com`}
-                                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                                        className="w-full text-sm font-semibold text-slate-800 border-b border-blue-500 focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-semibold text-slate-800">{offender.name.toLowerCase().replace(', ', '.')}@email.com</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
-                                                <Calendar size={18} />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-medium">Age</p>
-                                                <p className="text-sm font-semibold text-slate-800">
-                                                    {isEditing ? (
-                                                        <input
-                                                            type="text"
-                                                            value="39"
-                                                            disabled
-                                                            className="w-12 text-sm font-semibold text-slate-400 border-b border-transparent bg-transparent cursor-not-allowed"
-                                                        />
-                                                    ) : (
-                                                        "39"
-                                                    )}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 pt-2">
-                                            <div>
-                                                <p className="text-xs text-slate-500">Gender</p>
-                                                {isEditing ? (
-                                                    <select
-                                                        value={editForm.gender || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
-                                                    >
-                                                        <option value="Male">Male</option>
-                                                        <option value="Female">Female</option>
-                                                        <option value="Other">Other</option>
-                                                    </select>
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{offender.gender || 'Not Specified'}</p>
-                                                )}
-                                            </div>
-                                            {offender.isSexOffender && (
-                                                <div className="col-span-2">
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                                        Sex Offender Registry
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Supervision Status</h4>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <p className="text-xs text-slate-500">Release Type</p>
-                                                {isEditing ? (
-                                                    <select
-                                                        value={editForm.releaseType || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, releaseType: e.target.value })}
-                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
-                                                    >
-                                                        <option value="Parole">Parole</option>
-                                                        <option value="Probation">Probation</option>
-                                                        <option value="Mandatory Supervision">Mandatory Supervision</option>
-                                                        <option value="Transition">Transition</option>
-                                                    </select>
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{offender.releaseType || 'Parole'}</p>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500">Start Date</p>
-                                                {isEditing ? (
-                                                    <input
-                                                        type="date"
-                                                        value={editForm.releaseDate || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, releaseDate: e.target.value })}
-                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{offender.releaseDate || 'N/A'}</p>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="flex justify-between items-center">
-                                                    <p className="text-xs text-slate-500">Current Address</p>
-                                                    {!isEditing && (
-                                                        <button
-                                                            onClick={() => setShowMoveModal(true)}
-                                                            className="text-[10px] text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
-                                                        >
-                                                            <MapPin size={10} />
-                                                            Move
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {isEditing ? (
-                                                    <div className="space-y-1">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Street"
-                                                            value={editForm.address || ''}
-                                                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                                                            className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <p className="text-sm font-medium text-slate-800">{offender.address || 'N/A'}</p>
-                                                        {offender.housingType && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 mt-1">
-                                                                {offender.housingType}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {offender.releaseType === 'Transition' && (
-                                                <div>
-                                                    <p className="text-xs text-slate-500 font-bold text-orange-600">Reversion Date</p>
-                                                    {isEditing ? (
-                                                        <input
-                                                            type="date"
-                                                            value={editForm.reversionDate || ''}
-                                                            onChange={(e) => setEditForm({ ...editForm, reversionDate: e.target.value })}
-                                                            className="w-full text-sm font-bold text-orange-700 border-b border-orange-500 focus:outline-none"
-                                                        />
-                                                    ) : (
-                                                        <p className="text-sm font-bold text-orange-700">{offender.reversionDate || 'TBD'}</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {offender.isGangMember && (
-                                            <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <AlertTriangle size={14} className="text-amber-500" />
-                                                    <span className="text-xs font-bold text-slate-700">Gang Affiliation</span>
-                                                </div>
-                                                {isEditing ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editForm.gangAffiliation || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, gangAffiliation: e.target.value })}
-                                                        className="w-full text-sm font-medium text-slate-800 border-b border-amber-500 focus:outline-none bg-transparent"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{offender.gangAffiliation}</p>
-                                                )}
-                                            </div>
-                                        )}
-
-
-
-                                        <div className="mt-4">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="text-xs text-slate-500">Employment</p>
-                                                {!isEditing && (
-                                                    <button
-                                                        onClick={() => setShowEmploymentModal(true)}
-                                                        className="text-[10px] text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
-                                                    >
-                                                        <Briefcase size={10} />
-                                                        Manage
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            {isEditing ? (
-                                                <div className="space-y-2">
-                                                    <select
-                                                        value={editForm.employment_status || 'Unemployed'}
-                                                        onChange={(e) => setEditForm({ ...editForm, employment_status: e.target.value })}
-                                                        className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
-                                                    >
-                                                        <option value="Employed">Employed</option>
-                                                        <option value="Unemployed">Unemployed</option>
-                                                        <option value="Unemployable">Unemployable</option>
-                                                    </select>
-
-                                                    {editForm.employment_status === 'Unemployable' && (
-                                                        <select
-                                                            value={editForm.unemployable_reason || ''}
-                                                            onChange={(e) => setEditForm({ ...editForm, unemployable_reason: e.target.value })}
-                                                            className="w-full text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-1 outline-none"
-                                                        >
-                                                            <option value="">Select Reason...</option>
-                                                            <option value="SSI">SSI (Disability)</option>
-                                                            <option value="SMI">SMI (Mental Health)</option>
-                                                            <option value="Retired">Retired</option>
-                                                            <option value="Treatment">In Treatment</option>
-                                                            <option value="Student">Student</option>
-                                                            <option value="Other">Other</option>
-                                                        </select>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${offender.employment_status === 'Employed' ? 'bg-green-500' :
-                                                            offender.employment_status === 'Unemployed' ? 'bg-orange-500' :
-                                                                'bg-slate-400'
-                                                            }`}></div>
-                                                        <p className="text-sm font-medium text-slate-800">
-                                                            {offender.employment_status || 'Unemployed'}
-                                                        </p>
-                                                    </div>
-
-                                                    {offender.employment_status === 'Employed' && offender.employments?.some(e => e.is_current) ? (
-                                                        (() => {
-                                                            const activeEmp = offender.employments.find(e => e.is_current);
-                                                            return (
-                                                                <div className="mt-1 pl-4 border-l-2 border-slate-100">
-                                                                    <p className="text-sm font-bold text-slate-800">{activeEmp.employer_name}</p>
-                                                                    <p className="text-xs text-slate-500">{activeEmp.position}</p>
-                                                                </div>
-                                                            );
-                                                        })()
-                                                    ) : offender.employment_status === 'Unemployable' ? (
-                                                        <p className="text-xs text-slate-500 italic mt-1 pl-4">
-                                                            Reason: {offender.unemployable_reason || 'Not Specified'}
-                                                        </p>
-                                                    ) : null}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-4">
-                                            <p className="text-xs text-slate-500 mb-1">Risk Assessment (ORAS)</p>
-                                            {isEditing ? (
-                                                <select
-                                                    value={editForm.risk || 'Low'}
-                                                    onChange={(e) => setEditForm({ ...editForm, risk: e.target.value })}
-                                                    className="w-full text-sm font-medium text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
-                                                >
-                                                    <option value="Low">Low</option>
-                                                    <option value="Medium">Medium</option>
-                                                    <option value="High">High</option>
-                                                </select>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${offender.risk === 'High' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                        offender.risk === 'Medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                            'bg-green-50 text-green-700 border-green-200'
-                                                        }`}>
-                                                        {offender.risk} Risk
-                                                    </span>
-                                                    <span className="text-xs text-slate-400">(See Risk Tab for details)</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Programs & Interventions */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                    <Activity size={18} className="text-blue-600" />
-                                    Programs & Interventions
-                                </h3>
-                                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ Add Program</button>
-                            </div>
-
-                            {programs && programs.length > 0 ? (
-                                <div className="grid grid-cols-1 gap-3">
-                                    {programs.map(prog => (
-                                        <div key={prog.program_id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${prog.category === 'Sanction' ? 'bg-red-100 text-red-700' :
-                                                        prog.category === 'Treatment' ? 'bg-purple-100 text-purple-700' :
-                                                            'bg-blue-100 text-blue-700'
-                                                        }`}>{prog.category}</span>
-                                                    <span className="text-sm font-semibold text-slate-800">{prog.name}</span>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-1">Provider: {prog.provider} • {prog.start_date ? `Started: ${prog.start_date}` : 'Not started'}</p>
-                                            </div>
-                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${prog.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                                prog.status === 'Active' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-slate-200 text-slate-600'
-                                                }`}>
-                                                {prog.status}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                    <p className="text-sm text-slate-500">No active programs or interventions.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Housing (Existing) */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <MapPin size={18} className="text-blue-600" />
-                                Housing Details
-                            </h3>
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="font-semibold text-slate-800">
-                                        {offender.housingType} Residence
-                                    </span>
-                                    <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full border border-green-200">
-                                        Approved
-                                    </span>
-                                </div>
-                                <p className="text-sm text-slate-600 mb-1">{offender.address}</p>
-                                {offender.city && <p className="text-sm text-slate-600">{offender.city}, {offender.state} {offender.zip}</p>}
-                                <p className="text-xs text-slate-400 mt-2">Standard private residence. No facility services provided.</p>
-                            </div>
-
-                            {/* HOUSING HISTORY TABLE */}
-                            <div>
-                                <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Housing History</h4>
-                                <div className="overflow-x-auto border rounded-t-lg rounded-b-lg border-slate-200">
-                                    <table className="min-w-full divide-y divide-slate-200">
-                                        <thead className="bg-slate-50">
-                                            <tr>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Address</th>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Dates</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-slate-200">
-                                            {offender.residenceHistory && offender.residenceHistory
-                                                .sort((a, b) => {
-                                                    // Sort DESCENDING (Newest first)
-                                                    // Treat null/undefined start_date as "Oldest" (Time 0)
-                                                    const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
-                                                    const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
-                                                    return dateB - dateA;
-                                                })
-                                                .map((res, index, arr) => {
-                                                    // Logic for Status: Current, Initial, Prior
-
-                                                    // 1. Identify "Initial" (The record with the oldest start date)
-                                                    // Since we sorted DESC, the oldest record(s) are at the end. 
-                                                    // However, multiple records could have same oldest date (e.g. 0).
-                                                    // We'll find the absolute minimum timestamp in the array.
-                                                    const minTimestamp = arr.reduce((min, p) => {
-                                                        const t = p.startDate ? new Date(p.startDate).getTime() : 0;
-                                                        return t < min ? t : min;
-                                                    }, Infinity);
-
-                                                    const thisTimestamp = res.startDate ? new Date(res.startDate).getTime() : 0;
-                                                    const isInitial = thisTimestamp === minTimestamp;
-
-                                                    let statusBadge;
-                                                    if (res.isCurrent) {
-                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">Current</span>;
-                                                    } else if (isInitial) {
-                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Initial</span>;
-                                                    } else {
-                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">Prior</span>;
-                                                    }
-
-                                                    return (
-                                                        <tr key={res.residence_id || index} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                                {statusBadge}
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                                {res.housingType || 'Residence'}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-sm text-slate-600">
-                                                                <div className="font-medium text-slate-900">{res.address}</div>
-                                                                <div className="text-xs text-slate-500">{res.city}, {res.state} {res.zip}</div>
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-semibold text-slate-700">Start: {safeDate(res.startDate)}</span>
-                                                                    {res.endDate && <span className="text-xs text-slate-400">End: {safeDate(res.endDate)}</span>}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            {(!offender.residenceHistory || offender.residenceHistory.length === 0) && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-8 text-center text-sm text-slate-500 italic">
-                                                        No housing history available.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-
-
-
-                        {/* EMPLOYMENT DETAILS */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <Briefcase size={18} className="text-blue-600" />
-                                Employment Details
-                            </h3>
-
-                            {/* Current Employment Card */}
-                            {offender.employments && offender.employments.find(e => e.is_current) ? (
-                                (() => {
-                                    const currentEmp = offender.employments.find(e => e.is_current);
-                                    return (
-                                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="font-semibold text-slate-800">
-                                                    {currentEmp.employer_name}
-                                                </span>
-                                                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full border border-green-200">
-                                                    Active
-                                                </span>
-                                            </div>
-                                            <div className="font-medium text-slate-700 text-sm mb-1">{currentEmp.position}</div>
-                                            <p className="text-sm text-slate-600 mb-1">
-                                                {currentEmp.address_line_1}, {currentEmp.city}, {currentEmp.state}
-                                            </p>
-                                            {currentEmp.supervisor && <p className="text-xs text-slate-500 mt-2">Supervisor: {currentEmp.supervisor} • {currentEmp.phone}</p>}
-                                        </div>
-                                    );
-                                })()
-                            ) : (
-                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6 text-center">
-                                    <p className="text-sm text-slate-500 italic">No current employment record.</p>
-                                </div>
-                            )}
-
-                            {/* EMPLOYMENT HISTORY TABLE */}
-                            <div>
-                                <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Employment History</h4>
-                                <div className="overflow-x-auto border rounded-t-lg rounded-b-lg border-slate-200">
-                                    <table className="min-w-full divide-y divide-slate-200">
-                                        <thead className="bg-slate-50">
-                                            <tr>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Employer</th>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Position</th>
-                                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Dates</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-slate-200">
-                                            {offender.employments && offender.employments
-                                                .sort((a, b) => {
-                                                    const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
-                                                    const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
-                                                    return dateB - dateA;
-                                                })
-                                                .map((emp, index, arr) => {
-                                                    const isLast = index === arr.length - 1;
-
-                                                    let statusBadge;
-                                                    if (emp.is_current) {
-                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">Current</span>;
-                                                    } else if (isLast) {
-                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Initial</span>;
-                                                    } else {
-                                                        statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">Prior</span>;
-                                                    }
-
-                                                    return (
-                                                        <tr key={emp.employment_id || index} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                                {statusBadge}
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900 font-medium">
-                                                                {emp.employer_name}
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                                                                {emp.position}
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-semibold text-slate-700">Start: {safeDate(emp.start_date)}</span>
-                                                                    {emp.end_date && <span className="text-xs text-slate-400">End: {safeDate(emp.end_date)}</span>}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            {(!offender.employments || offender.employments.length === 0) && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-8 text-center text-sm text-slate-500 italic">
-                                                        No employment history available.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
+                return <PersonalDetailsTab offender={offender} onRefresh={fetchData} />;
             default:
                 return null;
         }
@@ -1254,7 +536,7 @@ const OffenderProfile = () => {
                         {/* Avatar */}
                         <div className="shrink-0 relative">
                             <img
-                                src={offender.image}
+                                src={offender.image && !offender.image.includes('ui-avatars') ? offender.image : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"}
                                 alt={offender.name}
                                 className="w-24 h-24 rounded-xl border-4 border-white/20 shadow-lg object-cover bg-indigo-800"
                             />
@@ -1449,82 +731,7 @@ const OffenderProfile = () => {
 
 
 
-            <Modal
-                isOpen={showEmploymentModal}
-                onClose={() => setShowEmploymentModal(false)}
-                title="Add Employment Details"
-            >
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Employer Name</label>
-                        <input
-                            value={newEmployment.employer_name}
-                            onChange={e => setNewEmployment({ ...newEmployment, employer_name: e.target.value })}
-                            className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
-                            placeholder="e.g. Acme Corp"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
-                            <input
-                                value={newEmployment.address_line_1}
-                                onChange={e => setNewEmployment({ ...newEmployment, address_line_1: e.target.value })}
-                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                            <input
-                                value={newEmployment.city}
-                                onChange={e => setNewEmployment({ ...newEmployment, city: e.target.value })}
-                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-                            <input
-                                value={newEmployment.phone}
-                                onChange={e => setNewEmployment({ ...newEmployment, phone: e.target.value })}
-                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Supervisor</label>
-                            <input
-                                value={newEmployment.supervisor}
-                                onChange={e => setNewEmployment({ ...newEmployment, supervisor: e.target.value })}
-                                className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Pay Rate (e.g. $15/hr)</label>
-                        <input
-                            value={newEmployment.pay_rate}
-                            onChange={e => setNewEmployment({ ...newEmployment, pay_rate: e.target.value })}
-                            className="w-full p-2 border rounded-lg outline-none focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-2 mt-6">
-                        <button
-                            onClick={() => setShowEmploymentModal(false)}
-                            className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleAddEmployment}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-                        >
-                            Save Employment
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            {/* Employment Modal removed - logic moved to PersonalDetailsTab */}
 
             <Modal
                 isOpen={showAppointmentModal}
@@ -1625,114 +832,7 @@ const OffenderProfile = () => {
                 }}
             />
             {/* Move Modal */}
-            {showMoveModal && createPortal(
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-slate-800">Change Address / Move</h3>
-                            <button onClick={() => setShowMoveModal(false)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">New Address</label>
-                                <input
-                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                    placeholder="123 New St"
-                                    value={moveForm.address_line_1}
-                                    onChange={e => setMoveForm({ ...moveForm, address_line_1: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">City</label>
-                                    <input
-                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                        placeholder="Phoenix"
-                                        value={moveForm.city}
-                                        onChange={e => setMoveForm({ ...moveForm, city: e.target.value })}
-                                    />
-                                </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">State</label>
-                                    <input
-                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                        placeholder="AZ"
-                                        value={moveForm.state}
-                                        onChange={e => setMoveForm({ ...moveForm, state: e.target.value })}
-                                    />
-                                </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Zip</label>
-                                    <input
-                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                        placeholder="85001"
-                                        value={moveForm.zip_code}
-                                        onChange={e => setMoveForm({ ...moveForm, zip_code: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                                        value={moveForm.start_date}
-                                        onChange={e => setMoveForm({ ...moveForm, start_date: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Housing Type</label>
-                                    <select
-                                        className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
-                                        value={moveForm.housing_type}
-                                        onChange={e => setMoveForm({ ...moveForm, housing_type: e.target.value })}
-                                    >
-                                        <option value="">Select Type</option>
-                                        {housingTypeSettings?.types?.map((type, idx) => (
-                                            <option key={idx} value={type.name}>{type.name}</option>
-                                        ))}
-                                        {(!housingTypeSettings?.types || housingTypeSettings.types.length === 0) && (
-                                            <>
-                                                <option value="Residence">Residence</option>
-                                                <option value="Homeless">Homeless</option>
-                                                <option value="Halfway House">Halfway House</option>
-                                                <option value="Treatment Center">Treatment Center</option>
-                                            </>
-                                        )}
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notes (Optional)</label>
-                                <textarea
-                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm h-20"
-                                    placeholder="Reason for move, etc."
-                                    value={moveForm.notes}
-                                    onChange={e => setMoveForm({ ...moveForm, notes: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
-                            <button
-                                onClick={() => setShowMoveModal(false)}
-                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleMoveOffender}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                            >
-                                Confirm Move
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+            {/* Move Modal removed - logic moved to PersonalDetailsTab */}
         </div>
     );
 };

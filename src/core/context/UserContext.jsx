@@ -7,7 +7,9 @@ export const UserContext = createContext(null);
 export const UserProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Initialize loading state based on whether we have a token to verify
+    const [isLoading, setIsLoading] = useState(!!localStorage.getItem('token'));
 
     // Initialize: Check for token and fetch user
     useEffect(() => {
@@ -349,7 +351,7 @@ export const UserProvider = ({ children }) => {
             taskSettings,
             updateTaskSettings,
         }}>
-            {children}
+            {!isLoading && children}
         </UserContext.Provider>
     );
 };

@@ -3,6 +3,7 @@ from sqlalchemy import desc
 from datetime import datetime, timedelta
 from .. import models
 import json
+from . import automation_service
 
 def initialize_assessment(db: Session, offender_id: str, assessment_type: str):
     """
@@ -249,6 +250,15 @@ def submit_assessment(
     
     db.commit()
     db.refresh(assessment)
+
+    # Trigger Automations
+    try:
+        automation_service.check_automations(db, "risk_level_change", assessment.offender_id)
+        # Also trigger specific level event?
+        # e.g. automation_service.check_automations(db, f"risk_{assessment.final_risk_level.lower()}", assessment.offender_id)
+    except Exception as e:
+        print(f"Error triggering automations: {e}")
+
     return assessment
 
 
@@ -304,4 +314,13 @@ def create_type(db: Session, data: dict):
     db.commit()
     db.refresh(new_t)
     return new_t
+
+def delete_type(db: Session, type_id: int):
+    t = db.query(models.RiskAssessmentType).filter(models.RiskAssessmentType.type_id == type_id).first()
+    if not t:
+        raise ValueError("Assessment Type not found")
+        
+    db.delete(t)
+    db.commit()
+    return {"status": "success", "message": f"Assessment Type '{t.name}' deleted"}
 

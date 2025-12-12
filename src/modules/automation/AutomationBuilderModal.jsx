@@ -7,7 +7,7 @@ const AutomationBuilderModal = ({ isOpen, onClose, onSave }) => {
         name: '',
         trigger: { type: 'date', field: 'release_date', offset: 0, direction: 'after' },
         conditions: [],
-        action: { type: 'create_task', title: '', description: '', priority: 'Normal', due_offset: 7 }
+        action: { type: 'create_task', title: '', description: '', priority: 'Normal', due_offset: 7, action_is_parole_plan: false }
     });
 
     if (!isOpen) return null;
@@ -84,6 +84,11 @@ const AutomationBuilderModal = ({ isOpen, onClose, onSave }) => {
                                     <option value="release_date">Release Date</option>
                                     <option value="csed_date">CSED Date</option>
                                     <option value="intake_date">Intake Date</option>
+                                    <option value="positive_ua">Positive Drug Test</option>
+                                    <option value="risk_assessment_change">Risk Assessment Change</option>
+                                    <option value="violation_reported">Violation Reported</option>
+                                    <option value="address_change">Address Change</option>
+                                    <option value="employment_change">Employment Change</option>
                                 </select>
                             </div>
                         </div>
@@ -136,14 +141,34 @@ const AutomationBuilderModal = ({ isOpen, onClose, onSave }) => {
                                         <option value="risk_level">Risk Level</option>
                                         <option value="supervision_level">Supervision Level</option>
                                         <option value="assigned_office">Office</option>
+                                        <option value="release_date">Release Date</option>
+                                        <option value="csed_date">CSED Date</option>
+                                        <option value="intake_date">Intake Date</option>
                                     </select>
                                     <select
-                                        className="w-32 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                                        className="w-40 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                                         value={cond.operator}
                                         onChange={e => updateCondition(idx, 'operator', e.target.value)}
                                     >
-                                        <option value="equals">Equals</option>
-                                        <option value="not_equals">IsNot</option>
+                                        <optgroup label="Text">
+                                            <option value="equals">Equals</option>
+                                            <option value="not_equals">Does Not Equal</option>
+                                            <option value="contains">Contains</option>
+                                            <option value="starts_with">Starts With</option>
+                                            <option value="is_empty">Is Empty</option>
+                                            <option value="is_not_empty">Is Not Empty</option>
+                                        </optgroup>
+                                        <optgroup label="Numeric">
+                                            <option value="num_equals">Equals (=)</option>
+                                            <option value="greater_than">Greater Than (&gt;)</option>
+                                            <option value="less_than">Less Than (&lt;)</option>
+                                            <option value="is_between">Is Between</option>
+                                        </optgroup>
+                                        <optgroup label="Date">
+                                            <option value="date_equals">Equals</option>
+                                            <option value="is_before">Is Before</option>
+                                            <option value="is_after">Is After</option>
+                                        </optgroup>
                                     </select>
                                     <input
                                         type="text"
@@ -204,34 +229,50 @@ const AutomationBuilderModal = ({ isOpen, onClose, onSave }) => {
                                 <div className="space-y-1">
                                     <label className="text-sm font-semibold text-slate-700">Due Date</label>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm text-slate-500">Trigger +</span>
+                                        <span className="text-sm text-slate-500">Days after creation:</span>
                                         <input
                                             type="number"
                                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none"
                                             value={workflow.action.due_offset}
                                             onChange={e => setWorkflow({ ...workflow, action: { ...workflow.action, due_offset: parseInt(e.target.value) } })}
                                         />
-                                        <span className="text-sm text-slate-500">days</span>
                                     </div>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        Example: "2" means due 2 days after task is created.
+                                    </p>
                                 </div>
                             </div>
                         </div>
+
+                        <div className="flex items-center gap-2 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                            <input
+                                type="checkbox"
+                                id="autoParolePlan"
+                                checked={workflow.action.action_is_parole_plan}
+                                onChange={e => setWorkflow({ ...workflow, action: { ...workflow.action, action_is_parole_plan: e.target.checked } })}
+                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                            />
+                            <label htmlFor="autoParolePlan" className="text-sm font-medium text-indigo-900 cursor-pointer select-none">
+                                Add to Parole Plan (Key Checkpoint)
+                            </label>
+                        </div>
                     </div>
-
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-                    <button onClick={onClose} className="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
-                        Cancel
-                    </button>
-                    <button onClick={handleSave} className="px-6 py-2.5 font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-lg shadow-violet-500/30 flex items-center gap-2 transition-all">
-                        <Save size={18} />
-                        Save Rule
-                    </button>
-                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                <button onClick={onClose} className="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button onClick={handleSave} className="px-6 py-2.5 font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-lg shadow-violet-500/30 flex items-center gap-2 transition-all">
+                    <Save size={18} />
+                    Save Rule
+                </button>
             </div>
         </div>
+
     );
 };
 

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Activity, ExternalLink } from 'lucide-react';
 import Modal from '../../components/common/Modal'; // Adjust import path if needed
 
-const UATab = ({ offenderId }) => {
+const DrugTestingTab = ({ offenderId }) => {
     const [uaHistory, setUaHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -23,7 +23,7 @@ const UATab = ({ offenderId }) => {
             setError(null);
         } catch (err) {
             console.error("Error fetching UA history:", err);
-            setError("Failed to load urinalysis records.");
+            setError("Failed to load drug testing records.");
         } finally {
             setLoading(false);
         }
@@ -100,22 +100,21 @@ const UATab = ({ offenderId }) => {
                         <Activity className="w-8 h-8 text-slate-400" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-800 mb-2">No Test History</h3>
-                    <p className="text-slate-500 mb-6">No urinalysis records found for this offender.</p>
+                    <p className="text-slate-500 mb-6">No drug testing records found for this offender.</p>
                 </div>
             )}
 
             <Modal
                 isOpen={showUAModal}
                 onClose={() => setShowUAModal(false)}
-                title="Log Urinalysis" // Simplified modal placeholder for now, ideally extracted to separate file too
+                title="Log Drug Test"
             >
                 <div className="p-4 text-center text-slate-500 italic">
-                    Placeholder: Form to log new UA test would go here.
-                    (Extracted from OffenderProfile monolith)
+                    Placeholder: Form to log new drug test would go here.
                 </div>
             </Modal>
         </div>
     );
 };
 
-export default UATab;
+export default DrugTestingTab;

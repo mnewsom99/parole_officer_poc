@@ -33,3 +33,6 @@ def delete_rule(rule_id: int, db: Session = Depends(get_db)):
     db.delete(db_rule)
     db.commit()
     return db_rule
+    return db_rule
+
+

@@ -109,8 +109,9 @@ const MonthView = ({
                                         <div
                                             key={idx}
                                             className={`
-                                            text-[10px] px-1 py-0.5 rounded truncate font-medium
+                                            text-sm px-2 py-2 rounded truncate font-medium
                                             ${style.bg} ${style.text.replace('text-', 'text-opacity-90 text-white ')} 
+                                            min-h-[40px] shadow-sm flex items-center 
                                         `}
                                             onMouseEnter={(e) => handleEventMouseEnter(e, evt)}
                                             onMouseLeave={handleEventMouseLeave}

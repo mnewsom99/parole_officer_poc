@@ -273,7 +273,8 @@ const RiskSettings = () => {
             setSelectedTool(name); // Switch to new tool
         } catch (error) {
             console.error("Failed to create assessment type", error);
-            alert("Failed to create. Name might be duplicate.");
+            const msg = error.response?.data?.detail || "Failed to create. Name might be duplicate.";
+            alert(msg);
         }
     };
 
@@ -303,6 +304,62 @@ const RiskSettings = () => {
             console.error("Failed to save scoring rules", error);
             alert("Failed to save rules. Check console.");
         }
+    };
+
+    const handleDeleteType = async () => {
+        // 1. Try to find the actual Type object (Exact or Trimmed)
+        let typeObj = assessmentTypes.find(t => t.name === selectedTool);
+        if (!typeObj) {
+            typeObj = assessmentTypes.find(t => t.name.trim() === selectedTool.trim());
+        }
+
+        // 2. If Type exists, delete per normal flow
+        if (typeObj) {
+            if (!window.confirm(`Are you sure you want to delete the Assessment Tool "${typeObj.name}"? This action cannot be undone.`)) {
+                return;
+            }
+            try {
+                await axios.delete(`http://localhost:8000/assessments/types/${typeObj.type_id}`);
+                alert(`Deleted ${typeObj.name}`);
+                fetchData();
+                setSelectedTool('All');
+                return;
+            } catch (error) {
+                console.error("Failed to delete assessment type", error);
+                alert("Failed to delete. Ensure it is not in use.");
+                return;
+            }
+        }
+
+        // 3. Fallback: If it's ONLY a tag (not a configured Type)
+        // Find all questions that have this tag
+        const taggedQuestions = questions.filter(q => (q.assessments_list || "").includes(selectedTool));
+        const count = taggedQuestions.length;
+
+        if (count > 0) {
+            const confirmMsg = `"${selectedTool}" is not a configured Assessment Type object, but is used as a tag on ${count} questions.\n\nDo you want to REMOVE this tag from all ${count} questions to "delete" this tool from the list?`;
+            if (window.confirm(confirmMsg)) {
+                try {
+                    // Update all affected questions
+                    await Promise.all(taggedQuestions.map(q => {
+                        const newTags = (q.assessments_list || "")
+                            .split("|")
+                            .filter(t => t.trim() !== selectedTool.trim())
+                            .join("|");
+                        return axios.put(`http://localhost:8000/assessments/questions/${q.question_id}`, { assessments_list: newTags });
+                    }));
+                    alert(`Tag "${selectedTool}" removed from all questions.`);
+                    fetchData();
+                    setSelectedTool('All');
+                } catch (error) {
+                    console.error("Failed to remove tags", error);
+                    alert("Failed to update questions. Check console.");
+                }
+            }
+            return;
+        }
+
+        alert("Could not delete. Tool not found as Type or Tag.");
     };
 
     // Helper to render preview inputs (Same as Modal)
@@ -387,7 +444,7 @@ const RiskSettings = () => {
                     </button>
                     {/* Combine both questions' derived tools AND fetched types to ensure we see all */}
                     {Array.from(new Set([
-                        ...assessmentTypes.map(t => t.name),
+                        ...assessmentTypes.map(t => t.name.trim()),
                         ...questions.flatMap(q => (q.assessments_list || "").split("|").map(t => t.trim()))
                     ])).filter(Boolean).filter(t => t !== 'All').sort().map(tool => (
                         <button
@@ -439,6 +496,14 @@ const RiskSettings = () => {
                             >
                                 <Plus size={18} /> Add Question
                             </button>
+                            {selectedTool !== 'All' && selectedTool !== 'ORAS' && (
+                                <button
+                                    onClick={handleDeleteType}
+                                    className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm border border-red-200"
+                                >
+                                    <Trash2 size={16} /> Delete Tool
+                                </button>
+                            )}
                         </div>
                     </div>
 

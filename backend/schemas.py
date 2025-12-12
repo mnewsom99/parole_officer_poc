@@ -440,6 +440,7 @@ class TaskBase(BaseModel):
     priority: Optional[str] = 'Normal'
     assigned_officer_id: UUID
     offender_id: Optional[UUID] = None # Added
+    is_parole_plan: Optional[bool] = False # Added
 
 class TaskCreate(TaskBase):
     pass
@@ -454,6 +455,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     assigned_officer_id: Optional[UUID] = None
     offender_id: Optional[UUID] = None # Added
+    is_parole_plan: Optional[bool] = None # Added
 
 class Task(TaskBase):
     task_id: UUID
@@ -708,6 +710,7 @@ class AutomationRuleBase(BaseModel):
     task_description: Optional[str] = None
     task_priority: Optional[str] = 'Normal'
     due_offset: int = 7
+    action_is_parole_plan: bool = False # Added
     is_active: bool = True
 
 class AutomationRuleCreate(AutomationRuleBase):
@@ -741,5 +744,107 @@ class Document(DocumentBase):
     # Optional nested objects for display
     # uploader: Optional[Officer] = None
 
+    class Config:
+        from_attributes = True
+
+# --- Urinalysis ---
+class UrinalysisCreate(BaseModel):
+    date: date
+    test_type: str = "Random"
+    result: str = "Negative"
+    lab_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class Urinalysis(UrinalysisCreate):
+    test_id: UUID
+    offender_id: UUID
+    collected_by_id: Optional[UUID]
+    collected_by: Optional[Officer] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Generic Assessment Engine Schemas ---
+
+class AssessmentOptionBase(BaseModel):
+    label: str
+    value: Optional[str] = None
+    points: int = 0
+    order_index: int = 0
+
+class AssessmentOptionCreate(AssessmentOptionBase):
+    pass
+
+class AssessmentOption(AssessmentOptionBase):
+    option_id: UUID
+    item_id: UUID
+    class Config:
+        from_attributes = True
+
+class AssessmentItemBase(BaseModel):
+    text: str
+    control_type: str = 'Radio'
+    order_index: int = 0
+    custom_tags: Optional[List[str]] = []
+
+class AssessmentItemCreate(AssessmentItemBase):
+    options: List[AssessmentOptionCreate] = []
+
+class AssessmentItem(AssessmentItemBase):
+    item_id: UUID
+    domain_id: UUID
+    options: List[AssessmentOption] = []
+    class Config:
+        from_attributes = True
+
+class AssessmentDomainBase(BaseModel):
+    name: str
+    order_index: int = 0
+    max_score: Optional[int] = None
+
+class AssessmentDomainCreate(AssessmentDomainBase):
+    id: Optional[UUID] = None # For mapping during updates
+    items: List[AssessmentItemCreate] = []
+
+class AssessmentDomain(AssessmentDomainBase):
+    domain_id: UUID
+    instrument_id: UUID
+    items: List[AssessmentItem] = []
+    class Config:
+        from_attributes = True
+
+class ScoringTableBase(BaseModel):
+    domain_id: Optional[UUID] = None # None = Total Score
+    population_filter: Optional[str] = "All"
+    min_score: int
+    max_score: int
+    result_level: str
+    recommendation: Optional[str] = None
+
+class ScoringTableCreate(ScoringTableBase):
+    pass
+
+class ScoringTable(ScoringTableBase):
+    table_id: UUID
+    instrument_id: UUID
+    class Config:
+        from_attributes = True
+
+class AssessmentInstrumentBase(BaseModel):
+    name: str
+    version: Optional[str] = None
+    target_populations: Optional[List[str]] = []
+    scoring_method: Optional[str] = 'Additive'
+    is_active: bool = True
+
+class AssessmentInstrumentCreate(AssessmentInstrumentBase):
+    domains: List[AssessmentDomainCreate] = []
+    scoring_tables: List[ScoringTableCreate] = []
+
+class AssessmentInstrument(AssessmentInstrumentBase):
+    instrument_id: UUID
+    created_at: datetime
+    domains: List[AssessmentDomain] = []
+    scoring_tables: List[ScoringTable] = []
     class Config:
         from_attributes = True

@@ -34,6 +34,7 @@ const Sidebar = () => {
         { id: 'office', label: 'Office Module', path: '/office', icon: Briefcase },
         { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { id: 'automations', label: 'Automations', path: '/automations', icon: FileText },
+        { id: 'assessments', label: 'Assessments (Admin)', path: '/assessments', icon: Shield },
         { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
         { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
         { id: 'field-mode', label: 'Field Mode (Mobile)', path: '/field-mode', icon: Briefcase },

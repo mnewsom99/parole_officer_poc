@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertTriangle, Shield, Plus } from 'lucide-react';
 import RiskAssessmentModal from '../../components/modals/RiskAssessmentModal'; // Keeping location for now
+import ConductAssessment from './ConductAssessment';
 
 const RiskTab = ({ offenderId }) => {
     const [riskHistory, setRiskHistory] = useState([]);
@@ -123,11 +124,20 @@ const RiskTab = ({ offenderId }) => {
                 </>
             )}
 
+            {/* 
             <RiskAssessmentModal
                 isOpen={showRiskModal}
                 onClose={() => setShowRiskModal(false)}
                 offenderId={offenderId}
                 onSuccess={() => fetchRiskHistory()}
+            />
+            */}
+
+            <ConductAssessment
+                isOpen={showRiskModal} // Swapped to use new engine. Note: logic above needs to be cleaner if we want to support legacy modal too.
+                onClose={() => setShowRiskModal(false)}
+                offenderId={offenderId}
+                onSuccess={() => { setShowRiskModal(false); fetchRiskHistory(); }}
             />
         </div>
     );

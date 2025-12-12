@@ -14,7 +14,8 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
         category: '',
         sub_category: '',
         status: 'Pending',
-        offender_id: '' // New field
+        offender_id: '', // New field
+        is_parole_plan: false // New field
     });
 
     const [officers, setOfficers] = useState([]);
@@ -55,7 +56,8 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                 category: task.category || '',
                 sub_category: task.sub_category || '',
                 status: task.status || 'Pending',
-                offender_id: task.offender_id || ''
+                offender_id: task.offender_id || '',
+                is_parole_plan: task.is_parole_plan || false
             });
         } else {
             // Create Mode
@@ -68,7 +70,8 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                 category: context.category || '',
                 sub_category: '',
                 status: 'Pending',
-                offender_id: context.offender_id || '' // Default from context (e.g. Profile)
+                offender_id: context.offender_id || '', // Default from context (e.g. Profile)
+                is_parole_plan: false
             });
             if (context.assigned_officer_id) {
                 // Optimization: if provided
@@ -88,7 +91,8 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                 due_date: newTask.due_date || null,
                 category: newTask.category || null,
                 sub_category: newTask.sub_category || null,
-                offender_id: newTask.offender_id || null
+                offender_id: newTask.offender_id || null,
+                is_parole_plan: newTask.is_parole_plan
             };
 
             let response;
@@ -211,6 +215,19 @@ const TaskModal = ({ isOpen, onClose, task, selectedFile, setSelectedFile, onSuc
                                 <option>High</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                        <input
+                            type="checkbox"
+                            taskId="isParolePlan"
+                            checked={newTask.is_parole_plan}
+                            onChange={e => setNewTask({ ...newTask, is_parole_plan: e.target.checked })}
+                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                        />
+                        <label htmlFor="isParolePlan" className="text-sm font-medium text-indigo-900 cursor-pointer select-none">
+                            Add to Parole Plan (Key Checkpoint)
+                        </label>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
