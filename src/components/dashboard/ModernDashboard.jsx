@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useUser } from '../../core/context/UserContext';
 import {
     Users, Briefcase, Activity, AlertTriangle,
     Calendar, CheckCircle, FileText, Search, Bell
@@ -6,6 +8,80 @@ import {
 import { StatCard, ActivityBarChart, RiskDonutChart, EmploymentLineChart, SectionHeader } from './DashboardWidgets';
 
 const ModernDashboard = () => {
+    const { currentUser, globalFilter, updateGlobalFilter } = useUser();
+    const [offices, setOffices] = useState([]);
+    const [officers, setOfficers] = useState([]);
+    const [stats, setStats] = useState({
+        total_caseload: 0,
+        active_offenders: 0,
+        compliance_rate: 100,
+        employment_rate: 0,
+        pending_reviews: 0,
+        warrants_issued: 0,
+        risk_distribution: []
+    });
+
+    // Fetch Stats
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                let url = 'http://localhost:8000/dashboard/stats';
+                const params = new URLSearchParams();
+                if (globalFilter.office) params.append('location_id', globalFilter.office);
+                if (globalFilter.officer) params.append('officer_id', globalFilter.officer);
+
+                if (params.toString()) url += `?${params.toString()}`;
+
+                const response = await axios.get(url, { withCredentials: true });
+                setStats(response.data);
+            } catch (error) {
+                console.error("Error fetching dashboard stats:", error);
+            }
+        };
+        fetchStats();
+    }, [globalFilter.office, globalFilter.officer]);
+
+    // Fetch Offices
+    useEffect(() => {
+        const fetchOffices = async () => {
+            try {
+                const response = await axios.get('http://localhost:8000/locations');
+                const sortedOffices = response.data.sort((a, b) => a.name.localeCompare(b.name));
+                setOffices(sortedOffices);
+            } catch (error) {
+                console.error("Error fetching offices:", error);
+            }
+        };
+        fetchOffices();
+    }, []);
+
+    // Fetch Officers (filtered by office if selected)
+    useEffect(() => {
+        const fetchOfficers = async () => {
+            try {
+                let url = 'http://localhost:8000/officers';
+                if (globalFilter.office) {
+                    url += `?location_id=${globalFilter.office}`;
+                }
+                const response = await axios.get(url);
+                const mappedOfficers = response.data.map(o => ({
+                    id: o.officer_id,
+                    name: `${o.first_name} ${o.last_name}`
+                }));
+                // Sort by name
+                mappedOfficers.sort((a, b) => a.name.localeCompare(b.name));
+                setOfficers(mappedOfficers);
+            } catch (error) {
+                console.error("Error fetching officers:", error);
+            }
+        };
+        fetchOfficers();
+    }, [globalFilter.office]);
+
+    const handleOfficerChange = (e) => {
+        updateGlobalFilter({ officer: e.target.value });
+    };
+
     // --- Mock Data ---
     const activityData = [
         { name: 'Jul', newCases: 20, closedCases: 15 },
@@ -43,18 +119,49 @@ const ModernDashboard = () => {
             <header className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-extrabold font-display text-slate-900 tracking-tight">Dashboard</h1>
-                    <p className="text-slate-500 mt-1">Welcome back, Officer Mike. Here's your quarterly overview.</p>
+                    <p className="text-slate-500 mt-1">Welcome back, Officer {currentUser?.firstName || 'Mike'}. Here's your quarterly overview.</p>
                 </div>
+
                 <div className="flex items-center space-x-4">
+                    {/* Filters */}
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm mr-2">
+                        <select
+                            value={globalFilter.office}
+                            onChange={(e) => {
+                                updateGlobalFilter({
+                                    office: e.target.value,
+                                    officer: '' // Reset officer when office changes
+                                });
+                            }}
+                            className="bg-transparent border-none text-slate-700 text-sm font-medium focus:ring-0 cursor-pointer py-2 pl-3 pr-8"
+                        >
+                            <option value="">All Offices</option>
+                            {offices.map(office => (
+                                <option key={office.location_id} value={office.location_id}>{office.name}</option>
+                            ))}
+                        </select>
+                        <div className="h-4 w-px bg-slate-200"></div>
+                        <select
+                            value={globalFilter.officer}
+                            onChange={handleOfficerChange}
+                            className="bg-transparent border-none text-slate-700 text-sm font-medium focus:ring-0 cursor-pointer py-2 pl-3 pr-8"
+                        >
+                            <option value="">All Officers</option>
+                            {officers.map(officer => (
+                                <option key={officer.id} value={officer.id}>{officer.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="bg-white p-2 rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer relative">
                         <Bell className="w-5 h-5 text-slate-600" />
                         <span className="absolute top-0 right-0 w-3 h-3 bg-rose-500 rounded-full border-2 border-white"></span>
                     </div>
                     <div className="flex items-center bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">
                         <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold mr-3">
-                            MN
+                            {currentUser?.firstName?.[0] || 'M'}{currentUser?.lastName?.[0] || 'N'}
                         </div>
-                        <span className="font-medium text-sm text-slate-700">Mike Newsome</span>
+                        <span className="font-medium text-sm text-slate-700">{currentUser?.firstName || 'Mike'} {currentUser?.lastName || 'Newsome'}</span>
                     </div>
                 </div>
             </header>
@@ -63,7 +170,7 @@ const ModernDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <StatCard
                     title="Active Caseload"
-                    value="56"
+                    value={stats.active_offenders || 0}
                     subtext="Cases assigned"
                     trend="up"
                     trendValue="12%"
@@ -72,7 +179,7 @@ const ModernDashboard = () => {
                 />
                 <StatCard
                     title="Employment Rate"
-                    value="78%"
+                    value={`${stats.employment_rate || 0}%`}
                     subtext="Employed offenders"
                     trend="up"
                     trendValue="5%"
@@ -81,7 +188,7 @@ const ModernDashboard = () => {
                 />
                 <StatCard
                     title="Compliance Score"
-                    value="85"
+                    value={stats.compliance_rate || 100}
                     subtext="Overall average"
                     trend="up"
                     trendValue="3pts"
@@ -90,7 +197,7 @@ const ModernDashboard = () => {
                 />
                 <StatCard
                     title="Outstanding Warrants"
-                    value="3"
+                    value={stats.warrants_issued || 0}
                     subtext="Action required"
                     trend="down" // Good thing
                     trendValue="-1"

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Users, Calendar, FileText, Settings, Shield, CheckSquare, Briefcase, LayoutDashboard } from 'lucide-react';
-
+import { Users, Calendar, FileText, Settings, Shield, CheckSquare, Briefcase, LayoutDashboard, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar = () => {
@@ -35,6 +34,7 @@ const Sidebar = () => {
         { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { id: 'automations', label: 'Automations', path: '/automations', icon: FileText },
         { id: 'assessments', label: 'Assessments (Admin)', path: '/assessments', icon: Shield },
+        { id: 'programs', label: 'Programs', path: '/programs', icon: BookOpen },
         { id: 'reports', label: 'Reports', path: '/reports', icon: FileText },
         { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
         { id: 'field-mode', label: 'Field Mode (Mobile)', path: '/field-mode', icon: Briefcase },

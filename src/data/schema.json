@@ -7,17 +7,20 @@
             {
                 "name": "role_id",
                 "type": "INTEGER",
-                "key": "PK"
+                "key": "PK",
+                "description": "Primary Key"
             },
             {
                 "name": "role_name",
                 "type": "VARCHAR(50)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": "Unique identifier for the role"
             },
             {
                 "name": "description",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Human-readable description of permissions"
             }
         ]
     },
@@ -28,43 +31,51 @@
         "fields": [
             {
                 "name": "user_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID for the user"
             },
             {
                 "name": "username",
                 "type": "VARCHAR(50)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": "Login credential"
             },
             {
                 "name": "email",
                 "type": "VARCHAR(100)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": "Contact and recovery email"
             },
             {
                 "name": "password_hash",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Bcrypt hashed password"
             },
             {
                 "name": "role_id",
                 "type": "INTEGER",
-                "key": "FK"
+                "key": "FK",
+                "description": "Link to authorization role"
             },
             {
                 "name": "created_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Account creation timestamp"
             },
             {
                 "name": "last_login",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Audit timestamp of last access"
             },
             {
                 "name": "is_active",
                 "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": "Soft delete flag"
             }
         ]
     },
@@ -75,90 +86,106 @@
         "fields": [
             {
                 "name": "location_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Public display name of office"
             },
             {
                 "name": "address",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Physical street address"
             },
             {
                 "name": "type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Classification (Field Office, HQ, Satellite)"
             },
             {
                 "name": "zip_code",
                 "type": "VARCHAR(10)",
-                "key": ""
+                "key": "",
+                "description": "Postal code for territory mapping"
             },
             {
                 "name": "phone",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Main contact line"
             },
             {
                 "name": "fax",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Secure fax line for legal docs"
             }
         ]
     },
     "officers": {
-        "description": " sworn personnel details linked to Users.",
+        "description": "Sworn personnel details linked to Users.",
         "context": "Links auth User to distinct Officer entity with badge/caseload",
         "usage": "Dashboard, Case Load, Assignments",
         "fields": [
             {
                 "name": "officer_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "user_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to User account (Auth)"
             },
             {
                 "name": "location_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Assigned base office"
             },
             {
                 "name": "supervisor_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Reporting line manager"
             },
             {
                 "name": "badge_number",
                 "type": "VARCHAR(20)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": "Official unique badge ID"
             },
             {
                 "name": "first_name",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Officer first name"
             },
             {
                 "name": "last_name",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Officer last name"
             },
             {
                 "name": "phone_number",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Work desk phone"
             },
             {
                 "name": "cell_phone",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Work mobile for field use"
             }
         ]
     },
@@ -169,83 +196,141 @@
         "fields": [
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "badge_id",
                 "type": "VARCHAR(20)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": "Unique internal identifier (DOC #)"
             },
             {
                 "name": "first_name",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Legal first name"
             },
             {
                 "name": "last_name",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Legal last name"
             },
             {
                 "name": "dob",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date of Birth"
             },
             {
                 "name": "image_url",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Profile mugshot URL"
+            },
+            {
+                "name": "phone",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Primary contact number"
             },
             {
                 "name": "gender",
                 "type": "VARCHAR(20)",
-                "key": ""
-            },
-            {
-                "name": "is_sex_offender",
-                "type": "BOOLEAN",
-                "key": ""
-            },
-            {
-                "name": "is_gang_member",
-                "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": "Self-identified gender"
             },
             {
                 "name": "gang_affiliation",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Known security threat group"
             },
             {
                 "name": "release_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date of release from custody"
             },
             {
                 "name": "reversion_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date returned to custody (if revoked)"
             },
             {
                 "name": "release_type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Parole, Probation, etc."
             },
             {
                 "name": "initial_placement",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "First assigned location upon release"
+            },
+            {
+                "name": "csed_date",
+                "type": "DATE",
+                "key": "",
+                "description": "Community Supervision End Date (Max Expiration)"
+            },
+            {
+                "name": "special_flags",
+                "type": "JSON",
+                "key": "",
+                "description": "JSON array of risk indicators (SMI, etc)"
+            },
+            {
+                "name": "housing_status",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Current stabilitiy indicator"
+            },
+            {
+                "name": "icots_number",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Interstate Compact ID"
+            },
+            {
+                "name": "employment_status",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Work status for stats"
+            },
+            {
+                "name": "unemployable_reason",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Justification if not working"
+            },
+            {
+                "name": "warrant_status",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Active warrant state"
+            },
+            {
+                "name": "warrant_date",
+                "type": "DATE",
+                "key": "",
+                "description": "Date warrant issued/requested"
             },
             {
                 "name": "general_comments",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "High level case summary"
             },
             {
                 "name": "created_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Record creation date"
             }
         ]
     },
@@ -256,48 +341,57 @@
         "fields": [
             {
                 "name": "episode_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to Offender"
             },
             {
                 "name": "assigned_officer_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Officer responsible for this period"
             },
             {
                 "name": "start_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date supervision began"
             },
             {
                 "name": "end_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date supervision ended (if closed)"
             },
             {
                 "name": "status",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Active or Closed"
             },
             {
                 "name": "risk_level_at_start",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Initial risk assessment"
             },
             {
                 "name": "current_risk_level",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Updated dynamic risk"
             },
             {
                 "name": "closing_reason",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Reason for termination (Success, Revocation)"
             }
         ]
     },
@@ -308,53 +402,87 @@
         "fields": [
             {
                 "name": "task_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "episode_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to supervision period"
+            },
+            {
+                "name": "offender_id",
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Direct link for query optimization"
             },
             {
                 "name": "created_by",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Officer who assigned the task"
             },
             {
                 "name": "assigned_officer_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Officer responsible for completion"
             },
             {
                 "name": "title",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Short summary"
             },
             {
                 "name": "description",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "Detailed instructions"
+            },
+            {
+                "name": "category",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Task grouping (Visit, Admin, Court)"
+            },
+            {
+                "name": "sub_category",
+                "type": "VARCHAR(50)",
+                "key": "",
+                "description": "Specific type"
             },
             {
                 "name": "due_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Deadline"
             },
             {
                 "name": "status",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Workflow state (Pending, Done)"
+            },
+            {
+                "name": "is_parole_plan",
+                "type": "BOOLEAN",
+                "key": "",
+                "description": "Fulfills a release condition"
             },
             {
                 "name": "created_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Timestamp"
             },
             {
                 "name": "updated_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Last modification"
             }
         ]
     },
@@ -366,22 +494,26 @@
             {
                 "name": "zip_code",
                 "type": "VARCHAR(10)",
-                "key": "PK"
+                "key": "PK",
+                "description": "Postal code (PK)"
             },
             {
                 "name": "assigned_location_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Default office for this area"
             },
             {
                 "name": "region_name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Descriptive region label"
             },
             {
                 "name": "created_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Assignment date"
             }
         ]
     },
@@ -393,17 +525,20 @@
             {
                 "name": "zip_code",
                 "type": "VARCHAR(10)",
-                "key": "PK"
+                "key": "PK",
+                "description": "Territory link"
             },
             {
                 "name": "officer_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Officer link"
             },
             {
                 "name": "is_primary",
                 "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": "Flag for main point of contact"
             }
         ]
     },
@@ -414,38 +549,45 @@
         "fields": [
             {
                 "name": "assignment_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Facility, Specialty, or Admin"
             },
             {
                 "name": "name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Label for the assignment"
             },
             {
                 "name": "address",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Physical location if Facility"
             },
             {
                 "name": "zip_code",
                 "type": "VARCHAR(10)",
-                "key": ""
+                "key": "",
+                "description": "Override zip if applicable"
             },
             {
                 "name": "assigned_officer_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Officer handling this caseload"
             },
             {
                 "name": "priority",
                 "type": "INTEGER",
-                "key": ""
+                "key": "",
+                "description": "Processing weight"
             }
         ]
     },
@@ -456,43 +598,69 @@
         "fields": [
             {
                 "name": "residence_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "episode_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to supervision"
             },
             {
                 "name": "address_line_1",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Street address"
             },
             {
                 "name": "city",
-                "type": "VARCHAR(100)",
-                "key": ""
+                "type": "VARCHAR",
+                "key": "",
+                "description": "City"
             },
             {
                 "name": "state",
-                "type": "VARCHAR(50)",
-                "key": ""
+                "type": "VARCHAR",
+                "key": "",
+                "description": "State"
             },
             {
                 "name": "zip_code",
-                "type": "VARCHAR(10)",
-                "key": ""
+                "type": "VARCHAR",
+                "key": "",
+                "description": "Zip for territory matching"
+            },
+            {
+                "name": "start_date",
+                "type": "DATE",
+                "key": "",
+                "description": "Move-in date"
+            },
+            {
+                "name": "end_date",
+                "type": "DATE",
+                "key": "",
+                "description": "Move-out date"
+            },
+            {
+                "name": "housing_type",
+                "type": "VARCHAR",
+                "key": "",
+                "description": "Classification (House, Apt, Homeless)"
             },
             {
                 "name": "is_current",
                 "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": "Active residence flag"
             },
             {
                 "name": "special_assignment_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link if housing is a covered facility"
             }
         ]
     },
@@ -503,38 +671,45 @@
         "fields": [
             {
                 "name": "note_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "author_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "date",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "content",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "is_pinned",
                 "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": ""
             }
         ]
     },
@@ -545,48 +720,57 @@
         "fields": [
             {
                 "name": "program_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to Offender"
             },
             {
                 "name": "name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Program Title"
             },
             {
                 "name": "category",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Type (Counseling, Rehab)"
             },
             {
                 "name": "provider",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "External agency name"
             },
             {
                 "name": "status",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Completion state"
             },
             {
                 "name": "start_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Enrollment date"
             },
             {
                 "name": "end_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Completion/Drop date"
             },
             {
                 "name": "notes",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "Progress notes"
             }
         ]
     },
@@ -597,18 +781,21 @@
         "fields": [
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Link to Offender"
             },
             {
                 "name": "balance",
                 "type": "FLOAT",
-                "key": ""
+                "key": "",
+                "description": "Total amount owed"
             },
             {
                 "name": "last_updated",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Timestamp of last calculation"
             }
         ]
     },
@@ -619,33 +806,39 @@
         "fields": [
             {
                 "name": "transaction_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to Offender"
             },
             {
                 "name": "transaction_date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date of activity"
             },
             {
                 "name": "type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Charge or Payment"
             },
             {
                 "name": "amount",
                 "type": "FLOAT",
-                "key": ""
+                "key": "",
+                "description": "Monetary value"
             },
             {
                 "name": "description",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Reason for charge/payment"
             }
         ]
     },
@@ -656,33 +849,39 @@
         "fields": [
             {
                 "name": "contact_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "residence_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "relation",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "phone",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "comments",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": ""
             }
         ]
     },
@@ -693,43 +892,51 @@
         "fields": [
             {
                 "name": "test_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to Offender"
             },
             {
                 "name": "date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Collection date"
             },
             {
                 "name": "test_type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Random or Scheduled"
             },
             {
                 "name": "result",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Lab outcome"
             },
             {
                 "name": "lab_name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Testing vendor"
             },
             {
                 "name": "collected_by_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Officer witness"
             },
             {
                 "name": "notes",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "Chain of custody notes"
             }
         ]
     },
@@ -741,22 +948,26 @@
             {
                 "name": "type_id",
                 "type": "INTEGER",
-                "key": "PK"
+                "key": "PK",
+                "description": "Integer ID"
             },
             {
                 "name": "name",
                 "type": "VARCHAR(50)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": "Tool Name (e.g. ORAS)"
             },
             {
                 "name": "description",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Usage guidelines"
             },
             {
                 "name": "scoring_matrix",
                 "type": "JSON",
-                "key": ""
+                "key": "",
+                "description": "JSON logic for score calculation"
             }
         ]
     },
@@ -768,47 +979,56 @@
             {
                 "name": "question_id",
                 "type": "INTEGER",
-                "key": "PK"
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "universal_tag",
                 "type": "VARCHAR(50)",
-                "key": "Unique"
+                "key": "Unique",
+                "description": ""
             },
             {
                 "name": "question_text",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "input_type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "source_type",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "assessments_list",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "category",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "scoring_note",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "options",
                 "type": "JSON",
-                "key": ""
+                "key": "",
+                "description": ""
             }
         ]
     },
@@ -819,53 +1039,63 @@
         "fields": [
             {
                 "name": "assessment_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to Offender"
             },
             {
                 "name": "date",
                 "type": "DATE",
-                "key": ""
+                "key": "",
+                "description": "Date conducted"
             },
             {
                 "name": "assessment_type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Tool used (ORAS, etc)"
             },
             {
                 "name": "status",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Draft or Finalized"
             },
             {
                 "name": "total_score",
                 "type": "INTEGER",
-                "key": ""
+                "key": "",
+                "description": "Computed numeric score"
             },
             {
                 "name": "risk_level",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Algorithmically determined level"
             },
             {
                 "name": "final_risk_level",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Applied level after overrides"
             },
             {
                 "name": "override_reason",
                 "type": "VARCHAR(255)",
-                "key": ""
+                "key": "",
+                "description": "Justification for override"
             },
             {
                 "name": "details",
                 "type": "JSON",
-                "key": ""
+                "key": "",
+                "description": "JSON snapshot of factors"
             }
         ]
     },
@@ -876,33 +1106,39 @@
         "fields": [
             {
                 "name": "answer_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "assessment_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "question_tag",
                 "type": "VARCHAR(50)",
-                "key": "FK"
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "value",
                 "type": "JSON",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "is_imported",
                 "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "source_assessment_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             }
         ]
     },
@@ -913,43 +1149,51 @@
         "fields": [
             {
                 "name": "appointment_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": "Unique UUID"
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Link to Offender"
             },
             {
                 "name": "officer_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": "Hosting Officer"
             },
             {
                 "name": "date_time",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": "Scheduled time"
             },
             {
                 "name": "location",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": "Meeting place"
             },
             {
                 "name": "type",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": "Reason (Office Visit, Home Visit)"
             },
             {
                 "name": "status",
                 "type": "VARCHAR(20)",
-                "key": ""
+                "key": "",
+                "description": "Outcome (Completed, No Show)"
             },
             {
                 "name": "notes",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "Meeting summary"
             }
         ]
     },
@@ -961,17 +1205,20 @@
             {
                 "name": "key",
                 "type": "VARCHAR(50)",
-                "key": "PK"
+                "key": "PK",
+                "description": "Setting Identifier"
             },
             {
                 "name": "value",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "Configuration Value"
             },
             {
                 "name": "description",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": "Explanation of setting effect"
             }
         ]
     },
@@ -982,28 +1229,33 @@
         "fields": [
             {
                 "name": "template_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "name",
                 "type": "VARCHAR(100)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "description",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "form_schema",
                 "type": "JSON",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "created_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": ""
             }
         ]
     },
@@ -1014,58 +1266,69 @@
         "fields": [
             {
                 "name": "submission_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "template_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "offender_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "assigned_to_user_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "created_by_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "form_data",
                 "type": "JSON",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "status",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "is_locked",
                 "type": "BOOLEAN",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "current_step",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "created_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "updated_at",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": ""
             }
         ]
     },
@@ -1076,33 +1339,39 @@
         "fields": [
             {
                 "name": "log_id",
-                "type": "UUID",
-                "key": "PK"
+                "type": "CHAR(32)",
+                "key": "PK",
+                "description": ""
             },
             {
                 "name": "submission_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "actor_id",
-                "type": "UUID",
-                "key": "FK"
+                "type": "CHAR(32)",
+                "key": "FK",
+                "description": ""
             },
             {
                 "name": "action",
                 "type": "VARCHAR(50)",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "comment",
                 "type": "TEXT",
-                "key": ""
+                "key": "",
+                "description": ""
             },
             {
                 "name": "timestamp",
                 "type": "DATETIME",
-                "key": ""
+                "key": "",
+                "description": ""
             }
         ]
     }

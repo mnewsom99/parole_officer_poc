@@ -12,7 +12,12 @@ import OfficeModule from './modules/office';
 import AutomationDashboard from './modules/automation/AutomationDashboard';
 import FieldModeModule from './modules/field-mode';
 import AssessmentsModule from './modules/assessments';
+import ProgramModule from './modules/programs';
 import ModernDashboard from './components/dashboard/ModernDashboard';
+
+// ... (existing imports)
+
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -60,6 +65,11 @@ const AppContent = () => {
         <Route path="/automations" element={<AutomationDashboard />} />
         <Route path="/assessments" element={<AssessmentsModule />} />
         <Route path="/field-mode" element={<FieldModeModule />} />
+        <Route path="/programs" element={
+          <ErrorBoundary>
+            <ProgramModule />
+          </ErrorBoundary>
+        } />
       </Routes>
     </AppShell>
   );

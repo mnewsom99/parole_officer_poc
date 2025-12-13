@@ -52,6 +52,107 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+
+# --- Program Module Schemas ---
+
+class ProgramProviderBase(BaseModel):
+    name: str
+    type: Optional[str] = None
+    status: Optional[str] = 'Active'
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+
+class ProgramProviderCreate(ProgramProviderBase):
+    pass
+
+class ProgramProvider(ProgramProviderBase):
+    provider_id: UUID
+    class Config:
+        from_attributes = True
+
+class ProgramOfferingBase(BaseModel):
+    provider_id: UUID
+    program_name: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    level_of_care: Optional[str] = None
+    intervention_type: Optional[str] = None
+    duration_weeks: Optional[int] = None
+    is_evidence_based: Optional[bool] = False
+    target_population: Optional[List[str]] = None
+
+class ProgramOfferingCreate(ProgramOfferingBase):
+    pass
+
+class ProgramOffering(ProgramOfferingBase):
+    offering_id: UUID
+    provider: Optional[ProgramProvider]
+    class Config:
+        from_attributes = True
+
+class ProgramEnrollmentBase(BaseModel):
+    offender_id: UUID
+    offering_id: UUID
+    status: Optional[str] = 'Referred'
+    referral_source: Optional[str] = None
+    start_date: Optional[date] = None
+    scheduled_end_date: Optional[date] = None
+
+class ProgramEnrollmentCreate(ProgramEnrollmentBase):
+    pass
+
+class ProgramEnrollmentUpdate(BaseModel):
+    status: Optional[str] = None
+    actual_end_date: Optional[date] = None
+    completion_status: Optional[str] = None
+    discharge_reason: Optional[str] = None
+    compliance_score: Optional[int] = None
+
+class ProgramAttendanceCreate(BaseModel):
+    date: date
+    status: str
+    comments: Optional[str] = None
+
+class ProgramAttendance(ProgramAttendanceCreate):
+    attendance_id: UUID
+    enrollment_id: UUID
+    class Config:
+        from_attributes = True
+
+class ProgramNoteCreate(BaseModel):
+    content: str
+    type: Optional[str] = 'Progress'
+
+class ProgramNote(ProgramNoteCreate):
+    note_id: UUID
+    enrollment_id: UUID
+    author_id: Optional[UUID]
+    date: datetime
+    class Config:
+        from_attributes = True
+
+class ProgramEnrollment(ProgramEnrollmentBase):
+    enrollment_id: UUID
+    offering: Optional[ProgramOffering]
+    offender: Optional['Offender'] = None
+    attendance_records: List[ProgramAttendance] = []
+    notes: List[ProgramNote] = []
+    
+    # Extended fields
+    referral_date: Optional[date]
+    actual_end_date: Optional[date]
+    completion_status: Optional[str]
+    discharge_reason: Optional[str]
+    compliance_score: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
 # --- Roles ---
 class RoleBase(BaseModel):
     role_name: str
@@ -618,6 +719,7 @@ class DashboardStats(BaseModel):
     total_caseload: int
     active_offenders: int
     compliance_rate: float
+    employment_rate: float # Added
     pending_reviews: int
     warrants_issued: int
     risk_distribution: List[RiskDistributionItem]
@@ -841,6 +943,201 @@ class AssessmentInstrumentCreate(AssessmentInstrumentBase):
     domains: List[AssessmentDomainCreate] = []
     scoring_tables: List[ScoringTableCreate] = []
 
+class FormTemplate(FormTemplateBase):
+    template_id: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class WorkflowLogBase(BaseModel):
+    action: str
+    comment: Optional[str] = None
+    timestamp: datetime
+
+class WorkflowLog(WorkflowLogBase):
+    log_id: UUID
+    submission_id: UUID
+    actor_id: UUID
+    actor: Optional[User] = None # Basic user info
+    class Config:
+        from_attributes = True
+
+class FormSubmissionBase(BaseModel):
+    template_id: UUID
+    offender_id: Optional[UUID] = None
+    assigned_to_user_id: Optional[UUID] = None
+    form_data: Dict[str, Any]
+
+class FormSubmissionCreate(FormSubmissionBase):
+    pass
+
+class FormSubmission(FormSubmissionBase):
+    submission_id: UUID
+    created_by_id: UUID
+    status: str
+    is_locked: bool
+    current_step: str
+    created_at: datetime
+    updated_at: datetime
+    
+    template: Optional[FormTemplate] = None
+    offender: Optional[Offender] = None
+    assigned_to: Optional[User] = None
+    created_by: Optional[User] = None
+    logs: List[WorkflowLog] = []
+
+    class Config:
+        from_attributes = True
+
+class WorkflowAction(BaseModel):
+    action: str # Submit, Approve, Deny, Return
+    comment: Optional[str] = None
+    target_user_id: Optional[UUID] = None # For re-assignment logic
+
+
+# --- Automation Rules ---
+class AutomationRuleBase(BaseModel):
+    name: str
+    trigger_field: str
+    trigger_offset: int
+    trigger_direction: str
+    conditions: List[Dict[str, Any]] = []
+    action_type: str = 'create_task'
+    task_title: str
+    task_description: Optional[str] = None
+    task_priority: Optional[str] = 'Normal'
+    due_offset: int = 7
+    action_is_parole_plan: bool = False # Added
+    is_active: bool = True
+
+class AutomationRuleCreate(AutomationRuleBase):
+    pass
+
+class AutomationRule(AutomationRuleBase):
+    rule_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# --- Documents ---
+class DocumentBase(BaseModel):
+    file_name: str
+    file_type: Optional[str] = None
+    category: Optional[str] = "General"
+
+class DocumentCreate(DocumentBase):
+    pass
+
+class Document(DocumentBase):
+    document_id: UUID
+    offender_id: UUID
+    uploaded_by_id: UUID
+    note_id: Optional[UUID] = None
+    task_id: Optional[UUID] = None
+    file_path: str
+    uploaded_at: datetime
+    
+    # Optional nested objects for display
+    # uploader: Optional[Officer] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Urinalysis ---
+class UrinalysisCreate(BaseModel):
+    date: date
+    test_type: str = "Random"
+    result: str = "Negative"
+    lab_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class Urinalysis(UrinalysisCreate):
+    test_id: UUID
+    offender_id: UUID
+    collected_by_id: Optional[UUID]
+    collected_by: Optional[Officer] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Generic Assessment Engine Schemas ---
+
+class AssessmentOptionBase(BaseModel):
+    label: str
+    value: Optional[str] = None
+    points: int = 0
+    order_index: int = 0
+
+class AssessmentOptionCreate(AssessmentOptionBase):
+    pass
+
+class AssessmentOption(AssessmentOptionBase):
+    option_id: UUID
+    item_id: UUID
+    class Config:
+        from_attributes = True
+
+class AssessmentItemBase(BaseModel):
+    text: str
+    control_type: str = 'Radio'
+    order_index: int = 0
+    custom_tags: Optional[List[str]] = []
+
+class AssessmentItemCreate(AssessmentItemBase):
+    options: List[AssessmentOptionCreate] = []
+
+class AssessmentItem(AssessmentItemBase):
+    item_id: UUID
+    domain_id: UUID
+    options: List[AssessmentOption] = []
+    class Config:
+        from_attributes = True
+
+class AssessmentDomainBase(BaseModel):
+    name: str
+    order_index: int = 0
+    max_score: Optional[int] = None
+
+class AssessmentDomainCreate(AssessmentDomainBase):
+    id: Optional[UUID] = None # For mapping during updates
+    items: List[AssessmentItemCreate] = []
+
+class AssessmentDomain(AssessmentDomainBase):
+    domain_id: UUID
+    instrument_id: UUID
+    items: List[AssessmentItem] = []
+    class Config:
+        from_attributes = True
+
+class ScoringTableBase(BaseModel):
+    domain_id: Optional[UUID] = None # None = Total Score
+    population_filter: Optional[str] = "All"
+    min_score: int
+    max_score: int
+    result_level: str
+    recommendation: Optional[str] = None
+
+class ScoringTableCreate(ScoringTableBase):
+    pass
+
+class ScoringTable(ScoringTableBase):
+    table_id: UUID
+    instrument_id: UUID
+    class Config:
+        from_attributes = True
+
+class AssessmentInstrumentBase(BaseModel):
+    name: str
+    version: Optional[str] = None
+    target_populations: Optional[List[str]] = []
+    scoring_method: Optional[str] = 'Additive'
+    is_active: bool = True
+
+class AssessmentInstrumentCreate(AssessmentInstrumentBase):
+    domains: List[AssessmentDomainCreate] = []
+    scoring_tables: List[ScoringTableCreate] = []
+
 class AssessmentInstrument(AssessmentInstrumentBase):
     instrument_id: UUID
     created_at: datetime
@@ -848,3 +1145,5 @@ class AssessmentInstrument(AssessmentInstrumentBase):
     scoring_tables: List[ScoringTable] = []
     class Config:
         from_attributes = True
+
+ProgramEnrollment.model_rebuild()

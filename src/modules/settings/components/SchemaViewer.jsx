@@ -63,7 +63,7 @@ const SchemaViewer = () => {
 
             <div className="p-6">
                 {activeTab === 'schema' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                         {Object.entries(schemaData).map(([tableName, data]) => (
                             <div key={tableName} className="border border-slate-200 rounded-lg overflow-hidden">
                                 <div
@@ -97,14 +97,15 @@ const SchemaViewer = () => {
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-xs text-slate-500 uppercase bg-slate-50">
                                                 <tr>
-                                                    <th className="px-2 py-1">Field</th>
-                                                    <th className="px-2 py-1">Type</th>
-                                                    <th className="px-2 py-1">Key</th>
+                                                    <th className="px-2 py-1 w-1/4">Field</th>
+                                                    <th className="px-2 py-1 w-1/6">Type</th>
+                                                    <th className="px-2 py-1 w-16">Key</th>
+                                                    <th className="px-2 py-1 w-1/2">Reason / Description</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {data.fields.map((field, idx) => (
-                                                    <tr key={idx} className="border-b border-slate-100 last:border-0">
+                                                    <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                                                         <td className="px-2 py-2 font-mono text-slate-700">{field.name}</td>
                                                         <td className="px-2 py-2 text-slate-500">{field.type}</td>
                                                         <td className="px-2 py-2">
@@ -113,6 +114,9 @@ const SchemaViewer = () => {
                                                                     {field.key}
                                                                 </span>
                                                             )}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-slate-600 text-sm italic">
+                                                            {field.description || <span className="text-slate-300">-</span>}
                                                         </td>
                                                     </tr>
                                                 ))}

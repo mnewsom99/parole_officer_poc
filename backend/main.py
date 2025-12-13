@@ -5,7 +5,11 @@ from fastapi.responses import StreamingResponse
 
 from . import models, database, auth
 from .database import engine, get_db
-from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees, assessments, automations, documents
+from .routers import auth as auth_router, users, offenders, settings, dashboard, workflow, tasks, appointments, fees, assessments, automations, documents, programs
+
+# ... (omitted lines)
+
+
 from fastapi.staticfiles import StaticFiles
 
 models.Base.metadata.create_all(bind=engine)
@@ -102,6 +106,7 @@ app.include_router(fees.router)
 app.include_router(assessments.router)
 app.include_router(automations.router)
 app.include_router(documents.router)
+app.include_router(programs.router)
 
 @app.get("/health")
 def health_check():

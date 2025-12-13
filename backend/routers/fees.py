@@ -19,7 +19,7 @@ class FeeTransactionOut(BaseModel):
     description: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class FeeSummaryOut(BaseModel):
     balance: float

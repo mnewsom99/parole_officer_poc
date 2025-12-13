@@ -163,7 +163,7 @@ def get_offenders(
             "last_name": offender.last_name,
             "offender_number": offender.badge_id,
             "risk_level": current_risk,
-            "program": next((p.name for p in db.query(models.Program).filter(models.Program.offender_id == offender.offender_id, models.Program.status == 'Active').limit(1)), "None Assigned"),
+            "program": next((p.offering.program_name for p in db.query(models.ProgramEnrollment).options(joinedload(models.ProgramEnrollment.offering)).filter(models.ProgramEnrollment.offender_id == offender.offender_id, models.ProgramEnrollment.status == 'Active').limit(1)), "None Assigned"),
             # Remove duplicate phone override
         })
         

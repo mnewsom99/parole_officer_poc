@@ -88,19 +88,85 @@ class Offender(Base):
     general_comments = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-class Program(Base):
-    __tablename__ = 'programs'
-    program_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
-    name = Column(String(100), nullable=False)
-    category = Column(String(50), nullable=False)
-    provider = Column(String(100))
-    status = Column(String(20), default='Pending')
-    start_date = Column(Date)
-    end_date = Column(Date)
-    notes = Column(Text)
+# --- Program Management Module ---
 
+class ProgramProvider(Base):
+    __tablename__ = 'program_providers'
+    provider_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    type = Column(String(50)) # e.g. Internal, External, NGO
+    status = Column(String(20), default='Active') # Active, Inactive
+    email = Column(String(100))
+    phone = Column(String(50))
+    address = Column(String(255))
+    city = Column(String(100))
+    state = Column(String(50))
+    zip_code = Column(String(20))
+    
+    offerings = relationship("ProgramOffering", back_populates="provider")
+
+class ProgramOffering(Base):
+    __tablename__ = 'program_offerings'
+    offering_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider_id = Column(UUID(as_uuid=True), ForeignKey('program_providers.provider_id'), index=True)
+    program_name = Column(String(100), nullable=False)
+    description = Column(Text) # Synopsis for officers
+    category = Column(String(50)) # Substance, Education, Anger Mgmt, etc.
+    level_of_care = Column(String(50)) # Low, Medium, High, IOP
+    intervention_type = Column(String(50)) # MEP, ITH, CBT, Group
+    duration_weeks = Column(Integer)
+    is_evidence_based = Column(Boolean, default=False)
+    target_population = Column(JSON) # e.g. ["Male", "Substance User"]
+    
+    provider = relationship("ProgramProvider", back_populates="offerings")
+    enrollments = relationship("ProgramEnrollment", back_populates="offering")
+
+class ProgramEnrollment(Base):
+    __tablename__ = 'program_enrollments'
+    enrollment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    offender_id = Column(UUID(as_uuid=True), ForeignKey('offenders.offender_id'), index=True)
+    offering_id = Column(UUID(as_uuid=True), ForeignKey('program_offerings.offering_id'), index=True)
+    
+    status = Column(String(50), default='Referred', index=True) 
+    # Options: Referred, Intake Scheduled, Intake Complete, Active, On Hold, Completed, Discharged
+    
+    referral_date = Column(Date, default=datetime.utcnow)
+    referral_source = Column(String(100)) # Court, PO, Assessment
+    
+    start_date = Column(Date) # Actual start
+    scheduled_end_date = Column(Date)
+    actual_end_date = Column(Date)
+    
+    completion_status = Column(String(50)) # Successful, Unsuccessful, Neutral
+    discharge_reason = Column(String(100)) # Granular reason if not successful
+    compliance_score = Column(Integer, default=100) # 0-100 gauge
+    
     offender = relationship("Offender")
+    offering = relationship("ProgramOffering", back_populates="enrollments")
+    attendance_records = relationship("ProgramAttendance", back_populates="enrollment")
+    notes = relationship("ProgramNote", back_populates="enrollment")
+
+class ProgramAttendance(Base):
+    __tablename__ = 'program_attendance'
+    attendance_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    enrollment_id = Column(UUID(as_uuid=True), ForeignKey('program_enrollments.enrollment_id'), index=True)
+    date = Column(Date, nullable=False)
+    status = Column(String(20), nullable=False) # Present, Excused, Unexcused
+    comments = Column(Text)
+    
+    enrollment = relationship("ProgramEnrollment", back_populates="attendance_records")
+
+class ProgramNote(Base):
+    __tablename__ = 'program_notes'
+    note_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    enrollment_id = Column(UUID(as_uuid=True), ForeignKey('program_enrollments.enrollment_id'), index=True)
+    author_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id')) # User ID of provider or officer
+    date = Column(DateTime, default=datetime.utcnow)
+    type = Column(String(50), default='Progress') # Progress, Incident, Goal
+    content = Column(Text, nullable=False)
+    
+    enrollment = relationship("ProgramEnrollment", back_populates="notes")
+    author = relationship("User")
 
 class SupervisionEpisode(Base):
     __tablename__ = 'supervision_episodes'

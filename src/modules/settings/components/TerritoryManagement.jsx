@@ -223,7 +223,7 @@ const TerritoryManagement = () => {
                         className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'geographic' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
                         <Map className="w-4 h-4" />
-                        Geographic Territories
+                        Zip Code Assignments
                     </button>
                     <button
                         onClick={() => setActiveTab('special')}
@@ -358,7 +358,7 @@ const TerritoryManagement = () => {
                         <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
                             <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                                 <h3 className="font-bold text-slate-800">
-                                    {isEditing ? 'Edit Assignment' : (activeTab === 'geographic' ? 'Add Territory Assignment' : 'Add Special Assignment')}
+                                    {isEditing ? 'Edit Assignment' : (activeTab === 'geographic' ? 'Add Zip Code Assignment' : 'Add Special Assignment')}
                                 </h3>
                                 <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600">Close</button>
                             </div>
